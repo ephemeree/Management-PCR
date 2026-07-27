@@ -16,6 +16,10 @@
     <i class="bi bi-journal-arrow-down"></i>
     <span class="nav-text">Cascaded Targets</span>
 </button>
+<button class="nav-item" data-section="nav-target-assignment" onclick="showSection('nav-target-assignment')">
+    <i class="bi bi-clipboard2-check-fill"></i>
+    <span class="nav-text">Target Assignment</span>
+</button>
 <button class="nav-item" data-section="nav-phase2" onclick="showSection('nav-phase2')">
     <i class="bi bi-list-check"></i>
     <span class="nav-text">Menu Config</span>
@@ -160,94 +164,97 @@
         </div>
     </div>
 
-    <!-- Total Distributed Targets Summary -->
-    <div class="mt-5 pt-4 border-top">
-        <div class="page-header d-flex justify-content-between align-items-center">
-            <div>
-                <h2>Total Distributed Targets Summary</h2>
-                <p>Overview of the cumulative functional baseline targets allocated across your sector profiles.</p>
-            </div>
-            <span class="badge bg-primary px-3 py-2"><i class="bi bi-pie-chart-fill me-1"></i> Cumulative Summary</span>
-        </div>
-        
-        <!-- Research Section Summary Card -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header border-0 py-3" style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
-                <h5 class="fw-bold text-primary mb-0"><i class="bi bi-star-fill me-2"></i>Research</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle shadow-sm mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th width="60%" class="ps-4">Master Indicator</th>
-                                <th class="text-center">Dept Quota</th>
-                                <th class="text-center">Total Distributed Targets</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% set ns_res_summary = namespace(found=false) %}
-                            {% for ind in ret_indicators %}
-                            {% if ind.category_name == 'A. Research' %}
-                            {% set ns_res_summary.found = true %}
-                            <tr>
-                                <td class="fw-bold ps-4">
-                                    {{ ind.indicator_description }}
-                                </td>
-                                <td class="text-center fw-bold text-primary">{{ ind.dean_quota }}</td>
-                                <td class="text-center text-success fw-bold">{{ ind.total_distributed if ind.total_distributed is defined else 0 }} / {{ ind.dean_quota }}</td>
-                            </tr>
-                            {% endif %}
-                            {% endfor %}
-                            {% if not ns_res_summary.found %}
-                            <tr>
-                                <td colspan="3" class="text-center text-muted py-4">No Research target data profiles registered.</td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+</div>
 
-        <!-- Extension Section Summary Card -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header border-0 py-3" style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
-                <h5 class="fw-bold text-warning mb-0"><i class="bi bi-tools me-2"></i>Extension</h5>
-            </div>
-            <div class="card-body p-0">
+<div id="nav-target-assignment" class="dashboard-section">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2>Target Assignment</h2>
+            <p>Assign and monitor cascaded RET targets based on quota distributions.</p>
+        </div>
+    </div>
+
+    {% if active_term %}
+    <div class="alert alert-info shadow-sm border-0 mb-3 small py-2 rounded">
+        <strong><i class="bi bi-calendar-check me-1"></i>Active Term:</strong>
+        {{ active_term.academic_year }} ({{ active_term.semester }})
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #10B981 !important;">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="fw-bold mb-0 text-success">
+                <i class="bi bi-globe me-2"></i>RET Targets with Quotas
+            </h5>
+            <small class="text-muted">Track how cascaded RET targets are distributed across your sector profile and whether quotas are met.</small>
+        </div>
+        <div class="card-body p-3">
+            {% for category_name, title in [('A. Research', 'Research'), ('B. Extension Services / Training / Advisory', 'Extension')] %}
+            {% set ns_cat = namespace(found=false) %}
+            {% for ind in ret_indicators %}
+            {% if ind.category_name == category_name %}
+            {% set ns_cat.found = true %}
+            {% set quota = ind.dean_quota if ind.dean_quota is defined else 0 %}
+            {% set distributed = ind.total_distributed if ind.total_distributed is defined else 0 %}
+            {% set percent = (distributed / quota * 100) | round(0) | int if quota else 0 %}
+            {% set percent = [percent, 100]|min %}
+            <div class="p-3 mb-4 rounded border shadow-sm bg-white">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h6 class="fw-bold text-dark mb-1">
+                            <i class="bi bi-bullseye text-success me-1"></i> {{ ind.indicator_description }}
+                        </h6>
+                        <span class="badge bg-secondary small">{{ title }}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="text-end">
+                            <span class="small text-muted d-block">Distribution Progress</span>
+                            <span class="fw-bold fs-5 {% if distributed >= quota %}text-success{% else %}text-warning{% endif %}">
+                                {{ distributed }} / {{ quota }}
+                            </span>
+                        </div>
+                        <div>
+                            {% if distributed >= quota %}
+                            <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully Distributed</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Under Distributed (-{{ quota - distributed }})</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress mb-3 shadow-sm" style="height: 10px;">
+                    <div class="progress-bar {% if distributed >= quota %}bg-success{% else %}bg-warning{% endif %}" role="progressbar" style="width: {{ percent }}%;" aria-valuenow="{{ distributed }}" aria-valuemin="0" aria-valuemax="{{ quota }}"></div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle shadow-sm mb-0">
+                    <table class="table table-sm table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th width="60%" class="ps-4">Master Indicator</th>
-                                <th class="text-center">Dept Quota</th>
-                                <th class="text-center">Total Distributed Targets</th>
+                                <th>Faculty Member</th>
+                                <th class="text-center" width="150">Dept Quota</th>
+                                <th class="text-center" width="150">Distributed Targets</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% set ns_ext_summary = namespace(found=false) %}
-                            {% for ind in ret_indicators %}
-                            {% if ind.category_name == 'B. Extension Services / Training / Advisory' %}
-                            {% set ns_ext_summary.found = true %}
                             <tr>
-                                <td class="fw-bold ps-4">
-                                    {{ ind.indicator_description }}
-                                </td>
-                                <td class="text-center fw-bold text-primary">{{ ind.dean_quota }}</td>
-                                <td class="text-center text-success fw-bold">{{ ind.total_distributed if ind.total_distributed is defined else 0 }} / {{ ind.dean_quota }}</td>
+                                <td class="fw-semibold small">{{ ind.indicator_description }}</td>
+                                <td class="text-center fw-bold text-primary small">{{ quota }}</td>
+                                <td class="text-center fw-bold text-success small">{{ distributed }} / {{ quota }}</td>
                             </tr>
-                            {% endif %}
-                            {% endfor %}
-                            {% if not ns_ext_summary.found %}
-                            <tr>
-                                <td colspan="3" class="text-center text-muted py-4">No Extension target data profiles registered.</td>
-                            </tr>
-                            {% endif %}
                         </tbody>
                     </table>
                 </div>
             </div>
+            {% endif %}
+            {% endfor %}
+            {% if not ns_cat.found %}
+            <div class="p-3 mb-4 rounded border shadow-sm bg-white text-center text-muted">
+                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                No {{ title }} targets registered.
+            </div>
+            {% endif %}
+            {% endfor %}
         </div>
     </div>
 </div>
@@ -304,7 +311,7 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold">4. Map Allowed Master Indicators</label>
+                        <label class="form-label fw-bold">4. Map Allowed Faculty Member</label>
                         <div class="row">
                             <!-- Research Indicators -->
                             <div class="col-md-6 mb-3">
