@@ -224,6 +224,23 @@ import uuid
 import os
 from werkzeug.utils import secure_filename
 
+@designated_bp.route('/target_evidence/<int:target_id>/<int:indicator_id>')
+@role_required('DESIGNATED_FACULTY')
+def designated_target_evidence(target_id, indicator_id):
+    emp_id = session.get('user_id')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models.faculty import get_evidence_by_target
+        evidence_list = get_evidence_by_target(cursor, target_id, emp_id, indicator_id)
+        return jsonify({'success': True, 'evidence_list': evidence_list})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @designated_bp.route('/upload_evidence', methods=['POST'])
 @role_required('DESIGNATED_FACULTY')
 def designated_upload_evidence():

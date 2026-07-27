@@ -45,6 +45,9 @@ def faculty_dashboard():
         chair_review = get_faculty_chair_review_status(cursor, emp_id, term_id)
         # Fetch the RET Chair's review decision (if any)
         ret_review = get_faculty_ret_review_status(cursor, emp_id, term_id)
+        # Fetch the overall IPCR status (dynamically computed)
+        from app.models.connection import get_overall_ipcr_status
+        ipcr_status = get_overall_ipcr_status(cursor, emp_id, term_id)
 
         # Check if locked
         cursor.execute("""
@@ -54,10 +57,10 @@ def faculty_dashboard():
         """, (emp_id, term_id))
         is_locked = cursor.fetchone()[0] > 0
 
-        # If Program Chair or RET Chair has rejected/returned, allow faculty to re-submit
-        if (chair_review and chair_review['overall_status'] == 'Rejected') or (ret_review and ret_review['overall_status'] == 'Rejected'):
+        # Determine submission state based on overall status
+        if ipcr_status == 'draft':
             has_submitted = False
-        elif chair_review and chair_review['overall_status'] == 'Approved':
+        else:
             has_submitted = True
 
         if is_locked:
@@ -80,7 +83,8 @@ def faculty_dashboard():
                            has_submitted=has_submitted,
                            is_locked=is_locked,
                            chair_review=chair_review,
-                           ret_review=ret_review)
+                           ret_review=ret_review,
+                           ipcr_status=ipcr_status)
 @faculty_bp.route('/submit_ipcr', methods=['POST'])
 @role_required('FACULTY')
 def faculty_submit_ipcr():
@@ -288,6 +292,23 @@ def faculty_delete_evidence():
         conn.close()
 
     return redirect(url_for('faculty.faculty_dashboard'))
+
+
+@faculty_bp.route('/target_evidence/<int:target_id>/<int:indicator_id>')
+@role_required('FACULTY')
+def faculty_target_evidence(target_id, indicator_id):
+    emp_id = session.get('user_id')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models.faculty import get_evidence_by_target
+        evidence_list = get_evidence_by_target(cursor, target_id, emp_id, indicator_id)
+        return jsonify({'success': True, 'evidence_list': evidence_list})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @faculty_bp.route('/eligible_co_authors/<int:indicator_id>')

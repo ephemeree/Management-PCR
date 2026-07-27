@@ -37,41 +37,53 @@
 {% block content %}
 <script>window.dashboardRole = 'ret_chair';</script>
 
+<style>
+    /* Custom styling for disabled RET decision buttons to easily distinguish them */
+    #btnRetApprove:disabled,
+    #btnRetReject:disabled {
+        background-color: #e9ecef !important;
+        border-color: #dee2e6 !important;
+        color: #adb5bd !important;
+        opacity: 1 !important;
+        cursor: not-allowed !important;
+    }
+</style>
+
 <div id="nav-overview" class="dashboard-section active">
     <div class="page-header">
         <h2>RET Chair Dashboard</h2>
         <p>Research, Extension & Training Sector | <span class="badge bg-secondary">Middle Manager</span></p>
     </div>
 
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100 border-start border-info border-4">
-            <div class="card-body text-center py-4">
-                <h6 class="text-muted text-uppercase fw-bold">Registered Targets</h6>
-                <h2 class="display-6 fw-bold text-info">{{ ret_indicators|length if ret_indicators else 0 }}</h2>
-                <span class="small text-muted">Active DPCR research targets</span>
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100 border-start border-info border-4">
+                <div class="card-body text-center py-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Registered Targets</h6>
+                    <h2 class="display-6 fw-bold text-info">{{ ret_indicators|length if ret_indicators else 0 }}</h2>
+                    <span class="small text-muted">Active DPCR research targets</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100 border-start border-primary border-4">
+                <div class="card-body text-center py-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Configured Ranks</h6>
+                    <h2 class="display-6 fw-bold text-primary">{{ ret_rules|length if ret_rules else 0 }}</h2>
+                    <span class="small text-muted">Active rank-based rules set</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100 border-start border-warning border-4">
+                <div class="card-body text-center py-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Pending Approvals</h6>
+                    <h2 class="display-6 fw-bold text-warning">1</h2>
+                    <span class="small text-muted">Faculty selections awaiting review</span>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100 border-start border-primary border-4">
-            <div class="card-body text-center py-4">
-                <h6 class="text-muted text-uppercase fw-bold">Configured Ranks</h6>
-                <h2 class="display-6 fw-bold text-primary">{{ ret_rules|length if ret_rules else 0 }}</h2>
-                <span class="small text-muted">Active rank-based rules set</span>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100 border-start border-warning border-4">
-            <div class="card-body text-center py-4">
-                <h6 class="text-muted text-uppercase fw-bold">Pending Approvals</h6>
-                <h2 class="display-6 fw-bold text-warning">1</h2>
-                <span class="small text-muted">Faculty selections awaiting review</span>
-            </div>
-        </div>
-    </div>
-</div>
 
 </div>
 
@@ -103,10 +115,11 @@
         </div>
         <span class="badge bg-info text-dark"><i class="bi bi-journal-arrow-down me-1"></i> Cascaded Targets</span>
     </div>
-    
+
     <!-- Research Targets Card -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header border-0 py-3" style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
+        <div class="card-header border-0 py-3"
+            style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
             <h5 class="fw-bold text-primary mb-0"><i class="bi bi-star-fill me-2"></i>Research</h5>
         </div>
         <div class="card-body bg-light rounded-bottom m-0 p-4 border-top">
@@ -117,7 +130,8 @@
                 {% set ns_res.found = true %}
                 <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <span>
-                        <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('A. ', '') }}</span> 
+                        <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('A. ', '')
+                            }}</span>
                         {{ ind.indicator_description }}
                     </span>
                     <span class="badge bg-primary rounded-pill px-3 py-2">Quota: {{ ind.dean_quota }}</span>
@@ -136,8 +150,10 @@
 
     <!-- Extension Targets Card -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header border-0 py-3" style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
-            <h5 class="fw-bold text-warning mb-0"><i class="bi bi-tools me-2"></i>Extension Services / Training / Advisory</h5>
+        <div class="card-header border-0 py-3"
+            style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
+            <h5 class="fw-bold text-warning mb-0"><i class="bi bi-tools me-2"></i>Extension Services / Training /
+                Advisory</h5>
         </div>
         <div class="card-body bg-light rounded-bottom m-0 p-4 border-top">
             <ul class="list-group shadow-sm">
@@ -147,7 +163,8 @@
                 {% set ns_ext.found = true %}
                 <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <span>
-                        <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('B. ', '') }}</span> 
+                        <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('B. ', '')
+                            }}</span>
                         {{ ind.indicator_description }}
                     </span>
                     <span class="badge bg-primary rounded-pill px-3 py-2">Quota: {{ ind.dean_quota }}</span>
@@ -186,10 +203,12 @@
             <h5 class="fw-bold mb-0 text-success">
                 <i class="bi bi-globe me-2"></i>RET Targets with Quotas
             </h5>
-            <small class="text-muted">Track how cascaded RET targets are distributed across your sector profile and whether quotas are met.</small>
+            <small class="text-muted">Track how cascaded RET targets are distributed across your sector profile and
+                whether quotas are met.</small>
         </div>
         <div class="card-body p-3">
-            {% for category_name, title in [('A. Research', 'Research'), ('B. Extension Services / Training / Advisory', 'Extension')] %}
+            {% for category_name, title in [('A. Research', 'Research'), ('B. Extension Services / Training / Advisory',
+            'Extension')] %}
             {% set ns_cat = namespace(found=false) %}
             {% for ind in ret_indicators %}
             {% if ind.category_name == category_name %}
@@ -209,22 +228,28 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="text-end">
                             <span class="small text-muted d-block">Distribution Progress</span>
-                            <span class="fw-bold fs-5 {% if distributed >= quota %}text-success{% else %}text-warning{% endif %}">
+                            <span
+                                class="fw-bold fs-5 {% if distributed >= quota %}text-success{% else %}text-warning{% endif %}">
                                 {{ distributed }} / {{ quota }}
                             </span>
                         </div>
                         <div>
                             {% if distributed >= quota %}
-                            <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully Distributed</span>
+                            <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully
+                                Distributed</span>
                             {% else %}
-                            <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Under Distributed (-{{ quota - distributed }})</span>
+                            <span class="badge bg-warning text-dark px-3 py-2"><i
+                                    class="bi bi-hourglass-split me-1"></i>Under Distributed (-{{ quota - distributed
+                                }})</span>
                             {% endif %}
                         </div>
                     </div>
                 </div>
 
                 <div class="progress mb-3 shadow-sm" style="height: 10px;">
-                    <div class="progress-bar {% if distributed >= quota %}bg-success{% else %}bg-warning{% endif %}" role="progressbar" style="width: {{ percent }}%;" aria-valuenow="{{ distributed }}" aria-valuemin="0" aria-valuemax="{{ quota }}"></div>
+                    <div class="progress-bar {% if distributed >= quota %}bg-success{% else %}bg-warning{% endif %}"
+                        role="progressbar" style="width: {{ percent }}%;" aria-valuenow="{{ distributed }}"
+                        aria-valuemin="0" aria-valuemax="{{ quota }}"></div>
                 </div>
 
                 <div class="table-responsive">
@@ -265,130 +290,144 @@
         <h2>Phase 2: Research Menu Configuration</h2>
         <p>Map the cascaded targets to specific academic ranks to create dynamic faculty menus.</p>
     </div>
-    
+
     <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold text-dark mb-0">Phase 2: RET Menu Configuration</h5>
-                <span class="badge bg-primary"><i class="bi bi-gear-fill me-1"></i> Setup Rules</span>
-            </div>
-            <div class="card-body">
-                <p class="text-muted small mb-4">Map the registered research and extension targets to specific academic ranks to
-                    generate the faculty selection menus.</p>
-                <form action="{{ url_for('ret_chair.ret_chair_save_rule') }}" method="POST">
-                    <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">1. Select Academic Rank</label>
-                            <select class="form-select shadow-sm border-primary" id="academic_rank" name="academic_rank" required>
-                                <option selected disabled value="">-- Choose Rank --</option>
-                                <option value="Instructor I">Instructor I</option>
-                                <option value="Instructor II">Instructor II</option>
-                                <option value="Instructor III">Instructor III</option>
-                                <option value="Assistant Professor I">Assistant Professor I</option>
-                                <option value="Assistant Professor II">Assistant Professor II</option>
-                                <option value="Assistant Professor III">Assistant Professor III</option>
-                                <option value="Assistant Professor IV">Assistant Professor IV</option>
-                                <option value="Associate Professor I">Associate Professor I</option>
-                                <option value="Associate Professor II">Associate Professor II</option>
-                                <option value="Associate Professor III">Associate Professor III</option>
-                                <option value="Associate Professor IV">Associate Professor IV</option>
-                                <option value="Associate Professor V">Associate Professor V</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold text-primary"><i class="bi bi-star-fill me-1"></i>Research Required</label>
-                            <input type="number" class="form-control shadow-sm" id="research_selections" name="research_selections" value="0"
-                                min="0" max="10" required placeholder="Count">
-                            <div class="form-text small">Number of research targets to pick.</div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold text-warning"><i class="bi bi-tools me-1"></i>Extension Required</label>
-                            <input type="number" class="form-control shadow-sm" id="extension_selections" name="extension_selections" value="0"
-                                min="0" max="10" required placeholder="Count">
-                            <div class="form-text small">Number of extension targets to pick.</div>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">4. Map Allowed Faculty Member</label>
-                        <div class="row">
-                            <!-- Research Indicators -->
-                            <div class="col-md-6 mb-3">
-                                <div class="card shadow-sm border-0 h-100" style="border-top: 3px solid #0d6efd !important;">
-                                    <div class="card-header bg-light py-2">
-                                        <h6 class="fw-bold text-primary mb-0 small">Research Options</h6>
-                                    </div>
-                                    <ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
-                                        {% set ns_r = namespace(found=false) %}
-                                        {% for ind in ret_indicators %}
-                                        {% if ind.category_name == 'A. Research' %}
-                                        {% set ns_r.found = true %}
-                                        <li class="list-group-item d-flex justify-content-between align-items-center py-2 small">
-                                            <div class="d-flex align-items-start" style="flex: 1; padding-right: 15px;">
-                                                <input class="form-check-input me-2 indicator-checkbox research-indicator-checkbox" type="checkbox" id="ind_{{ ind.indicator_id }}"
-                                                    name="research_indicator_ids[]" value="{{ ind.indicator_id }}">
-                                                <label class="form-check-label" for="ind_{{ ind.indicator_id }}">
-                                                    {{ ind.indicator_description }}
-                                                </label>
-                                            </div>
-                                            <div style="width: 80px;">
-                                                <input type="number" class="form-control form-control-sm text-center"
-                                                    id="qty_{{ ind.indicator_id }}" name="research_quantity_{{ ind.indicator_id }}"
-                                                    value="1" min="1" disabled placeholder="Qty">
-                                            </div>
-                                        </li>
-                                        {% endif %}
-                                        {% endfor %}
-                                        {% if not ns_r.found %}
-                                        <li class="list-group-item py-2 text-muted small">No Research indicators available.</li>
-                                        {% endif %}
-                                    </ul>
-                                </div>
-                            </div>
-                            <!-- Extension Indicators -->
-                            <div class="col-md-6 mb-3">
-                                <div class="card shadow-sm border-0 h-100" style="border-top: 3px solid #fd7e14 !important;">
-                                    <div class="card-header bg-light py-2">
-                                        <h6 class="fw-bold text-warning mb-0 small">Extension Options</h6>
-                                    </div>
-                                    <ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
-                                        {% set ns_e = namespace(found=false) %}
-                                        {% for ind in ret_indicators %}
-                                        {% if ind.category_name == 'B. Extension Services / Training / Advisory' %}
-                                        {% set ns_e.found = true %}
-                                        <li class="list-group-item d-flex justify-content-between align-items-center py-2 small">
-                                            <div class="d-flex align-items-start" style="flex: 1; padding-right: 15px;">
-                                                <input class="form-check-input me-2 indicator-checkbox extension-indicator-checkbox" type="checkbox" id="ind_{{ ind.indicator_id }}"
-                                                    name="extension_indicator_ids[]" value="{{ ind.indicator_id }}">
-                                                <label class="form-check-label" for="ind_{{ ind.indicator_id }}">
-                                                    {{ ind.indicator_description }}
-                                                </label>
-                                            </div>
-                                            <div style="width: 80px;">
-                                                <input type="number" class="form-control form-control-sm text-center"
-                                                    id="qty_{{ ind.indicator_id }}" name="extension_quantity_{{ ind.indicator_id }}"
-                                                    value="1" min="1" disabled placeholder="Qty">
-                                            </div>
-                                        </li>
-                                        {% endif %}
-                                        {% endfor %}
-                                        {% if not ns_e.found %}
-                                        <li class="list-group-item py-2 text-muted small">No Extension indicators available.</li>
-                                        {% endif %}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="text-end border-top pt-3">
-                        <button type="submit" id="save_rule_btn" class="btn btn-primary fw-bold px-4 shadow-sm"><i class="bi bi-save"></i>
-                            Save Menu Rules</button>
-                    </div>
-                </form>
-            </div>
+        <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold text-dark mb-0">Phase 2: RET Menu Configuration</h5>
+            <span class="badge bg-primary"><i class="bi bi-gear-fill me-1"></i> Setup Rules</span>
         </div>
+        <div class="card-body">
+            <p class="text-muted small mb-4">Map the registered research and extension targets to specific academic ranks to
+                generate the faculty selection menus.</p>
+            <form action="{{ url_for('ret_chair.ret_chair_save_rule') }}" method="POST">
+                <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">1. Select Academic Rank</label>
+                        <select class="form-select shadow-sm border-primary" id="academic_rank" name="academic_rank"
+                            required>
+                            <option selected disabled value="">-- Choose Rank --</option>
+                            <option value="Instructor I">Instructor I</option>
+                            <option value="Instructor II">Instructor II</option>
+                            <option value="Instructor III">Instructor III</option>
+                            <option value="Assistant Professor I">Assistant Professor I</option>
+                            <option value="Assistant Professor II">Assistant Professor II</option>
+                            <option value="Assistant Professor III">Assistant Professor III</option>
+                            <option value="Assistant Professor IV">Assistant Professor IV</option>
+                            <option value="Associate Professor I">Associate Professor I</option>
+                            <option value="Associate Professor II">Associate Professor II</option>
+                            <option value="Associate Professor III">Associate Professor III</option>
+                            <option value="Associate Professor IV">Associate Professor IV</option>
+                            <option value="Associate Professor V">Associate Professor V</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-primary"><i class="bi bi-star-fill me-1"></i>Research
+                            Required</label>
+                        <input type="number" class="form-control shadow-sm" id="research_selections"
+                            name="research_selections" value="0" min="0" max="10" required placeholder="Count">
+                        <div class="form-text small">Number of research targets to pick.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-warning"><i class="bi bi-tools me-1"></i>Extension
+                            Required</label>
+                        <input type="number" class="form-control shadow-sm" id="extension_selections"
+                            name="extension_selections" value="0" min="0" max="10" required placeholder="Count">
+                        <div class="form-text small">Number of extension targets to pick.</div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">4. Map Allowed Indicators</label>
+                    <div class="row">
+                        <!-- Research Indicators -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card shadow-sm border-0 h-100" style="border-top: 3px solid #0d6efd !important;">
+                                <div class="card-header bg-light py-2">
+                                    <h6 class="fw-bold text-primary mb-0 small">Research Options</h6>
+                                </div>
+                                <ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+                                    {% set ns_r = namespace(found=false) %}
+                                    {% for ind in ret_indicators %}
+                                    {% if ind.category_name == 'A. Research' %}
+                                    {% set ns_r.found = true %}
+                                    <li
+                                        class="list-group-item d-flex justify-content-between align-items-center py-2 small">
+                                        <div class="d-flex align-items-start" style="flex: 1; padding-right: 15px;">
+                                            <input
+                                                class="form-check-input me-2 indicator-checkbox research-indicator-checkbox"
+                                                type="checkbox" id="ind_{{ ind.indicator_id }}"
+                                                name="research_indicator_ids[]" value="{{ ind.indicator_id }}">
+                                            <label class="form-check-label" for="ind_{{ ind.indicator_id }}">
+                                                {{ ind.indicator_description }}
+                                            </label>
+                                        </div>
+                                        <div style="width: 80px;">
+                                            <input type="number" class="form-control form-control-sm text-center"
+                                                id="qty_{{ ind.indicator_id }}"
+                                                name="research_quantity_{{ ind.indicator_id }}" value="1" min="1" disabled
+                                                placeholder="Qty">
+                                        </div>
+                                    </li>
+                                    {% endif %}
+                                    {% endfor %}
+                                    {% if not ns_r.found %}
+                                    <li class="list-group-item py-2 text-muted small">No Research indicators available.
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                        <!-- Extension Indicators -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card shadow-sm border-0 h-100" style="border-top: 3px solid #fd7e14 !important;">
+                                <div class="card-header bg-light py-2">
+                                    <h6 class="fw-bold text-warning mb-0 small">Extension Options</h6>
+                                </div>
+                                <ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+                                    {% set ns_e = namespace(found=false) %}
+                                    {% for ind in ret_indicators %}
+                                    {% if ind.category_name == 'B. Extension Services / Training / Advisory' %}
+                                    {% set ns_e.found = true %}
+                                    <li
+                                        class="list-group-item d-flex justify-content-between align-items-center py-2 small">
+                                        <div class="d-flex align-items-start" style="flex: 1; padding-right: 15px;">
+                                            <input
+                                                class="form-check-input me-2 indicator-checkbox extension-indicator-checkbox"
+                                                type="checkbox" id="ind_{{ ind.indicator_id }}"
+                                                name="extension_indicator_ids[]" value="{{ ind.indicator_id }}">
+                                            <label class="form-check-label" for="ind_{{ ind.indicator_id }}">
+                                                {{ ind.indicator_description }}
+                                            </label>
+                                        </div>
+                                        <div style="width: 80px;">
+                                            <input type="number" class="form-control form-control-sm text-center"
+                                                id="qty_{{ ind.indicator_id }}"
+                                                name="extension_quantity_{{ ind.indicator_id }}" value="1" min="1" disabled
+                                                placeholder="Qty">
+                                        </div>
+                                    </li>
+                                    {% endif %}
+                                    {% endfor %}
+                                    {% if not ns_e.found %}
+                                    <li class="list-group-item py-2 text-muted small">No Extension indicators available.
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end border-top pt-3">
+                    <button type="submit" id="save_rule_btn" class="btn btn-primary fw-bold px-4 shadow-sm"><i
+                            class="bi bi-save"></i>
+                        Save Menu Rules</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Phase 3: Active Rules -->
@@ -397,65 +436,66 @@
         <h2>Phase 3: Active Research Rules</h2>
         <p>Current logic mappings dictating what faculty see on their dashboards.</p>
     </div>
-    
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body">
-                <p class="text-muted small">Current logic mappings dictating what faculty see on their dashboards.</p>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle shadow-sm border">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Academic Rank</th>
-                                <th class="text-center text-primary">Research Required</th>
-                                <th class="text-center">Research Options</th>
-                                <th class="text-center text-warning">Extension Required</th>
-                                <th class="text-center">Extension Options</th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for rule in ret_rules %}
-                            <tr>
-                                <td class="fw-bold text-dark">{{ rule.academic_rank }}</td>
-                                <td class="text-center fw-bold text-primary">{{ rule.research_required }}</td>
-                                <td class="text-center">
-                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary"
-                                        title="{% for i in rule.research_indicators %}{{ i.desc }}{% if not loop.last %}&#10;{% endif %}{% endfor %}">
-                                        {{ rule.research_indicators|length }} Options
-                                    </span>
-                                </td>
-                                <td class="text-center fw-bold text-warning">{{ rule.extension_required }}</td>
-                                <td class="text-center">
-                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning"
-                                        title="{% for i in rule.extension_indicators %}{{ i.desc }}{% if not loop.last %}&#10;{% endif %}{% endfor %}">
-                                        {{ rule.extension_indicators|length }} Options
-                                    </span>
-                                </td>
-                                <td class="text-end">
-                                    <div class="d-flex justify-content-end gap-2">
-                                        <button type="button" class="btn btn-sm btn-outline-primary px-3" 
-                                            onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, {{ rule.extension_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}}{% if not loop.last %}, {% endif %}{% endfor %}], [{% for i in rule.extension_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
-                                            <i class="bi bi-pencil me-1"></i>Edit
-                                        </button>
-                                        <form method="POST" action="{{ url_for('ret_chair.ret_chair_delete_rule') }}" class="m-0"
-                                            onsubmit="return confirm('Delete all RET rules for this rank?');">
-                                            <input type="hidden" name="rule_id" value="{{ rule.rule_id }}">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger px-3"><i class="bi bi-trash me-1"></i>Delete</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center text-muted">No menu rules configured yet.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <p class="text-muted small">Current logic mappings dictating what faculty see on their dashboards.</p>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle shadow-sm border">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Academic Rank</th>
+                            <th class="text-center text-primary">Research Required</th>
+                            <th class="text-center">Research Options</th>
+                            <th class="text-center text-warning">Extension Required</th>
+                            <th class="text-center">Extension Options</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rule in ret_rules %}
+                        <tr>
+                            <td class="fw-bold text-dark">{{ rule.academic_rank }}</td>
+                            <td class="text-center fw-bold text-primary">{{ rule.research_required }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary"
+                                    title="{% for i in rule.research_indicators %}{{ i.desc }}{% if not loop.last %}&#10;{% endif %}{% endfor %}">
+                                    {{ rule.research_indicators|length }} Options
+                                </span>
+                            </td>
+                            <td class="text-center fw-bold text-warning">{{ rule.extension_required }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning"
+                                    title="{% for i in rule.extension_indicators %}{{ i.desc }}{% if not loop.last %}&#10;{% endif %}{% endfor %}">
+                                    {{ rule.extension_indicators|length }} Options
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary px-3"
+                                        onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, {{ rule.extension_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}}{% if not loop.last %}, {% endif %}{% endfor %}], [{% for i in rule.extension_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
+                                        <i class="bi bi-pencil me-1"></i>Edit
+                                    </button>
+                                    <form method="POST" action="{{ url_for('ret_chair.ret_chair_delete_rule') }}"
+                                        class="m-0" onsubmit="return confirm('Delete all RET rules for this rank?');">
+                                        <input type="hidden" name="rule_id" value="{{ rule.rule_id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger px-3"><i
+                                                class="bi bi-trash me-1"></i>Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">No menu rules configured yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Phase 4: Commitment Verification -->
@@ -463,59 +503,139 @@
     <div class="page-header d-flex justify-content-between align-items-center">
         <div>
             <h2>Phase 4: Research &amp; Extension Commitment Verification</h2>
-            <p>Review and approve the specific research and extension targets selected by faculty members for this semester.</p>
+            <p>Review and approve the specific research and extension targets selected by faculty members for this
+                semester.</p>
         </div>
         <span class="badge bg-warning text-dark"><i class="bi bi-handshake me-1"></i> Commitments</span>
     </div>
-    
+
     <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #FFC107 !important;">
-            <div class="card-body">
-                <p class="text-muted small">Review and approve the specific research and extension targets selected by faculty members for this semester.</p>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle border shadow-sm">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Faculty Name</th>
-                                <th>Rank</th>
-                                <th>Specialization</th>
-                                <th class="text-center">Targets Selected</th>
-                                <th>Status</th>
-                                <th class="text-end pe-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for draft in pending_ret_drafts %}
-                            <tr>
-                                <td class="fw-bold small ps-4">{{ draft.faculty_name }}</td>
-                                <td class="small">{{ draft.academic_rank }}</td>
-                                <td class="small">{{ draft.specialization }}</td>
-                                <td class="text-center fw-bold text-primary small">{{ draft.target_count }}</td>
-                                <td>
-                                    {% if draft.review_status == 'Approved' %}
-                                    <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
-                                    {% elif draft.review_status == 'Rejected' or draft.review_status == 'Returned' %}
-                                    <span class="badge bg-danger"><i class="bi bi-arrow-counterclockwise me-1"></i>Returned</span>
-                                    {% else %}
-                                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending Review</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end pe-4">
-                                    <button class="btn btn-sm btn-outline-primary open-ret-review-modal"
-                                            data-emp-id="{{ draft.emp_id }}"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#reviewRetModal">
-                                        <i class="bi bi-pencil-square me-1"></i>Review RET Targets
-                                    </button>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-4">No regular faculty drafts found.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+        <div class="card-body">
+            <p class="text-muted small">Review and approve the specific research and extension targets selected by
+                faculty members for this semester.</p>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle border shadow-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Faculty Name</th>
+                            <th>Rank</th>
+                            <th>Specialization</th>
+                            <th class="text-center">Targets Selected</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set ns_pending = namespace(count=0) %}
+                        {% for draft in pending_ret_drafts %}
+                        {% if draft.review_status != 'Approved' %}
+                        {% set ns_pending.count = ns_pending.count + 1 %}
+                        <tr>
+                            <td class="fw-bold small ps-4">{{ draft.faculty_name }}</td>
+                            <td class="small">{{ draft.academic_rank }}</td>
+                            <td class="small">{{ draft.specialization }}</td>
+                            <td class="text-center fw-bold text-primary small">{{ draft.target_count }}</td>
+                            <td>
+                                {% if draft.review_status == 'Rejected' or draft.review_status == 'Returned' %}
+                                <span class="badge bg-danger"><i class="bi bi-arrow-counterclockwise me-1"></i>Returned
+                                    to Faculty</span>
+                                {% elif draft.ipcr_status == 'draft' %}
+                                <span class="badge bg-secondary"><i class="bi bi-pencil me-1"></i>Draft
+                                    (Unsubmitted)</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark"><i
+                                        class="bi bi-hourglass-split me-1"></i>Pending Review</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                {% if draft.ipcr_status == 'draft' %}
+                                {% if draft.review_status in ('Rejected', 'Returned') %}
+                                <button class="btn btn-sm btn-outline-secondary" disabled
+                                    title="Awaiting faculty resubmission.">
+                                    <i class="bi bi-hourglass-split me-1"></i>Awaiting Resubmission
+                                </button>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-secondary" disabled
+                                    title="Faculty has not submitted yet.">
+                                    <i class="bi bi-clock me-1"></i>Review RET Targets
+                                </button>
+                                {% endif %}
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-primary open-ret-review-modal"
+                                    data-emp-id="{{ draft.emp_id }}" data-bs-toggle="modal"
+                                    data-bs-target="#reviewRetModal">
+                                    <i class="bi bi-pencil-square me-1"></i>Review RET Targets
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        {% if ns_pending.count == 0 %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">No regular faculty drafts awaiting
+                                review.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved RET Selections Table -->
+    <div class="page-header mt-5">
+        <h2>Approved RET Choices</h2>
+        <p>Faculty members whose research and extension targets have been approved and verified.</p>
+    </div>
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #198754 !important;">
+        <div class="card-body">
+            <p class="text-muted small">The following faculty members have had their RET selections verified and
+                approved by you.</p>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle border shadow-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Faculty Name</th>
+                            <th>Rank</th>
+                            <th>Specialization</th>
+                            <th class="text-center">Targets Selected</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set ns_approved = namespace(count=0) %}
+                        {% for draft in pending_ret_drafts %}
+                        {% if draft.review_status == 'Approved' %}
+                        {% set ns_approved.count = ns_approved.count + 1 %}
+                        <tr>
+                            <td class="fw-bold small ps-4">{{ draft.faculty_name }}</td>
+                            <td class="small">{{ draft.academic_rank }}</td>
+                            <td class="small">{{ draft.specialization }}</td>
+                            <td class="text-center fw-bold text-primary small">{{ draft.target_count }}</td>
+                            <td>
+                                <span class="badge bg-success"><i
+                                        class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-outline-secondary open-ret-review-modal"
+                                    data-emp-id="{{ draft.emp_id }}" data-bs-toggle="modal"
+                                    data-bs-target="#reviewRetModal">
+                                    <i class="bi bi-eye me-1"></i>View RET Targets
+                                </button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        {% if ns_approved.count == 0 %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">No approved regular faculty drafts
+                                found.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -526,7 +646,8 @@
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
             <!-- Modal Header -->
-            <div class="modal-header border-0 py-3" style="background: linear-gradient(135deg, #6f42c1 0%, #59359a 100%);">
+            <div class="modal-header border-0 py-3"
+                style="background: linear-gradient(135deg, #6f42c1 0%, #59359a 100%);">
                 <div>
                     <h5 class="modal-title text-white fw-bold mb-0" id="reviewRetModalLabel">
                         <i class="bi bi-journal-check me-2"></i>
@@ -536,7 +657,8 @@
                 </div>
                 <div class="ms-auto d-flex align-items-center gap-2">
                     <span id="retModalStatusBadge" class="badge fs-6 px-3 py-2"></span>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
             </div>
 
@@ -550,10 +672,12 @@
 
             <!-- Modal Body (Table and Save All Changes) -->
             <div class="modal-body p-0" id="retModalBody" style="display:none;">
+                <!-- Section 1: Submitted Targets -->
                 <div class="px-4 pt-4 pb-2">
                     <h6 class="fw-bold text-secondary text-uppercase mb-3">
-                        <i class="bi bi-list-check me-2"></i>Proposed RET Choices
-                        <small class="text-muted fw-normal ms-2 text-capitalize" id="retModalSubTitle">(Adjust quantities and add remarks per research/extension selection)</small>
+                        <i class="bi bi-list-check me-2"></i>SUBMITTED TARGETS
+                        <small class="text-muted fw-normal ms-2 text-capitalize" id="retModalSubTitle">(Adjust
+                            quantities and add remarks per item)</small>
                     </h6>
                 </div>
 
@@ -565,7 +689,7 @@
                                 <th width="35%">Indicator</th>
                                 <th class="text-center" width="12%">Original Qty</th>
                                 <th class="text-center" width="13%">Reviewed Qty</th>
-                                <th width="20%">Remarks on this change <span class="text-muted fw-normal">(optional)</span></th>
+                                <th width="20%">Remarks on this change</th>
                             </tr>
                         </thead>
                         <tbody id="retReviewItemsBody">
@@ -574,11 +698,27 @@
                     </table>
                 </div>
 
-                <!-- Single Save All button -->
-                <div class="px-4 pb-3 d-flex justify-content-end">
-                    <button type="button" class="btn btn-primary" id="btnRetSaveAll">
-                        <i class="bi bi-save me-2"></i>Save All Changes
-                    </button>
+                <!-- Section 2: Unselected Indicators -->
+                <div class="px-4 pb-2">
+                    <h6 class="fw-bold text-secondary text-uppercase mb-3">
+                        <i class="bi bi-exclamation-circle me-2"></i>UNSELECTED INDICATORS
+                        <small class="text-muted fw-normal ms-2">(Faculty did not pick these. You can assign quantities
+                            here.)</small>
+                    </h6>
+                </div>
+                <div class="table-responsive px-4 pb-3">
+                    <table class="table table-bordered table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="20%">Category</th>
+                                <th width="70%">Indicator</th>
+                                <th class="text-center" width="10%">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="retUnpickedItemsBody">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -592,24 +732,33 @@
                 <input type="hidden" id="retModalEmpId">
 
                 <div class="mb-3">
-                    <label for="retOverallRemarks" class="form-label fw-semibold mb-1">
-                        Remarks / Reason
-                        <small class="text-muted fw-normal ms-1">(Optional — faculty will see this message)</small>
+                    <label for="retOverallRemarks" class="form-label fw-semibold mb-1" style="font-size: 0.95rem;">
+                        Remarks / Reason: <small class="text-muted fw-normal">Remarks are optional when approving.
+                            Required only when returning to faculty.</small>
                     </label>
                     <textarea class="form-control form-control-sm" id="retOverallRemarks" rows="2"
-                        placeholder="e.g. 'Please revise your research indicator counts.' or 'Research & Extension choices approved.'"></textarea>
+                        placeholder="e.g. 'Please revise your research indicator counts.' or 'Research &amp; Extension choices approved.'"></textarea>
+                    <div class="invalid-feedback">
+                        Remarks / Reason is required when returning the IPCR to faculty.
+                    </div>
                 </div>
 
-                <div class="d-flex gap-2 justify-content-end">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-lg me-1"></i>Cancel
-                    </button>
-                    <button type="button" class="btn btn-danger" id="btnRetReject" onclick="submitRetDecision('reject')">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Return to Faculty
-                    </button>
-                    <button type="button" class="btn btn-success" id="btnRetApprove" onclick="submitRetDecision('approve')">
-                        <i class="bi bi-check-circle-fill me-1"></i>Approve RET Choices
-                    </button>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <button type="button" class="btn btn-outline-danger" id="btnRetReject"
+                            onclick="submitRetDecision('reject')">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Return to Faculty
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Close
+                        </button>
+                        <button type="button" class="btn btn-success" id="btnRetApprove"
+                            onclick="submitRetDecision('approve')">
+                            <i class="bi bi-check-circle-fill me-1"></i>Approve RET Choices
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -621,19 +770,20 @@
     <input type="hidden" name="review_id" id="retDecisionReviewId">
     <input type="hidden" name="action" id="retDecisionAction">
     <input type="hidden" name="overall_remarks" id="retDecisionRemarks">
+    <input type="hidden" name="items_json" id="retDecisionItemsJson">
 </form>
 
 {% endif %}
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         const rankSelect = document.getElementById('academic_rank');
         const checkboxes = document.querySelectorAll('.indicator-checkbox');
-        
+
         function toggleCheckboxes() {
             const rankVal = rankSelect.value;
             const disabled = !rankVal;
-            
+
             // Only lock/unlock based on whether a rank is selected.
             // The "Required" count controls how many faculty MUST pick,
             // NOT which indicators the chair can make available.
@@ -649,10 +799,10 @@
                 }
             });
         }
-        
+
         // Toggle quantity inputs based on checkbox state
         checkboxes.forEach(cb => {
-            cb.addEventListener('change', function() {
+            cb.addEventListener('change', function () {
                 const qtyInput = document.getElementById('qty_' + cb.value);
                 if (qtyInput) {
                     qtyInput.disabled = !cb.checked;
@@ -662,7 +812,7 @@
                 }
             });
         });
-        
+
         if (rankSelect) {
             rankSelect.addEventListener('change', toggleCheckboxes);
             toggleCheckboxes(); // run on load
@@ -679,16 +829,16 @@
         setTimeout(() => {
             document.getElementById('academic_rank').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
-        
+
         // Populate inputs
         document.getElementById('academic_rank').value = rank;
         document.getElementById('research_selections').value = researchCount;
         document.getElementById('extension_selections').value = extensionCount;
-        
+
         // Trigger the toggle to enable checkboxes
         const event = new Event('change');
         document.getElementById('academic_rank').dispatchEvent(event);
-        
+
         // Uncheck and disable all quantities first
         const checkboxes = document.querySelectorAll('.indicator-checkbox');
         checkboxes.forEach(cb => {
@@ -699,16 +849,16 @@
                 qtyInput.disabled = true;
             }
         });
-        
+
         // Check the previously selected ones and set their quantities
         researchIds.forEach(item => {
             const id = item.id;
             const qty = item.qty;
             const cb = document.getElementById('ind_' + id);
-            if(cb) {
+            if (cb) {
                 cb.checked = true;
                 const qtyInput = document.getElementById('qty_' + id);
-                if(qtyInput) {
+                if (qtyInput) {
                     qtyInput.value = qty;
                     qtyInput.disabled = false;
                 }
@@ -718,16 +868,16 @@
             const id = item.id;
             const qty = item.qty;
             const cb = document.getElementById('ind_' + id);
-            if(cb) {
+            if (cb) {
                 cb.checked = true;
                 const qtyInput = document.getElementById('qty_' + id);
-                if(qtyInput) {
+                if (qtyInput) {
                     qtyInput.value = qty;
                     qtyInput.disabled = false;
                 }
             }
         });
-        
+
         // Re-enforce limits based on checked counts
         const rankSelect = document.getElementById('academic_rank');
         const changeEvent = new Event('change');
@@ -735,277 +885,395 @@
     }
 
     // ── RET Review Modal Logic ──────────────────────────
+    let retReviewData = null;
+    let retReviewItems = [];
+
+    console.log("[DEBUG] RET script loaded.");
+
     document.addEventListener('DOMContentLoaded', function () {
+        console.log("[DEBUG] DOMContentLoaded in RET logic. Attaching listeners...");
         // Open modal and fetch review data
-        document.querySelectorAll('.open-ret-review-modal').forEach(function (btn) {
+        const buttons = document.querySelectorAll('.open-ret-review-modal');
+        console.log("[DEBUG] Found " + buttons.length + " buttons with class .open-ret-review-modal");
+        buttons.forEach(function (btn) {
+            console.log("[DEBUG] Attaching click listener to button for empId:", btn.dataset.empId);
             btn.addEventListener('click', function () {
                 const empId = this.dataset.empId;
+                console.log("[DEBUG] Review RET button clicked! empId:", empId);
                 loadRetReviewModal(empId);
             });
         });
 
-        function loadRetReviewModal(empId) {
-            // Reset modal to loading state
-            document.getElementById('retModalLoader').style.display = 'block';
-            document.getElementById('retModalBody').style.display = 'none';
-            document.getElementById('retModalFooter').style.display = 'none';
-            document.getElementById('retModalFacultyName').textContent = 'Loading...';
-            document.getElementById('retModalFacultyRank').textContent = '';
-            document.getElementById('retOverallRemarks').value = '';
-            document.getElementById('retOverallRemarks').classList.remove('is-invalid');
-            document.getElementById('retReviewItemsBody').innerHTML = '';
-
-            fetch(`/ret_chair/review_ipcr/${empId}`)
-                .then(function (res) { return res.json(); })
-                .then(function (data) {
-                    if (data.error) {
-                        alert('Error loading IPCR RET choices: ' + data.error);
-                        return;
-                    }
-                    populateRetModal(data);
-                })
-                .catch(function (err) {
-                    alert('Network error: ' + err);
-                });
-        }
-
-        function populateRetModal(data) {
-            document.getElementById('retModalFacultyName').textContent = data.faculty_name;
-            document.getElementById('retModalFacultyRank').textContent = data.academic_rank;
-            document.getElementById('retModalReviewId').value = data.review_id;
-            document.getElementById('retModalEmpId').value = data.emp_id;
-            document.getElementById('retOverallRemarks').value = data.overall_remarks || '';
-
-            // Status badge
-            const badge = document.getElementById('retModalStatusBadge');
-            const statusMap = {
-                'Approved':    ['bg-success', 'check-circle-fill',      'Approved by RET'],
-                'Rejected':    ['bg-danger',  'x-circle-fill',          'Returned'],
-                'Pending':     ['bg-warning text-dark', 'hourglass-split', 'Pending Review'],
-                'Pending Review': ['bg-warning text-dark', 'hourglass-split', 'Pending Review']
-            };
-            const s = statusMap[data.overall_status] || statusMap['Pending'];
-            badge.className = `badge fs-6 px-3 py-2 ${s[0]}`;
-            badge.innerHTML = `<i class="bi bi-${s[1]} me-1"></i>${s[2]}`;
-
-            const decided = (data.overall_status === 'Approved');
-
-            // Disable overall buttons if approved
-            document.getElementById('btnRetApprove').disabled = decided;
-            document.getElementById('btnRetReject').disabled = decided;
-            
-            // Build items table
-            const tbody = document.getElementById('retReviewItemsBody');
-            tbody.innerHTML = '';
-
-            if (data.items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No Research/Extension targets found.</td></tr>';
-            } else {
-                let lastCategory = null;
-                data.items.forEach(function (item) {
-                    const qtyChanged = item.reviewed_quantity !== item.original_quantity;
-                    const isInputDisabled = decided;
-
-                    // Insert category banner row if category changes
-                    if (item.category_name !== lastCategory) {
-                        lastCategory = item.category_name;
-                        const headerTr = document.createElement('tr');
-                        headerTr.className = 'table-secondary';
-                        headerTr.innerHTML = `
-                            <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
-                                ${item.category_name}
-                            </td>
-                        `;
-                        tbody.appendChild(headerTr);
-                    }
-
-                    const tr = document.createElement('tr');
-                    tr.id = `ret-item-row-${item.item_id}`;
-
-                    tr.innerHTML = `
-                        <td><span class="badge bg-light text-dark border small">${item.category_name}</span></td>
-                        <td class="small fw-semibold">${item.indicator_description}</td>
-                        <td class="text-center text-muted">${item.original_quantity}</td>
-                        <td class="text-center">
-                            <input type="number" class="form-control form-control-sm text-center fw-bold ret-reviewed-qty-input"
-                                   id="ret-qty-${item.item_id}"
-                                   value="${item.reviewed_quantity}"
-                                   min="0"
-                                   data-item-id="${item.item_id}"
-                                   data-original="${item.original_quantity}"
-                                   data-initial-val="${item.reviewed_quantity}"
-                                   ${isInputDisabled ? 'disabled' : ''}>
-                            ${qtyChanged ? `<small class="ret-qty-edited-tag text-warning d-block mt-1"><i class="bi bi-pencil-fill"></i> Edited</small>` : '<small class="ret-qty-edited-tag" style="display:none"></small>'}
-                        </td>
-                        <td>
-                            <textarea class="form-control form-control-sm ret-item-remarks-input"
-                                      id="ret-remarks-${item.item_id}"
-                                      rows="2"
-                                      placeholder="Optional note on this change..."
-                                      data-item-id="${item.item_id}"
-                                      data-initial-remarks="${(item.item_remarks || '').trim()}"
-                                      ${isInputDisabled ? 'disabled' : ''}>${item.item_remarks || ''}</textarea>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+        // Event delegation for unpicked RET targets
+        document.getElementById('retUnpickedItemsBody')?.addEventListener('click', function (e) {
+            const btn = e.target.closest('.add-unpicked-btn');
+            if (btn) {
+                const indId = parseInt(btn.getAttribute('data-indicator-id'));
+                addRetUnpickedItem(indId);
             }
-
-            // Hide Save All button if decided
-            const saveAllBtn = document.getElementById('btnRetSaveAll');
-            if (saveAllBtn) {
-                saveAllBtn.style.display = decided ? 'none' : '';
-                saveAllBtn.disabled = decided;
-            }
-
-            // Show modal body and footer
-            document.getElementById('retModalLoader').style.display = 'none';
-            document.getElementById('retModalBody').style.display = 'block';
-            document.getElementById('retModalFooter').style.display = 'block';
-        }
-
-        function saveAllRetEdits() {
-            const inputs = document.querySelectorAll('.ret-reviewed-qty-input:not([disabled])');
-            if (inputs.length === 0) return Promise.resolve({ success: true });
-
-            // Filter to only include inputs that have actually been modified
-            const modifiedInputs = Array.from(inputs).filter(function (inp) {
-                const val = parseInt(inp.value, 10);
-                const initialVal = parseInt(inp.dataset.initialVal, 10);
-                
-                const itemId = inp.dataset.itemId;
-                const remarksTextarea = document.getElementById(`ret-remarks-${itemId}`);
-                const remarks = remarksTextarea ? remarksTextarea.value.trim() : '';
-                const initialRemarks = remarksTextarea ? (remarksTextarea.dataset.initialRemarks || '').trim() : '';
-                
-                return val !== initialVal || remarks !== initialRemarks;
-            });
-
-            // If no items were modified, return success immediately
-            if (modifiedInputs.length === 0) return Promise.resolve({ success: true });
-
-            // Validate modified inputs
-            let hasError = false;
-            modifiedInputs.forEach(function (inp) {
-                const val = parseInt(inp.value, 10);
-                if (isNaN(val) || val < 0) {
-                    inp.classList.add('is-invalid');
-                    hasError = true;
-                } else {
-                    inp.classList.remove('is-invalid');
-                }
-            });
-            if (hasError) return Promise.resolve({ success: false, message: 'Invalid quantity values.' });
-
-            // Build array of save promises
-            const savePromises = modifiedInputs.map(function (inp) {
-                const itemId  = inp.dataset.itemId;
-                const qty     = parseInt(inp.value, 10);
-                const remarks = (document.getElementById(`ret-remarks-${itemId}`) || {}).value || '';
-
-                return fetch('/ret_chair/edit_review_item', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ item_id: parseInt(itemId), reviewed_quantity: qty, item_remarks: remarks.trim() }),
-                })
-                .then(function (r) { 
-                    if (!r.ok) {
-                        return r.text().then(text => { throw new Error(text || `HTTP ${r.status}`); });
-                    }
-                    return r.json(); 
-                })
-                .then(function (res) {
-                    if (res.success) {
-                        inp.dataset.initialVal = qty;
-                        const remarksTextarea = document.getElementById(`ret-remarks-${itemId}`);
-                        if (remarksTextarea) {
-                            remarksTextarea.dataset.initialRemarks = remarks.trim();
-                        }
-
-                        const original = parseInt(inp.dataset.original || '0', 10);
-                        const tag = inp.parentElement.querySelector('.ret-qty-edited-tag');
-                        if (tag) {
-                            if (qty !== original) {
-                                tag.style.display = '';
-                                tag.className = 'ret-qty-edited-tag text-warning d-block mt-1';
-                                tag.innerHTML = '<i class="bi bi-pencil-fill"></i> Edited';
-                            } else {
-                                tag.style.display = 'none';
-                            }
-                        }
-                    }
-                    return res;
-                });
-            });
-
-            return Promise.all(savePromises)
-                .then(function (results) {
-                    const failed = results.filter(r => !r.success);
-                    if (failed.length > 0) {
-                        return {
-                            success: false,
-                            message: failed.map(r => r.message || 'Save failed.').join('\n')
-                        };
-                    }
-                    return { success: true };
-                })
-                .catch(function (err) {
-                    return { success: false, message: err.message || err };
-                });
-        }
-
-        // Save All Changes (single button)
-        document.getElementById('btnRetSaveAll').addEventListener('click', function () {
-            const btn = this;
-            const originalLabel = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-
-            saveAllRetEdits().then(function (res) {
-                btn.disabled = false;
-                if (res.success) {
-                    btn.innerHTML = '<i class="bi bi-check-lg me-2"></i>All Changes Saved';
-                    btn.classList.replace('btn-primary', 'btn-success');
-                    setTimeout(function () {
-                        btn.innerHTML = '<i class="bi bi-save me-2"></i>Save All Changes';
-                        btn.classList.replace('btn-success', 'btn-primary');
-                    }, 2000);
-                } else {
-                    btn.innerHTML = originalLabel;
-                    alert('Failed to save some changes:\n' + res.message);
-                }
-            });
         });
 
-        function proceedRetDecision(action, remarks) {
-            const btnApprove = document.getElementById('btnRetApprove');
-            const btnReject = document.getElementById('btnRetReject');
-            if (btnApprove) btnApprove.disabled = true;
-            if (btnReject) btnReject.disabled = true;
+        // Event delegation for removing RET targets
+        document.getElementById('retReviewItemsBody')?.addEventListener('click', function (e) {
+            const btn = e.target.closest('.remove-ret-item-btn');
+            if (btn) {
+                const indId = parseInt(btn.getAttribute('data-indicator-id'));
+                removeRetReviewItem(indId);
+            }
+        });
 
-            saveAllRetEdits().then(function (res) {
-                if (!res.success) {
-                    if (btnApprove) btnApprove.disabled = false;
-                    if (btnReject) btnReject.disabled = false;
-                    alert('Could not process decision because target changes failed to save:\n' + res.message);
+        // Event delegation for updating input values in memory
+        document.getElementById('retReviewItemsBody')?.addEventListener('input', function (e) {
+            const input = e.target;
+            const indId = parseInt(input.getAttribute('data-indicator-id'));
+            if (input.classList.contains('ret-reviewed-qty-input')) {
+                const val = parseInt(input.value) || 0;
+                const item = retReviewItems.find(x => x.indicator_id === indId);
+                if (item) item.reviewed_quantity = val;
+            } else if (input.classList.contains('ret-item-remarks-input')) {
+                const val = input.value;
+                const item = retReviewItems.find(x => x.indicator_id === indId);
+                if (item) item.item_remarks = val;
+            }
+        });
+    });
+
+    function loadRetReviewModal(empId) {
+        console.log("[DEBUG] loadRetReviewModal called with empId:", empId);
+        // Reset modal to loading state
+        document.getElementById('retModalLoader').style.display = 'block';
+        document.getElementById('retModalBody').style.display = 'none';
+        document.getElementById('retModalFooter').style.display = 'none';
+        document.getElementById('retModalFacultyName').textContent = 'Loading...';
+        document.getElementById('retModalFacultyRank').textContent = '';
+        document.getElementById('retOverallRemarks').value = '';
+        document.getElementById('retOverallRemarks').classList.remove('is-invalid');
+        document.getElementById('retReviewItemsBody').innerHTML = '';
+        document.getElementById('retUnpickedItemsBody').innerHTML = '';
+
+        const url = `/ret_chair/review_ipcr/${empId}`;
+        console.log("[DEBUG] Fetching URL:", url);
+
+        fetch(url)
+            .then(function (res) {
+                console.log("[DEBUG] Fetch response status:", res.status);
+                return res.json();
+            })
+            .then(function (data) {
+                console.log("[DEBUG] Fetch response data parsed:", data);
+                if (data.error) {
+                    document.getElementById('retModalLoader').style.display = 'none';
+                    alert('Error loading IPCR RET choices: ' + data.error);
                     return;
                 }
-
-                document.getElementById('retDecisionReviewId').value = document.getElementById('retModalReviewId').value;
-                document.getElementById('retDecisionAction').value = action;
-                document.getElementById('retDecisionRemarks').value = remarks;
-                document.getElementById('retDecisionForm').submit();
+                retReviewData = data;
+                retReviewItems = data.items;
+                populateRetModal(data);
+            })
+            .catch(function (err) {
+                console.error("[DEBUG] Fetch caught error:", err);
+                document.getElementById('retModalLoader').style.display = 'none';
+                alert('Network error: ' + err);
             });
+    }
+
+    function populateRetModal(data) {
+        document.getElementById('retModalFacultyName').textContent = data.faculty_name;
+        document.getElementById('retModalFacultyRank').textContent = data.academic_rank;
+        document.getElementById('retModalReviewId').value = data.review_id;
+        document.getElementById('retModalEmpId').value = data.emp_id;
+        document.getElementById('retOverallRemarks').value = data.overall_remarks || '';
+
+        // Status badge
+        const badge = document.getElementById('retModalStatusBadge');
+        const statusMap = {
+            'Approved': ['bg-success', 'check-circle-fill', 'Approved by RET'],
+            'Rejected': ['bg-danger', 'x-circle-fill', 'Returned'],
+            'Pending': ['bg-warning text-dark', 'hourglass-split', 'Pending Review'],
+            'Pending Review': ['bg-warning text-dark', 'hourglass-split', 'Pending Review']
+        };
+        const s = statusMap[data.overall_status] || statusMap['Pending'];
+        badge.className = `badge fs-6 px-3 py-2 ${s[0]}`;
+        badge.innerHTML = `<i class="bi bi-${s[1]} me-1"></i>${s[2]}`;
+
+        // Disable decision actions and overall remarks if already decided (Approved or Rejected)
+        const isDecided = data.overall_status === 'Approved' || data.overall_status === 'Rejected';
+        document.getElementById('btnRetApprove').disabled = isDecided;
+        document.getElementById('btnRetReject').disabled = isDecided;
+        document.getElementById('retOverallRemarks').disabled = isDecided;
+
+        // Render both tables
+        populateRetReviewItems(retReviewItems, isDecided);
+        populateRetUnpickedItems(data.unpicked, isDecided);
+
+        // Show modal body and footer
+        document.getElementById('retModalLoader').style.display = 'none';
+        document.getElementById('retModalBody').style.display = 'block';
+        document.getElementById('retModalFooter').style.display = 'block';
+    }
+
+    function populateRetReviewItems(items, isDecided) {
+        const tbody = document.getElementById('retReviewItemsBody');
+        tbody.innerHTML = '';
+
+        // Filter to items with reviewed_quantity > 0
+        const activeItems = items.filter(x => x.reviewed_quantity > 0);
+
+        // Sort items by category rank to group them correctly
+        const catOrder = {
+            'A. Research': 1,
+            'B. Extension Services / Training / Advisory': 2
+        };
+        activeItems.sort((a, b) => {
+            const rankA = catOrder[a.category_name] || 3;
+            const rankB = catOrder[b.category_name] || 3;
+            if (rankA !== rankB) return rankA - rankB;
+            return a.indicator_id - b.indicator_id;
+        });
+
+        if (activeItems.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No Research/Extension targets selected.</td></tr>';
+            return;
         }
 
-        window.submitRetDecision = function (action) {
-            const remarks = document.getElementById('retOverallRemarks').value.trim();
-            if (action === 'approve') {
-                proceedRetDecision('approve', remarks);
-            } else {
-                proceedRetDecision('reject', remarks);
+        let lastCategory = null;
+        activeItems.forEach(function (item) {
+            // Insert category banner row if category changes
+            if (item.category_name !== lastCategory) {
+                lastCategory = item.category_name;
+                const headerTr = document.createElement('tr');
+                headerTr.className = 'table-secondary';
+                headerTr.innerHTML = `
+                    <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
+                        ${item.category_name}
+                    </td>
+                `;
+                tbody.appendChild(headerTr);
             }
+
+            const tr = document.createElement('tr');
+            tr.id = `ret-item-row-${item.indicator_id}`;
+
+            const origQtyDisplay = item.original_quantity === -1
+                ? '0'
+                : item.original_quantity;
+
+            tr.innerHTML = `
+                <td><span class="badge bg-light text-dark border small">${item.category_name}</span></td>
+                <td>
+                    <div class="small fw-semibold">${item.indicator_description}</div>
+                    ${item.original_quantity === -1 ? '<span class="badge bg-info text-dark mt-1" style="font-size: 0.75rem; width: fit-content; display: block;">Added by RET</span>' : ''}
+                </td>
+                <td class="text-center text-muted">${origQtyDisplay}</td>
+                <td class="text-center">
+                    <input type="number" class="form-control form-control-sm text-center fw-bold ret-reviewed-qty-input"
+                           value="${item.reviewed_quantity}"
+                           min="1"
+                           data-indicator-id="${item.indicator_id}"
+                           ${isDecided ? 'disabled' : ''}>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="text" class="form-control form-control-sm ret-item-remarks-input"
+                               value="${item.item_remarks || ''}"
+                               placeholder="Optional note..."
+                               data-indicator-id="${item.indicator_id}" style="flex:1;"
+                               ${isDecided ? 'disabled' : ''}>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-ret-item-btn" 
+                                data-indicator-id="${item.indicator_id}" title="Remove selection"
+                                ${isDecided ? 'style="display:none;"' : ''}>
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function populateRetUnpickedItems(items, isDecided) {
+        const tbody = document.getElementById('retUnpickedItemsBody');
+        tbody.innerHTML = '';
+        if (!items || items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">All available RET indicators have been selected by the faculty.</td></tr>';
+            return;
+        }
+
+        // Sort items by category rank to group them correctly
+        const catOrder = {
+            'A. Research': 1,
+            'B. Extension Services / Training / Advisory': 2
         };
-    });
+        items.sort((a, b) => {
+            const rankA = catOrder[a.category_name] || 3;
+            const rankB = catOrder[b.category_name] || 3;
+            if (rankA !== rankB) return rankA - rankB;
+            return a.indicator_id - b.indicator_id;
+        });
+
+        let lastCategory = null;
+        items.forEach(function (ind) {
+            // Insert category banner row if category changes
+            if (ind.category_name !== lastCategory) {
+                lastCategory = ind.category_name;
+                const headerTr = document.createElement('tr');
+                headerTr.className = 'table-secondary';
+                headerTr.innerHTML = `
+                    <td colspan="3" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
+                        ${ind.category_name}
+                    </td>
+                `;
+                tbody.appendChild(headerTr);
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'table-warning';
+            tr.innerHTML = `
+                <td><span class="badge bg-light text-dark border small">${ind.category_name}</span></td>
+                <td>${ind.indicator_description}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-success add-unpicked-btn fw-bold"
+                            data-indicator-id="${ind.indicator_id}"
+                            ${isDecided ? 'disabled' : ''}>
+                        <i class="bi bi-plus-lg me-1"></i> Add
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function addRetUnpickedItem(indicatorId) {
+        if (retReviewData && (retReviewData.overall_status === 'Approved' || retReviewData.overall_status === 'Rejected')) return;
+        const index = retReviewData.unpicked.findIndex(x => x.indicator_id === indicatorId);
+        if (index > -1) {
+            const ind = retReviewData.unpicked[index];
+            retReviewData.unpicked.splice(index, 1);
+
+            // Check if we already have a record in retReviewItems
+            const existing = retReviewItems.find(x => x.indicator_id === indicatorId);
+            if (existing) {
+                existing.reviewed_quantity = ind.target_quantity || 1;
+            } else {
+                retReviewItems.push({
+                    item_id: ind.item_id || null,
+                    indicator_id: ind.indicator_id,
+                    indicator_description: ind.indicator_description,
+                    category_name: ind.category_name,
+                    original_quantity: -1,
+                    reviewed_quantity: ind.target_quantity || 1,
+                    item_remarks: '',
+                    is_new: !ind.item_id
+                });
+            }
+
+            const isDecided = retReviewData.overall_status === 'Approved' || retReviewData.overall_status === 'Rejected';
+            populateRetReviewItems(retReviewItems, isDecided);
+            populateRetUnpickedItems(retReviewData.unpicked, isDecided);
+        }
+    }
+
+    function removeRetReviewItem(indicatorId) {
+        if (retReviewData && (retReviewData.overall_status === 'Approved' || retReviewData.overall_status === 'Rejected')) return;
+        const index = retReviewItems.findIndex(x => x.indicator_id === indicatorId);
+        if (index > -1) {
+            const item = retReviewItems[index];
+            if (item.item_id) {
+                item.reviewed_quantity = 0;
+            } else {
+                retReviewItems.splice(index, 1);
+            }
+
+            // Move to unpicked list
+            retReviewData.unpicked.push({
+                indicator_id: item.indicator_id,
+                indicator_description: item.indicator_description,
+                category_name: item.category_name,
+                target_quantity: item.original_quantity === -1 ? 1 : item.original_quantity,
+                item_id: item.item_id || null
+            });
+
+            // Sort unpicked list
+            retReviewData.unpicked.sort((a, b) => a.category_name.localeCompare(b.category_name) || a.indicator_id - b.indicator_id);
+
+            const isDecided = retReviewData.overall_status === 'Approved' || retReviewData.overall_status === 'Rejected';
+            populateRetReviewItems(retReviewItems, isDecided);
+            populateRetUnpickedItems(retReviewData.unpicked, isDecided);
+        }
+    }
+
+    function saveAllRetEdits() {
+        const reviewId = document.getElementById('retModalReviewId').value;
+        if (!reviewId) return Promise.resolve({ success: true });
+
+        // Prepare items payload
+        const items = retReviewItems.map(item => {
+            return {
+                item_id: item.item_id,
+                indicator_id: item.indicator_id,
+                reviewed_quantity: parseInt(item.reviewed_quantity) || 0,
+                item_remarks: (item.item_remarks || '').trim(),
+                is_new: !!item.is_new
+            };
+        });
+
+        return fetch('/ret_chair/save_review_items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ review_id: parseInt(reviewId), items: items })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    return { success: false, message: data.message || 'Failed to save changes.' };
+                }
+                return { success: true };
+            })
+            .catch(err => {
+                return { success: false, message: err.message || err };
+            });
+    }
+
+    function proceedRetDecision(action, remarks) {
+        const btnApprove = document.getElementById('btnRetApprove');
+        const btnReject = document.getElementById('btnRetReject');
+        if (btnApprove) btnApprove.disabled = true;
+        if (btnReject) btnReject.disabled = true;
+
+        const items = retReviewItems.map(item => {
+            return {
+                item_id: item.item_id,
+                indicator_id: item.indicator_id,
+                reviewed_quantity: parseInt(item.reviewed_quantity) || 0,
+                item_remarks: (item.item_remarks || '').trim(),
+                is_new: !!item.is_new
+            };
+        });
+
+        document.getElementById('retDecisionReviewId').value = document.getElementById('retModalReviewId').value;
+        document.getElementById('retDecisionAction').value = action;
+        document.getElementById('retDecisionRemarks').value = remarks;
+        document.getElementById('retDecisionItemsJson').value = JSON.stringify(items);
+        document.getElementById('retDecisionForm').submit();
+    }
+
+    window.submitRetDecision = function (action) {
+        const remarksInput = document.getElementById('retOverallRemarks');
+        const remarks = remarksInput.value.trim();
+        remarksInput.classList.remove('is-invalid');
+
+        // Remarks are only required when returning/rejecting, not when approving
+        if (action !== 'approve' && !remarks) {
+            remarksInput.classList.add('is-invalid');
+            remarksInput.focus();
+            return;
+        }
+
+        if (action === 'approve') {
+            proceedRetDecision('approve', remarks);
+        } else {
+            proceedRetDecision('reject', remarks);
+        }
+    };
 </script>
 {% endblock %}

@@ -16,7 +16,7 @@ _pool = None
 def _require_env(key):
     """Get an env var or raise a clear error."""
     val = os.getenv(key)
-    if not val:
+    if val is None:
         raise RuntimeError(
             f"Missing required environment variable '{key}'. "
             f"Check your .env file or set it in your environment."
@@ -43,6 +43,84 @@ def init_db_pool():
         logger.info("Database connection pool created successfully.")
     except Error as e:
         raise RuntimeError(f"Failed to create DB connection pool: {e}")
+
+
+def get_overall_ipcr_status(cursor, emp_id, term_id):
+    """
+    Dynamically computes the overall IPCR status string based on the current state
+    of targets and reviews, removing the need for a separate physical status table.
+    """
+    # 1. Check if locked (completed)
+    cursor.execute("""
+        SELECT COUNT(*) FROM tbl_committed_targets ct
+        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+        WHERE ct.emp_id = %s AND mi.term_id = %s
+    """, (emp_id, term_id))
+    if cursor.fetchone()[0] > 0:
+        return 'completed'
+
+    # 2. Check if approved by Program Chair
+    cursor.execute("""
+        SELECT overall_status FROM tbl_ipcr_chair_review
+        WHERE emp_id = %s AND term_id = %s
+    """, (emp_id, term_id))
+    chair_row = cursor.fetchone()
+    if chair_row and chair_row[0] == 'Approved':
+        return 'approved_by_program_chair'
+
+    # 3. Check if we have draft targets at all
+    cursor.execute("""
+        SELECT COUNT(*) FROM tbl_draft_targets dt
+        JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+        WHERE dt.emp_id = %s AND mi.term_id = %s
+    """, (emp_id, term_id))
+    has_drafts = cursor.fetchone()[0] > 0
+    if not has_drafts:
+        return 'draft'
+
+    # 4. Check if any targets are returned/rejected
+    cursor.execute("""
+        SELECT COUNT(*) FROM tbl_draft_targets dt
+        JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+        WHERE dt.emp_id = %s AND mi.term_id = %s AND dt.review_status = 'Returned'
+    """, (emp_id, term_id))
+    if cursor.fetchone()[0] > 0:
+        return 'draft'
+
+    # 5. Check if any targets are still 'Draft'
+    cursor.execute("""
+        SELECT COUNT(*) FROM tbl_draft_targets dt
+        JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+        WHERE dt.emp_id = %s AND mi.term_id = %s AND dt.review_status = 'Draft'
+    """, (emp_id, term_id))
+    if cursor.fetchone()[0] > 0:
+        return 'draft'
+
+    # 6. Check RET review status
+    cursor.execute("""
+        SELECT overall_status FROM tbl_ipcr_ret_review
+        WHERE emp_id = %s AND term_id = %s
+    """, (emp_id, term_id))
+    ret_row = cursor.fetchone()
+    
+    if ret_row:
+        ret_status = ret_row[0]
+        if ret_status == 'Rejected':
+            return 'draft'
+        elif ret_status == 'Approved':
+            # RET has approved, now waiting for Program Chair review
+            if chair_row:
+                chair_status = chair_row[0]
+                if chair_status == 'Rejected':
+                    return 'draft'
+            return 'waiting_for_program_chair_review'
+        elif ret_status == 'Pending':
+            return 'pending_ret_review'
+    else:
+        # No RET review record exists yet, but targets are submitted
+        return 'waiting_for_ret_chair_review'
+
+    return 'draft'
 
 
 def get_db_connection():

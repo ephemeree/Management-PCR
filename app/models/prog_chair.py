@@ -161,26 +161,32 @@ def get_pending_draft_ipcrs(cursor, specialization, term_id):
         JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
         JOIN tbl_employee_profiles ep ON dt.emp_id = ep.emp_id
         LEFT JOIN tbl_ipcr_chair_review cr
-            ON cr.emp_id = dt.emp_id AND cr.term_id = %s
+            ON cr.emp_id = dt.emp_id AND cr.term_id = mi.term_id
         WHERE mi.term_id = %s
           AND ep.specialization = %s
           AND ep.designation = 'Regular Faculty'
           AND dt.review_status IN ('Pending Review', 'Waiting for Approval', 'Approved', 'Returned')
-          AND (cr.overall_status IS NULL OR cr.overall_status = 'Pending')
+          AND (cr.overall_status IS NULL OR cr.overall_status IN ('Pending', 'Rejected'))
+          AND NOT EXISTS (
+              SELECT 1 FROM tbl_committed_targets ct 
+              JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
+              WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s
+          )
         GROUP BY ep.emp_id, ep.first_name, ep.last_name,
                  ep.academic_rank, ep.specialization,
                  cr.review_id, cr.overall_status, cr.overall_remarks, cr.reviewed_at
         ORDER BY ep.last_name, ep.first_name
     """
-    cursor.execute(query, (term_id, term_id, term_id, specialization))
+    cursor.execute(query, (term_id, term_id, specialization, term_id))
     columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
 def get_locked_faculty_ipcrs(cursor, specialization, term_id):
     """
-    Returns all faculty members under `specialization` who have locked/committed
-    their IPCR for the active term.
+    Returns all faculty members under `specialization` who have either:
+    - Locked/committed their IPCR (tbl_committed_targets rows exist), OR
+    - Been approved by the Program Chair but not yet locked.
     """
     query = """
         SELECT
@@ -191,7 +197,13 @@ def get_locked_faculty_ipcrs(cursor, specialization, term_id):
             (SELECT COUNT(*) FROM tbl_committed_targets ct 
              JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
              WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s) AS target_count,
-            'Locked' AS review_status,
+            CASE
+                WHEN (SELECT COUNT(*) FROM tbl_committed_targets ct 
+                      JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
+                      WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s) > 0
+                THEN 'Locked'
+                ELSE 'Approved'
+            END AS review_status,
             cr.review_id,
             cr.overall_remarks,
             cr.reviewed_at
@@ -200,15 +212,13 @@ def get_locked_faculty_ipcrs(cursor, specialization, term_id):
             ON cr.emp_id = ep.emp_id AND cr.term_id = %s
         WHERE ep.specialization = %s
           AND ep.designation = 'Regular Faculty'
-          AND (SELECT COUNT(*) FROM tbl_committed_targets ct 
-               JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
-               WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s) > 0
+          AND cr.overall_status = 'Approved'
         GROUP BY ep.emp_id, ep.first_name, ep.last_name,
                  ep.academic_rank, ep.specialization,
                  cr.review_id, cr.overall_remarks, cr.reviewed_at
         ORDER BY ep.last_name, ep.first_name
     """
-    cursor.execute(query, (term_id, term_id, specialization, term_id))
+    cursor.execute(query, (term_id, term_id, term_id, specialization))
     columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
@@ -314,6 +324,10 @@ def get_review_items(cursor, review_id):
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         JOIN tbl_draft_targets dt ON ri.draft_id = dt.draft_id
         WHERE ri.review_id = %s
+          AND (
+              tc.category_name NOT IN ('A. Research', 'B. Extension Services / Training / Advisory')
+              OR (tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') AND dt.proposed_quantity > 0)
+          )
         ORDER BY tc.category_name, mi.indicator_id
     """
     cursor.execute(query, (review_id,))
@@ -337,6 +351,31 @@ def update_review_item(conn, cursor, item_id, reviewed_quantity, item_remarks):
         )
         conn.commit()
         return True, "Change saved."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
+def save_chair_review_items(cursor, conn, review_id, items):
+    """
+    Batch save all Program Chair review item changes (quantities + remarks).
+    """
+    try:
+        for item in items:
+            item_id = item.get('item_id')
+            reviewed_qty = item.get('reviewed_quantity', 0)
+            item_remarks = item.get('item_remarks', '')
+
+            cursor.execute(
+                """
+                UPDATE tbl_ipcr_chair_review_items
+                SET reviewed_quantity = %s, item_remarks = %s
+                WHERE item_id = %s
+                """,
+                (reviewed_qty, item_remarks if item_remarks else None, item_id)
+            )
+        conn.commit()
+        return True, "Review items saved successfully."
     except Exception as e:
         conn.rollback()
         return False, str(e)
@@ -371,7 +410,6 @@ def decide_chair_review(conn, cursor, review_id, action, overall_remarks):
         if row:
             emp_id, term_id = row
             if action == 'reject':
-                # Flip standard draft targets back to 'Returned' (leave approved Research/Extension as Approved)
                 cursor.execute(
                     """
                     UPDATE tbl_draft_targets dt
@@ -385,7 +423,6 @@ def decide_chair_review(conn, cursor, review_id, action, overall_remarks):
                     (emp_id, term_id)
                 )
             elif action == 'approve':
-                # Finalize proposed quantities in tbl_draft_targets to match reviewed quantities
                 cursor.execute(
                     """
                     UPDATE tbl_draft_targets dt
@@ -399,7 +436,8 @@ def decide_chair_review(conn, cursor, review_id, action, overall_remarks):
                 )
 
         conn.commit()
-        return True, f"IPCR successfully {new_status.lower()}."
+        msg = "IPCR successfully approved." if action == 'approve' else "IPCR successfully returned to faculty."
+        return True, msg
     except Exception as e:
         conn.rollback()
         return False, str(e)
@@ -407,7 +445,6 @@ def decide_chair_review(conn, cursor, review_id, action, overall_remarks):
 
 def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
     try:
-        # Get the chair review status
         cursor.execute(
             "SELECT overall_status FROM tbl_ipcr_chair_review WHERE emp_id = %s AND term_id = %s",
             (emp_id, term_id)
@@ -416,7 +453,6 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
         if not review_row or review_row[0] != 'Approved':
             return False, "Your IPCR must be approved by the Program Chair before locking."
 
-        # Fetch all draft targets for this employee and term, joining with reviewed items to use Program Chair adjusted quantities
         cursor.execute(
             """
             SELECT dt.indicator_id, COALESCE(ri.reviewed_quantity, dt.proposed_quantity)
@@ -433,7 +469,6 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
         if not drafts:
             return False, "No draft targets found to commit."
 
-        # Delete any existing committed targets for this employee and term
         cursor.execute(
             """
             DELETE ct FROM tbl_committed_targets ct
@@ -443,17 +478,16 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
             (emp_id, term_id)
         )
 
-        # Insert items from tbl_draft_targets into tbl_committed_targets
         for indicator_id, qty in drafts:
-            cursor.execute(
-                """
-                INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status)
-                VALUES (%s, %s, %s, 'Approved')
-                """,
-                (emp_id, indicator_id, qty)
-            )
+            if qty > 0:
+                cursor.execute(
+                    """
+                    INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status)
+                    VALUES (%s, %s, %s, 'Approved')
+                    """,
+                    (emp_id, indicator_id, qty)
+                )
 
-        # Update review_status in tbl_draft_targets to 'Approved'
         cursor.execute(
             """
             UPDATE tbl_draft_targets dt
@@ -463,8 +497,6 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
             """,
             (emp_id, term_id)
         )
-
-
 
         conn.commit()
         return True, "IPCR successfully locked and committed to evaluation targets."

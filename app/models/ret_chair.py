@@ -370,3 +370,67 @@ def get_faculty_ret_review_status(cursor, emp_id, term_id):
             'reviewed_at':    row[3],
         }
     return None
+
+
+def save_ret_review_items(cursor, conn, review_id, items):
+    """
+    Batch save all RET review item changes (quantities + remarks).
+    Items: [{'item_id': int, 'reviewed_quantity': int, 'item_remarks': str}, ...]
+    For new items (is_new=True, no item_id), creates draft target + review item.
+    Also syncs changes back to tbl_draft_targets so faculty see the update.
+    """
+    try:
+        for item in items:
+            reviewed_qty = item.get('reviewed_quantity', 0)
+            item_remarks = item.get('item_remarks', '')
+
+            if item.get('is_new') and not item.get('item_id'):
+                # New item from unpicked indicators — insert draft target + review item
+                indicator_id = item.get('indicator_id')
+                if not indicator_id:
+                    continue
+                # Get emp_id from review
+                cursor.execute(
+                    "SELECT emp_id, term_id FROM tbl_ipcr_ret_review WHERE review_id = %s",
+                    (review_id,)
+                )
+                r = cursor.fetchone()
+                if not r:
+                    continue
+                emp_id, term_id = r
+                # Insert draft target
+                cursor.execute("""
+                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
+                    VALUES (%s, %s, %s, 'Pending Review')
+                """, (emp_id, indicator_id, reviewed_qty))
+                new_draft_id = cursor.lastrowid
+                # Insert review item linked to new draft
+                cursor.execute("""
+                    INSERT INTO tbl_ipcr_ret_review_items
+                        (review_id, draft_id, indicator_id, original_quantity, reviewed_quantity, item_remarks)
+                    VALUES (%s, %s, %s, -1, %s, %s)
+                """, (review_id, new_draft_id, indicator_id, reviewed_qty, item_remarks))
+            else:
+                # Existing item — update quantities and remarks
+                item_id = item.get('item_id')
+                if not item_id:
+                    continue
+                cursor.execute("""
+                    UPDATE tbl_ipcr_ret_review_items
+                    SET reviewed_quantity = %s, item_remarks = %s
+                    WHERE item_id = %s
+                """, (reviewed_qty, item_remarks, item_id))
+
+                # Sync back to tbl_draft_targets so faculty member sees the change
+                cursor.execute("""
+                    UPDATE tbl_draft_targets dt
+                    JOIN tbl_ipcr_ret_review_items ri ON dt.draft_id = ri.draft_id
+                    SET dt.proposed_quantity = %s
+                    WHERE ri.item_id = %s
+                """, (reviewed_qty, item_id))
+
+        conn.commit()
+        return True, "Review items saved successfully."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)

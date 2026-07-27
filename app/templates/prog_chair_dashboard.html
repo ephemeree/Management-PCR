@@ -30,6 +30,18 @@
 {% block content %}
 <script>window.dashboardRole = 'prog_chair';</script>
 
+<style>
+    /* Custom styling for disabled decision buttons to easily distinguish them */
+    #btnApprove:disabled,
+    #btnReject:disabled {
+        background-color: #e9ecef !important;
+        border-color: #dee2e6 !important;
+        color: #adb5bd !important;
+        opacity: 1 !important;
+        cursor: not-allowed !important;
+    }
+</style>
+
 <!-- ═══════════════════════════════════════════ -->
 <!-- OVERVIEW                                    -->
 <!-- ═══════════════════════════════════════════ -->
@@ -78,7 +90,8 @@
                 <div class="card-body text-center py-4">
                     <h6 class="text-muted text-uppercase fw-bold">Approved IPCRs</h6>
                     <h2 class="display-6 fw-bold text-success">
-                        {% set approved_count = pending_drafts | selectattr('review_status', 'equalto', 'Approved') | list | length %}
+                        {% set approved_count = pending_drafts | selectattr('review_status', 'equalto', 'Approved') |
+                        list | length %}
                         {{ approved_count }}
                     </h2>
                     <span class="small text-muted">This Term</span>
@@ -99,7 +112,8 @@
         </div>
         <div>
             <span class="badge bg-primary me-2"><i class="bi bi-funnel"></i> Instructions &amp; Support Functions</span>
-            <span class="badge bg-info text-dark"><i class="bi bi-info-circle me-1"></i> Distribute the Dean's Quota</span>
+            <span class="badge bg-info text-dark"><i class="bi bi-info-circle me-1"></i> Distribute the Dean's
+                Quota</span>
         </div>
     </div>
 
@@ -109,7 +123,8 @@
 
         <!-- Instructions Card -->
         <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header border-0 py-3" style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
+            <div class="card-header border-0 py-3"
+                style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
                 <h5 class="fw-bold text-primary mb-0"><i class="bi bi-star-fill me-2"></i>A. Instructions</h5>
             </div>
             <div class="card-body p-0">
@@ -137,13 +152,15 @@
                                         class="form-control form-control-sm shadow-sm text-center"
                                         value="{{ ind.assigned_per_faculty }}" min="0">
                                 </td>
-                                <td class="text-center text-success fw-bold">{{ ind.total_distributed }} / {{ ind.dept_quota }}</td>
+                                <td class="text-center text-success fw-bold">{{ ind.total_distributed }} / {{
+                                    ind.dept_quota }}</td>
                             </tr>
                             {% endif %}
                             {% endfor %}
                             {% if not ns_inst.found %}
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">No Instruction targets assigned to your specialization for this term.</td>
+                                <td colspan="4" class="text-center text-muted py-4">No Instruction targets assigned to
+                                    your specialization for this term.</td>
                             </tr>
                             {% endif %}
                         </tbody>
@@ -154,7 +171,8 @@
 
         <!-- Support Functions Card -->
         <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header border-0 py-3" style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
+            <div class="card-header border-0 py-3"
+                style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
                 <h5 class="fw-bold text-warning mb-0"><i class="bi bi-tools me-2"></i>B. Support Functions</h5>
             </div>
             <div class="card-body p-0">
@@ -182,13 +200,15 @@
                                         class="form-control form-control-sm shadow-sm text-center"
                                         value="{{ ind.assigned_per_faculty }}" min="0">
                                 </td>
-                                <td class="text-center text-success fw-bold">{{ ind.total_distributed }} / {{ ind.dept_quota }}</td>
+                                <td class="text-center text-success fw-bold">{{ ind.total_distributed }} / {{
+                                    ind.dept_quota }}</td>
                             </tr>
                             {% endif %}
                             {% endfor %}
                             {% if not ns_supp.found %}
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">No Support Function targets assigned to your specialization for this term.</td>
+                                <td colspan="4" class="text-center text-muted py-4">No Support Function targets assigned
+                                    to your specialization for this term.</td>
                             </tr>
                             {% endif %}
                         </tbody>
@@ -206,7 +226,8 @@
     </form>
     {% else %}
     <div class="alert alert-warning border-0 shadow-sm" style="border-radius: 10px;">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i> There is no active term set. You cannot manage targets right now.
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> There is no active term set. You cannot manage targets
+        right now.
     </div>
     {% endif %}
 </div>
@@ -218,7 +239,8 @@
     <div class="page-header d-flex justify-content-between align-items-center">
         <div>
             <h2>Phase 2: Commitment Verification</h2>
-            <p>Review Draft IPCRs submitted by your faculty members. You may adjust quantities and add remarks before approving or returning.</p>
+            <p>Review Draft IPCRs submitted by your faculty members. You may adjust quantities and add remarks before
+                approving or returning.</p>
         </div>
         <span class="badge bg-primary fs-6 px-3 py-2">
             <i class="bi bi-funnel me-1"></i>{{ specialization }}
@@ -245,32 +267,66 @@
                             <td class="ps-4 fw-bold">{{ draft.faculty_name }}</td>
                             <td><span class="badge bg-light text-dark border">{{ draft.academic_rank }}</span></td>
                             <td class="text-center">
-                                <span class="badge bg-secondary">{{ draft.target_count }} Target{{ 's' if draft.target_count != 1 }}</span>
+                                <span class="badge bg-secondary">{{ draft.target_count }} Target{{ 's' if
+                                    draft.target_count != 1 }}</span>
                             </td>
                             <td class="text-center">
                                 {% if draft.review_status == 'Locked' %}
-                                    <span class="badge bg-dark px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Locked</span>
+                                <span class="badge bg-dark px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Approved &amp; Locked</span>
                                 {% elif draft.review_status == 'Approved' %}
-                                    <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
-                                {% elif draft.review_status == 'Rejected' %}
-                                    <span class="badge bg-danger px-3 py-2"><i class="bi bi-x-circle-fill me-1"></i>Returned to Faculty</span>
+                                <span class="badge bg-success px-3 py-2"><i
+                                        class="bi bi-check-circle-fill me-1"></i>Approved by Both</span>
+                                {% elif draft.review_status in ('Rejected', 'Returned') %}
+                                <span class="badge px-3 py-2"
+                                    style="background-color: #fff5f5 !important; border: 1px solid #fee2e2; color: #dc3545 !important;">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Returned
+                                </span>
+                                {% elif draft.ipcr_status == 'waiting_for_ret_chair_review' %}
+                                <span class="badge px-3 py-2"
+                                    style="background-color: #fffbeb !important; border: 1px solid #ffc107; color: #b45309 !important;"><i
+                                        class="bi bi-hourglass-split me-1"></i>Waiting for RET Review &amp; Approval</span>
+                                {% elif draft.ipcr_status == 'pending_ret_review' %}
+                                <span class="badge px-3 py-2"
+                                    style="background-color: #fff3cd !important; border: 1px solid #ffc107; color: #b45309 !important;"><i
+                                        class="bi bi-hourglass-split me-1"></i>Waiting for RET Review &amp; Approval</span>
+                                {% elif draft.ipcr_status == 'waiting_for_program_chair_review' %}
+                                <span class="badge bg-info text-dark px-3 py-2"><i
+                                        class="bi bi-clock-history me-1"></i>Waiting for Approval</span>
                                 {% elif draft.review_status == 'Pending Review' %}
-                                    <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Pending Review</span>
+                                <span class="badge px-3 py-2"
+                                    style="background-color: #fffbeb !important; border: 1px solid #ffc107; color: #b45309 !important;"><i
+                                        class="bi bi-hourglass-split me-1"></i>Waiting for RET Review &amp; Approval</span>
                                 {% elif draft.review_status == 'Waiting for Approval' %}
-                                    <span class="badge bg-info text-dark px-3 py-2"><i class="bi bi-clock-history me-1"></i>Waiting for Approval</span>
+                                <span class="badge bg-info text-dark px-3 py-2"><i
+                                        class="bi bi-clock-history me-1"></i>Waiting for Approval</span>
                                 {% else %}
-                                    <span class="badge bg-secondary px-3 py-2"><i class="bi bi-dash-circle me-1"></i>{{ draft.review_status }}</span>
+                                <span class="badge bg-secondary px-3 py-2"><i class="bi bi-dash-circle me-1"></i>{{
+                                    draft.review_status }}</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-primary open-review-modal"
-                                        data-emp-id="{{ draft.emp_id }}"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#reviewIpcrModal"
-                                        {% if draft.review_status in ('Approved', 'Locked') %}title="View IPCR"{% endif %}>
-                                    <i class="bi bi-eye-fill me-1"></i>
-                                    {% if draft.review_status in ('Approved', 'Locked') %}View{% else %}Review{% endif %}
+                                {% if draft.review_status in ('Rejected', 'Returned') %}
+                                <button class="btn btn-sm btn-outline-secondary" disabled
+                                    title="Awaiting faculty resubmission.">
+                                    <i class="bi bi-hourglass-split me-1"></i>Awaiting Resubmission
                                 </button>
+                                {% elif draft.ipcr_status in ('waiting_for_program_chair_review',
+                                'approved_by_program_chair', 'completed') or draft.review_status in ('Approved',
+                                'Locked') %}
+                                <button class="btn btn-sm btn-outline-primary open-review-modal"
+                                    data-emp-id="{{ draft.emp_id }}" data-bs-toggle="modal"
+                                    data-bs-target="#reviewIpcrModal" {% if draft.review_status in ('Approved', 'Locked'
+                                    ) %}title="View IPCR" {% endif %}>
+                                    <i class="bi bi-eye-fill me-1"></i>
+                                    {% if draft.review_status in ('Approved', 'Locked') %}View{% else %}Review{% endif
+                                    %}
+                                </button>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-secondary" disabled
+                                    title="RET Chair review is pending.">
+                                    <i class="bi bi-clock-history me-1"></i>Review
+                                </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -281,7 +337,8 @@
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary opacity-50"></i>
                 <h5 class="fw-semibold">No Draft IPCRs Submitted</h5>
-                <p class="small">Faculty members under <strong>{{ specialization }}</strong> have not submitted their Draft IPCRs yet.</p>
+                <p class="small">Faculty members under <strong>{{ specialization }}</strong> have not submitted their
+                    Draft IPCRs yet.</p>
             </div>
             {% endif %}
         </div>
@@ -315,18 +372,23 @@
                             <td class="ps-4 fw-bold text-success">{{ draft.faculty_name }}</td>
                             <td><span class="badge bg-light text-dark border">{{ draft.academic_rank }}</span></td>
                             <td class="text-center">
+                                {% if draft.review_status == 'Locked' %}
                                 <span class="badge bg-success bg-opacity-10 text-success fw-bold">{{ draft.target_count }} Target{{ 's' if draft.target_count != 1 }} Locked</span>
+                                {% else %}
+                                <span class="badge bg-info bg-opacity-10 text-info fw-bold">Pending Faculty Lock</span>
+                                {% endif %}
                             </td>
                             <td class="text-center">
+                                {% if draft.review_status == 'Locked' %}
                                 <span class="badge bg-dark px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Approved &amp; Locked</span>
+                                {% else %}
+                                <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Approved by Both</span>
+                                {% endif %}
                             </td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-success open-view-locked-modal"
-                                        type="button"
-                                        data-emp-id="{{ draft.emp_id }}"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#viewLockedIpcrModal"
-                                        title="View Locked IPCR">
+                                <button class="btn btn-sm btn-outline-success open-view-locked-modal" type="button"
+                                    data-emp-id="{{ draft.emp_id }}" data-bs-toggle="modal"
+                                    data-bs-target="#viewLockedIpcrModal" title="View Final Targets">
                                     <i class="bi bi-eye-fill me-1"></i>
                                     View Final Targets
                                 </button>
@@ -340,7 +402,8 @@
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-lock fs-1 d-block mb-3 text-secondary opacity-50"></i>
                 <h5 class="fw-semibold">No Locked IPCRs Yet</h5>
-                <p class="small">No faculty members under <strong>{{ specialization }}</strong> have locked their approved IPCRs yet.</p>
+                <p class="small">No faculty members under <strong>{{ specialization }}</strong> have locked their
+                    approved IPCRs yet.</p>
             </div>
             {% endif %}
         </div>
@@ -353,7 +416,8 @@
 <div id="nav-phase3" class="dashboard-section">
     <div class="page-header">
         <h2>Phase 3: End-of-Semester Evaluation (Grading Engine)</h2>
-        <p>Review the uploaded evidence and input the qualitative Efficiency (E) and Timeliness (T) ratings (Scale 1 to 5).</p>
+        <p>Review the uploaded evidence and input the qualitative Efficiency (E) and Timeliness (T) ratings (Scale 1 to
+            5).</p>
     </div>
 
     <div class="card shadow-sm border-0" style="border-top: 4px solid #2DD46B !important;">
@@ -373,7 +437,8 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">Grading engine will be available after commitments are approved.</td>
+                            <td colspan="7" class="text-center text-muted py-4">Grading engine will be available after
+                                commitments are approved.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -391,7 +456,8 @@
         <div class="modal-content border-0 shadow-lg">
 
             <!-- Modal Header -->
-            <div class="modal-header border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+            <div class="modal-header border-0 py-3"
+                style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
                 <div>
                     <h5 class="modal-title text-white fw-bold mb-0" id="reviewIpcrModalLabel">
                         <i class="bi bi-file-earmark-person-fill me-2"></i>
@@ -401,7 +467,8 @@
                 </div>
                 <div class="ms-auto d-flex align-items-center gap-2">
                     <span id="modalStatusBadge" class="badge fs-6 px-3 py-2"></span>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
             </div>
 
@@ -419,7 +486,8 @@
                 <div class="px-4 pt-4 pb-2">
                     <h6 class="fw-bold text-secondary text-uppercase mb-3">
                         <i class="bi bi-list-check me-2"></i>Proposed Targets
-                        <small class="text-muted fw-normal ms-2 text-capitalize" id="modalSubTitle">(You may adjust quantities and add remarks per item)</small>
+                        <small class="text-muted fw-normal ms-2 text-capitalize" id="modalSubTitle">(You may adjust
+                            quantities and add remarks per item)</small>
                     </h6>
                 </div>
 
@@ -431,7 +499,8 @@
                                 <th width="32%">Indicator</th>
                                 <th class="text-center" width="10%">Original Qty</th>
                                 <th class="text-center" width="11%">Reviewed Qty</th>
-                                <th width="30%">Remarks on this change <span class="text-muted fw-normal">(optional)</span></th>
+                                <th width="30%">Remarks on this change <span
+                                        class="text-muted fw-normal">(optional)</span></th>
                             </tr>
                         </thead>
                         <tbody id="reviewItemsBody">
@@ -440,12 +509,6 @@
                     </table>
                 </div>
 
-                <!-- Single Save All button between sections -->
-                <div class="px-4 pb-3 d-flex justify-content-end">
-                    <button type="button" class="btn btn-primary" id="btnSaveAll">
-                        <i class="bi bi-save me-2"></i>Save All Changes
-                    </button>
-                </div>
             </div>
 
             <!-- Modal Footer (Remarks & Decisions - Fixed at bottom) -->
@@ -458,24 +521,32 @@
                 <input type="hidden" id="modalEmpId">
 
                 <div class="mb-3">
-                    <label for="overallRemarks" class="form-label fw-semibold mb-1">
-                        Remarks / Reason
-                        <small class="text-muted fw-normal ms-1">(Optional — faculty will see this message)</small>
+                    <label for="overallRemarks" class="form-label fw-semibold mb-1" style="font-size: 0.95rem;">
+                        Remarks / Reason: <small class="text-muted fw-normal">Remarks are optional when approving. Required only when returning to faculty.</small>
                     </label>
                     <textarea class="form-control form-control-sm" id="overallRemarks" rows="2"
                         placeholder="e.g. 'Research target adjusted from 2 to 1 per department guidelines.' or 'Please revise your Extension selections.'"></textarea>
+                    <div class="invalid-feedback">
+                        Remarks / Reason: Remarks are optional when approving. Required only when returning to faculty
+                    </div>
                 </div>
 
-                <div class="d-flex gap-2 justify-content-end">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-lg me-1"></i>Cancel
-                    </button>
-                    <button type="button" class="btn btn-danger" id="btnReject" onclick="submitDecision('reject')">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Return to Faculty to see changes
-                    </button>
-                    <button type="button" class="btn btn-success" id="btnApprove" onclick="submitDecision('approve')">
-                        <i class="bi bi-check-circle-fill me-1"></i>Approve IPCR
-                    </button>
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <div>
+                        <button type="button" class="btn btn-outline-danger" id="btnReject"
+                            onclick="submitDecision('reject')">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Return to Faculty
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Close
+                        </button>
+                        <button type="button" class="btn btn-success" id="btnApprove"
+                            onclick="submitDecision('approve')">
+                            <i class="bi bi-check-circle-fill me-1"></i>Approve IPCR
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -484,12 +555,14 @@
 </div>
 
 <!-- VIEW LOCKED IPCR MODAL -->
-<div class="modal fade" id="viewLockedIpcrModal" tabindex="-1" aria-labelledby="viewLockedIpcrModalLabel" aria-hidden="true">
+<div class="modal fade" id="viewLockedIpcrModal" tabindex="-1" aria-labelledby="viewLockedIpcrModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
 
             <!-- Modal Header -->
-            <div class="modal-header border-0 py-3" style="background: linear-gradient(135deg, #198754 0%, #157347 100%);">
+            <div class="modal-header border-0 py-3"
+                style="background: linear-gradient(135deg, #198754 0%, #157347 100%);">
                 <div>
                     <h5 class="modal-title text-white fw-bold mb-0" id="viewLockedIpcrModalLabel">
                         <i class="bi bi-file-earmark-lock-fill me-2"></i>
@@ -499,7 +572,8 @@
                 </div>
                 <div class="ms-auto d-flex align-items-center gap-2">
                     <span id="viewLockedStatusBadge" class="badge fs-6 px-3 py-2"></span>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
             </div>
 
@@ -555,6 +629,7 @@
     <input type="hidden" name="review_id" id="decisionReviewId">
     <input type="hidden" name="action" id="decisionAction">
     <input type="hidden" name="overall_remarks" id="decisionRemarks">
+    <input type="hidden" name="items_json" id="decisionItemsJson">
 </form>
 
 
@@ -562,236 +637,236 @@
 <!-- SCRIPTS                                     -->
 <!-- ═══════════════════════════════════════════ -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function () {
 
-    // ── Open modal and fetch review data ────────────────────────
-    document.querySelectorAll('.open-review-modal').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const empId = this.dataset.empId;
-            loadReviewModal(empId);
+        // ── Open modal and fetch review data ────────────────────────
+        document.querySelectorAll('.open-review-modal').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const empId = this.dataset.empId;
+                loadReviewModal(empId);
+            });
         });
-    });
 
-    document.querySelectorAll('.open-view-locked-modal').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const empId = this.dataset.empId;
-            loadViewLockedModal(empId);
+        document.querySelectorAll('.open-view-locked-modal').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const empId = this.dataset.empId;
+                loadViewLockedModal(empId);
+            });
         });
-    });
 
-    function loadReviewModal(empId) {
-        // Reset modal to loading state
-        document.getElementById('modalLoader').style.display = 'block';
-        document.getElementById('modalBody').style.display = 'none';
-        document.getElementById('modalFooter').style.display = 'none';
-        document.getElementById('modalFacultyName').textContent = 'Loading...';
-        document.getElementById('modalFacultyRank').textContent = '';
-        document.getElementById('overallRemarks').value = '';
-        document.getElementById('overallRemarks').classList.remove('is-invalid');
-        document.getElementById('reviewItemsBody').innerHTML = '';
+        function loadReviewModal(empId) {
+            // Reset modal to loading state
+            document.getElementById('modalLoader').style.display = 'block';
+            document.getElementById('modalBody').style.display = 'none';
+            document.getElementById('modalFooter').style.display = 'none';
+            document.getElementById('modalFacultyName').textContent = 'Loading...';
+            document.getElementById('modalFacultyRank').textContent = '';
+            document.getElementById('overallRemarks').value = '';
+            document.getElementById('overallRemarks').classList.remove('is-invalid');
+            document.getElementById('reviewItemsBody').innerHTML = '';
 
-        fetch(`/prog_chair/review_ipcr/${empId}`)
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.error) {
-                    alert('Error loading IPCR: ' + data.error);
-                    return;
-                }
-                populateModal(data);
-            })
-            .catch(function (err) {
-                alert('Network error: ' + err);
-            });
-    }
+            fetch(`/prog_chair/review_ipcr/${empId}`)
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.error) {
+                        alert('Error loading IPCR: ' + data.error);
+                        return;
+                    }
+                    populateModal(data);
+                })
+                .catch(function (err) {
+                    alert('Network error: ' + err);
+                });
+        }
 
-    function loadViewLockedModal(empId) {
-        // Reset modal to loading state
-        document.getElementById('lockedModalLoader').style.display = 'block';
-        document.getElementById('lockedModalBody').style.display = 'none';
-        document.getElementById('viewLockedFacultyName').textContent = 'Loading...';
-        document.getElementById('viewLockedFacultyRank').textContent = '';
-        document.getElementById('viewLockedItemsBody').innerHTML = '';
+        function loadViewLockedModal(empId) {
+            // Reset modal to loading state
+            document.getElementById('lockedModalLoader').style.display = 'block';
+            document.getElementById('lockedModalBody').style.display = 'none';
+            document.getElementById('viewLockedFacultyName').textContent = 'Loading...';
+            document.getElementById('viewLockedFacultyRank').textContent = '';
+            document.getElementById('viewLockedItemsBody').innerHTML = '';
 
-        fetch(`/prog_chair/review_ipcr/${empId}`)
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.error) {
-                    alert('Error loading IPCR: ' + data.error);
-                    return;
-                }
-                populateLockedModal(data);
-            })
-            .catch(function (err) {
-                alert('Network error: ' + err);
-            });
-    }
+            fetch(`/prog_chair/review_ipcr/${empId}`)
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.error) {
+                        alert('Error loading IPCR: ' + data.error);
+                        return;
+                    }
+                    populateLockedModal(data);
+                })
+                .catch(function (err) {
+                    alert('Network error: ' + err);
+                });
+        }
 
-    function populateLockedModal(data) {
-        // Header
-        document.getElementById('viewLockedFacultyName').textContent = data.faculty_name;
-        document.getElementById('viewLockedFacultyRank').textContent = data.academic_rank;
-        
-        // Status Badge
-        const statusBadge = document.getElementById('viewLockedStatusBadge');
-        statusBadge.className = 'badge fs-6 px-3 py-2 bg-dark';
-        statusBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i>Approved & Locked';
+        function populateLockedModal(data) {
+            // Header
+            document.getElementById('viewLockedFacultyName').textContent = data.faculty_name;
+            document.getElementById('viewLockedFacultyRank').textContent = data.academic_rank;
 
-        // Build items table
-        const tbody = document.getElementById('viewLockedItemsBody');
-        tbody.innerHTML = '';
+            // Status Badge
+            const statusBadge = document.getElementById('viewLockedStatusBadge');
+            statusBadge.className = 'badge fs-6 px-3 py-2 bg-dark';
+            statusBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i>Approved & Locked';
 
-        if (data.items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No targets found.</td></tr>';
-        } else {
-            // Sort items by category rank
-            const catOrder = {
-                'A. Instructions': 1,
-                'Custom Target Items': 2,
-                'A. Research': 3,
-                'B. Extension Services / Training / Advisory': 4,
-                'Support Functions': 5
-            };
-            data.items.sort((a, b) => {
-                const rankA = catOrder[a.category_name] || 6;
-                const rankB = catOrder[b.category_name] || 6;
-                if (rankA !== rankB) return rankA - rankB;
-                return a.item_id - b.item_id;
-            });
+            // Build items table
+            const tbody = document.getElementById('viewLockedItemsBody');
+            tbody.innerHTML = '';
 
-            let lastCategory = null;
-            data.items.forEach(function (item) {
-                // Insert category banner row if category changes
-                if (item.category_name !== lastCategory) {
-                    lastCategory = item.category_name;
-                    const headerTr = document.createElement('tr');
-                    headerTr.className = 'table-secondary';
-                    headerTr.innerHTML = `
+            if (data.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No targets found.</td></tr>';
+            } else {
+                // Sort items by category rank
+                const catOrder = {
+                    'A. Instructions': 1,
+                    'Custom Target Items': 2,
+                    'A. Research': 3,
+                    'B. Extension Services / Training / Advisory': 4,
+                    'Support Functions': 5
+                };
+                data.items.sort((a, b) => {
+                    const rankA = catOrder[a.category_name] || 6;
+                    const rankB = catOrder[b.category_name] || 6;
+                    if (rankA !== rankB) return rankA - rankB;
+                    return a.item_id - b.item_id;
+                });
+
+                let lastCategory = null;
+                data.items.forEach(function (item) {
+                    // Insert category banner row if category changes
+                    if (item.category_name !== lastCategory) {
+                        lastCategory = item.category_name;
+                        const headerTr = document.createElement('tr');
+                        headerTr.className = 'table-secondary';
+                        headerTr.innerHTML = `
                         <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
                             ${item.category_name}
                         </td>
                     `;
-                    tbody.appendChild(headerTr);
-                }
+                        tbody.appendChild(headerTr);
+                    }
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
                     <td><span class="badge bg-light text-dark border small">${item.category_name}</span></td>
                     <td class="small fw-semibold">${item.indicator_description}</td>
                     <td class="text-center text-muted">${item.original_quantity}</td>
                     <td class="text-center fw-bold text-success">${item.reviewed_quantity}</td>
                     <td class="text-muted small">${item.item_remarks || '<span class="text-muted opacity-50">None</span>'}</td>
                 `;
-                tbody.appendChild(tr);
-            });
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Show modal body
+            document.getElementById('lockedModalLoader').style.display = 'none';
+            document.getElementById('lockedModalBody').style.display = 'block';
         }
 
-        // Show modal body
-        document.getElementById('lockedModalLoader').style.display = 'none';
-        document.getElementById('lockedModalBody').style.display = 'block';
-    }
+        function populateModal(data) {
+            // Header
+            document.getElementById('modalFacultyName').textContent = data.faculty_name;
+            document.getElementById('modalFacultyRank').textContent = data.academic_rank;
+            document.getElementById('modalReviewId').value = data.review_id;
+            document.getElementById('modalEmpId').value = data.emp_id;
+            document.getElementById('overallRemarks').value = data.overall_remarks || '';
 
-    function populateModal(data) {
-        // Header
-        document.getElementById('modalFacultyName').textContent = data.faculty_name;
-        document.getElementById('modalFacultyRank').textContent = data.academic_rank;
-        document.getElementById('modalReviewId').value = data.review_id;
-        document.getElementById('modalEmpId').value = data.emp_id;
-        document.getElementById('overallRemarks').value = data.overall_remarks || '';
-
-        // Status badge
-        const badge = document.getElementById('modalStatusBadge');
-        const statusMap = {
-            'Locked':      ['bg-dark text-white', 'lock-fill',              'Locked & Committed'],
-            'Approved':    ['bg-success', 'check-circle-fill',      'Approved'],
-            'Rejected':    ['bg-danger',  'x-circle-fill',          'Returned to Faculty'],
-            'Pending':     ['bg-warning text-dark', 'hourglass-split', 'Pending Review'],
-            'Waiting for Approval': ['bg-info text-dark', 'clock-history', 'Waiting for Approval'],
-            'Not Started': ['bg-warning text-dark', 'hourglass-split',          'Pending Review'],
-        };
-        const s = statusMap[data.overall_status] || statusMap['Not Started'];
-        badge.className = `badge fs-6 px-3 py-2 ${s[0]}`;
-        badge.innerHTML = `<i class="bi bi-${s[1]} me-1"></i>${s[2]}`;
-
-        window.isWaiting = (data.overall_status === 'Waiting for Approval');
-        const decided = (data.overall_status === 'Approved' || data.overall_status === 'Locked');
-
-        // Subtitle text
-        const subtitle = document.getElementById('modalSubTitle');
-        if (subtitle) {
-            subtitle.textContent = window.isWaiting ? '(Read-only / Resubmitted for Approval)' : '(You may adjust quantities and add remarks per item)';
-        }
-
-        // Hide Reject button if waiting for approval (making it approval-only)
-        const btnReject = document.getElementById('btnReject');
-        if (btnReject) {
-            btnReject.style.display = window.isWaiting ? 'none' : '';
-            btnReject.disabled = decided || data.overall_status === 'Rejected';
-        }
-
-        // Disable approve button if already decided or locked
-        document.getElementById('btnApprove').disabled = decided;
-
-        // Build items table
-        const tbody = document.getElementById('reviewItemsBody');
-        tbody.innerHTML = '';
-
-        if (data.items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No targets found.</td></tr>';
-        } else {
-            // Sort items by category rank: Instructions (1), Custom (2), Research (3), Extension (4), Support Functions (5), others (6)
-            const catOrder = {
-                'A. Instructions': 1,
-                'Custom Target Items': 2,
-                'A. Research': 3,
-                'B. Extension Services / Training / Advisory': 4,
-                'Support Functions': 5
+            // Status badge
+            const badge = document.getElementById('modalStatusBadge');
+            const statusMap = {
+                'Locked': ['bg-dark text-white', 'lock-fill', 'Approved & Locked'],
+                'Approved': ['bg-success', 'check-circle-fill', 'Approved by Both'],
+                'Rejected': ['bg-danger', 'x-circle-fill', 'Returned'],
+                'Pending': ['bg-warning text-dark', 'hourglass-split', 'Waiting for RET Review & Approval'],
+                'Waiting for Approval': ['bg-info text-dark', 'clock-history', 'Waiting for Approval'],
+                'Not Started': ['bg-warning text-dark', 'hourglass-split', 'Waiting for RET Review & Approval'],
             };
-            data.items.sort((a, b) => {
-                const rankA = catOrder[a.category_name] || 6;
-                const rankB = catOrder[b.category_name] || 6;
-                if (rankA !== rankB) return rankA - rankB;
-                return a.item_id - b.item_id;
-            });            let lastCategory = null;
-            let hasUnapprovedRet = false;
+            const s = statusMap[data.overall_status] || statusMap['Not Started'];
+            badge.className = `badge fs-6 px-3 py-2 ${s[0]}`;
+            badge.innerHTML = `<i class="bi bi-${s[1]} me-1"></i>${s[2]}`;
 
-            data.items.forEach(function (item) {
-                const qtyChanged = item.reviewed_quantity !== item.original_quantity;
-                
-                // Research and Extension categories are read-only for Program Chair review
-                const catLower = (item.category_name || '').toLowerCase();
-                const isRet = catLower.includes('research') || catLower.includes('extension') || catLower.includes('training') || catLower.includes('advisory');
-                const isInputDisabled = decided || isRet || window.isWaiting;
+            window.isWaiting = (data.overall_status === 'Waiting for Approval');
+            const decided = (data.overall_status === 'Approved' || data.overall_status === 'Locked');
 
-                if (isRet && item.draft_status !== 'Approved') {
-                    hasUnapprovedRet = true;
-                }
+            // Subtitle text
+            const subtitle = document.getElementById('modalSubTitle');
+            if (subtitle) {
+                subtitle.textContent = window.isWaiting ? '(Resubmitted for Approval)' : '(You may adjust quantities and add remarks per item)';
+            }
 
-                // Insert category banner row if category changes
-                if (item.category_name !== lastCategory) {
-                    lastCategory = item.category_name;
-                    const headerTr = document.createElement('tr');
-                    headerTr.className = 'table-secondary';
-                    headerTr.innerHTML = `
+            // Reject button is always visible unless decided or already rejected
+            const btnReject = document.getElementById('btnReject');
+            if (btnReject) {
+                btnReject.style.display = '';
+                btnReject.disabled = decided || data.overall_status === 'Rejected';
+            }
+
+            // Disable approve button if already decided or locked
+            document.getElementById('btnApprove').disabled = decided;
+
+            // Build items table
+            const tbody = document.getElementById('reviewItemsBody');
+            tbody.innerHTML = '';
+
+            if (data.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No targets found.</td></tr>';
+            } else {
+                // Sort items by category rank: Instructions (1), Custom (2), Research (3), Extension (4), Support Functions (5), others (6)
+                const catOrder = {
+                    'A. Instructions': 1,
+                    'Custom Target Items': 2,
+                    'A. Research': 3,
+                    'B. Extension Services / Training / Advisory': 4,
+                    'Support Functions': 5
+                };
+                data.items.sort((a, b) => {
+                    const rankA = catOrder[a.category_name] || 6;
+                    const rankB = catOrder[b.category_name] || 6;
+                    if (rankA !== rankB) return rankA - rankB;
+                    return a.item_id - b.item_id;
+                }); let lastCategory = null;
+                let hasUnapprovedRet = false;
+
+                data.items.forEach(function (item) {
+                    const qtyChanged = item.reviewed_quantity !== item.original_quantity;
+
+                    // Research and Extension categories are read-only for Program Chair review
+                    const catLower = (item.category_name || '').toLowerCase();
+                    const isRet = catLower.includes('research') || catLower.includes('extension') || catLower.includes('training') || catLower.includes('advisory');
+                    const isInputDisabled = decided || isRet;
+
+                    if (isRet && item.draft_status !== 'Approved') {
+                        hasUnapprovedRet = true;
+                    }
+
+                    // Insert category banner row if category changes
+                    if (item.category_name !== lastCategory) {
+                        lastCategory = item.category_name;
+                        const headerTr = document.createElement('tr');
+                        headerTr.className = 'table-secondary';
+                        headerTr.innerHTML = `
                         <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
                             ${item.category_name}
                         </td>
                     `;
-                    tbody.appendChild(headerTr);
-                }
-
-                const tr = document.createElement('tr');
-                tr.id = `item-row-${item.item_id}`;
-
-                let retTag = '';
-                if (isRet) {
-                    if (item.draft_status === 'Approved') {
-                        retTag = `<span class="badge bg-success bg-opacity-10 text-success border border-success ms-2" style="font-size:0.75rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved by RET</span>`;
-                    } else {
-                        retTag = `<span class="badge bg-warning bg-opacity-10 text-warning border border-warning ms-2" style="font-size:0.75rem;"><i class="bi bi-hourglass-split me-1"></i>Awaiting RET Approval</span>`;
+                        tbody.appendChild(headerTr);
                     }
-                }
 
-                tr.innerHTML = `
+                    const tr = document.createElement('tr');
+                    tr.id = `item-row-${item.item_id}`;
+
+                    let retTag = '';
+                    if (isRet) {
+                        if (item.draft_status === 'Approved') {
+                            retTag = `<span class="badge bg-success bg-opacity-10 text-success border border-success ms-2" style="font-size:0.75rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved by RET Chair</span>`;
+                        } else {
+                            retTag = `<span class="badge bg-warning bg-opacity-10 text-warning border border-warning ms-2" style="font-size:0.75rem;"><i class="bi bi-hourglass-split me-1"></i>Awaiting RET Chair Approval</span>`;
+                        }
+                    }
+
+                    tr.innerHTML = `
                     <td><span class="badge bg-light text-dark border small">${item.category_name}</span></td>
                     <td class="small fw-semibold">${item.indicator_description}${retTag}</td>
                     <td class="text-center text-muted">${item.original_quantity}</td>
@@ -816,248 +891,225 @@ document.addEventListener('DOMContentLoaded', function () {
                                   ${isInputDisabled ? 'disabled' : ''}>${item.item_remarks || ''}</textarea>
                     </td>
                 `;
-                tbody.appendChild(tr);
-            });
+                    tbody.appendChild(tr);
+                });
 
-            // Set up button warning for unapproved RET
-            const btnApprove = document.getElementById('btnApprove');
-            if (btnApprove) {
-                if (hasUnapprovedRet) {
-                    btnApprove.disabled = true;
-                    btnApprove.setAttribute('title', 'Cannot approve. Awaiting RET Chair approval of Research/Extension targets.');
-                    
-                    let retAlert = document.getElementById('retChairAlertMessage');
-                    if (!retAlert) {
-                        retAlert = document.createElement('div');
-                        retAlert.id = 'retChairAlertMessage';
-                        retAlert.className = 'alert alert-warning py-2 px-3 small border-0 shadow-sm mt-3 mb-0 w-100';
-                        retAlert.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Awaiting RET Chair Approval:</strong> You cannot approve this draft IPCR until all Research and Extension selections are verified and approved by the RET Chair.';
-                        btnApprove.parentElement.parentElement.insertBefore(retAlert, btnApprove.parentElement);
-                    } else {
-                        retAlert.style.display = '';
-                    }
-                } else {
-                    btnApprove.disabled = decided;
-                    btnApprove.removeAttribute('title');
-                    const retAlert = document.getElementById('retChairAlertMessage');
-                    if (retAlert) {
-                        retAlert.style.display = 'none';
-                    }
-                }
-            }
+                // Set up button warning for unapproved RET
+                const btnApprove = document.getElementById('btnApprove');
+                if (btnApprove) {
+                    if (hasUnapprovedRet) {
+                        btnApprove.disabled = true;
+                        btnApprove.setAttribute('title', 'Cannot approve. Awaiting RET Chair approval of Research/Extension targets.');
 
-        }
-
-        // Hide Save All button if waiting or decided
-        const saveAllBtn = document.getElementById('btnSaveAll');
-        if (saveAllBtn) {
-            saveAllBtn.style.display = (window.isWaiting || decided) ? 'none' : '';
-            saveAllBtn.disabled = decided;
-        }
-
-        // Show modal body and footer
-        document.getElementById('modalLoader').style.display = 'none';
-        document.getElementById('modalBody').style.display = 'block';
-        document.getElementById('modalFooter').style.display = 'block';
-    }    // Helper to save all edits on review items
-    function saveAllEdits() {
-        const inputs = document.querySelectorAll('.reviewed-qty-input:not([disabled])');
-        if (inputs.length === 0) return Promise.resolve({ success: true });
-
-        // Filter to only include inputs that have actually been modified
-        const modifiedInputs = Array.from(inputs).filter(function (inp) {
-            const val = parseInt(inp.value, 10);
-            const initialVal = parseInt(inp.dataset.initialVal, 10);
-            
-            const itemId = inp.dataset.itemId;
-            const remarksTextarea = document.getElementById(`remarks-${itemId}`);
-            const remarks = remarksTextarea ? remarksTextarea.value.trim() : '';
-            const initialRemarks = remarksTextarea ? (remarksTextarea.dataset.initialRemarks || '').trim() : '';
-            
-            return val !== initialVal || remarks !== initialRemarks;
-        });
-
-        // If no items were modified, return success immediately
-        if (modifiedInputs.length === 0) return Promise.resolve({ success: true });
-
-        // Validate modified inputs
-        let hasError = false;
-        modifiedInputs.forEach(function (inp) {
-            const val = parseInt(inp.value, 10);
-            if (isNaN(val) || val < 0) {
-                inp.classList.add('is-invalid');
-                hasError = true;
-            } else {
-                inp.classList.remove('is-invalid');
-            }
-        });
-        if (hasError) return Promise.resolve({ success: false, message: 'Invalid quantity values.' });
-
-        // Build array of save promises
-        const savePromises = modifiedInputs.map(function (inp) {
-            const itemId  = inp.dataset.itemId;
-            const qty     = parseInt(inp.value, 10);
-            const remarks = (document.getElementById(`remarks-${itemId}`) || {}).value || '';
-
-            return fetch('/prog_chair/edit_review_item', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item_id: parseInt(itemId), reviewed_quantity: qty, item_remarks: remarks.trim() }),
-            })
-            .then(function (r) { 
-                if (!r.ok) {
-                    return r.text().then(text => { throw new Error(text || `HTTP ${r.status}`); });
-                }
-                return r.json(); 
-            })
-            .then(function (res) {
-                if (res.success) {
-                    // Update initial attributes to current values upon successful save
-                    inp.dataset.initialVal = qty;
-                    const remarksTextarea = document.getElementById(`remarks-${itemId}`);
-                    if (remarksTextarea) {
-                        remarksTextarea.dataset.initialRemarks = remarks.trim();
-                    }
-
-                    const original = parseInt(inp.dataset.original || '0', 10);
-                    const tag = inp.parentElement.querySelector('.qty-edited-tag');
-                    if (tag) {
-                        if (qty !== original) {
-                            tag.style.display = '';
-                            tag.className = 'qty-edited-tag text-warning d-block mt-1';
-                            tag.innerHTML = '<i class="bi bi-pencil-fill"></i> Edited';
+                        let retAlert = document.getElementById('retChairAlertMessage');
+                        if (!retAlert) {
+                            retAlert = document.createElement('div');
+                            retAlert.id = 'retChairAlertMessage';
+                            retAlert.className = 'alert alert-warning py-2 px-3 small border-0 shadow-sm mt-3 mb-0 w-100';
+                            retAlert.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Awaiting RET Chair Approval:</strong> You cannot approve this draft IPCR until all Research and Extension selections are verified and approved by the RET Chair.';
+                            btnApprove.parentElement.parentElement.insertBefore(retAlert, btnApprove.parentElement);
                         } else {
-                            tag.style.display = 'none';
+                            retAlert.style.display = '';
+                        }
+                    } else {
+                        btnApprove.disabled = decided;
+                        btnApprove.removeAttribute('title');
+                        const retAlert = document.getElementById('retChairAlertMessage');
+                        if (retAlert) {
+                            retAlert.style.display = 'none';
                         }
                     }
                 }
-                return res;
-            });
-        });
 
-        return Promise.all(savePromises)
-            .then(function (results) {
-                const failed = results.filter(r => !r.success);
-                if (failed.length > 0) {
-                    return {
-                        success: false,
-                        message: failed.map(r => r.message || 'Save failed.').join('\n')
-                    };
+            }
+
+
+
+            // Show modal body and footer
+            document.getElementById('modalLoader').style.display = 'none';
+            document.getElementById('modalBody').style.display = 'block';
+            document.getElementById('modalFooter').style.display = 'block';
+        }    // Helper to save all edits on review items
+        function saveAllEdits() {
+            const inputs = document.querySelectorAll('.reviewed-qty-input:not([disabled])');
+            if (inputs.length === 0) return Promise.resolve({ success: true });
+
+            // Filter to only include inputs that have actually been modified
+            const modifiedInputs = Array.from(inputs).filter(function (inp) {
+                const val = parseInt(inp.value, 10);
+                const initialVal = parseInt(inp.dataset.initialVal, 10);
+
+                const itemId = inp.dataset.itemId;
+                const remarksTextarea = document.getElementById(`remarks-${itemId}`);
+                const remarks = remarksTextarea ? remarksTextarea.value.trim() : '';
+                const initialRemarks = remarksTextarea ? (remarksTextarea.dataset.initialRemarks || '').trim() : '';
+
+                return val !== initialVal || remarks !== initialRemarks;
+            });
+
+            // If no items were modified, return success immediately
+            if (modifiedInputs.length === 0) return Promise.resolve({ success: true });
+
+            // Validate modified inputs
+            let hasError = false;
+            modifiedInputs.forEach(function (inp) {
+                const val = parseInt(inp.value, 10);
+                if (isNaN(val) || val < 0) {
+                    inp.classList.add('is-invalid');
+                    hasError = true;
+                } else {
+                    inp.classList.remove('is-invalid');
                 }
-                return { success: true };
-            })
-            .catch(function (err) {
-                return { success: false, message: err.message || err };
             });
-    }
+            if (hasError) return Promise.resolve({ success: false, message: 'Invalid quantity values.' });
 
-    // ── Save All Changes (single button) ────────────────────────
-    document.getElementById('btnSaveAll').addEventListener('click', function () {
-        const btn = this;
-        const originalLabel = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+            // Build array of save promises
+            const savePromises = modifiedInputs.map(function (inp) {
+                const itemId = inp.dataset.itemId;
+                const qty = parseInt(inp.value, 10);
+                const remarks = (document.getElementById(`remarks-${itemId}`) || {}).value || '';
 
-        saveAllEdits().then(function (res) {
-            btn.disabled = false;
-            if (res.success) {
-                btn.innerHTML = '<i class="bi bi-check-lg me-2"></i>All Changes Saved';
-                btn.classList.replace('btn-primary', 'btn-success');
-                setTimeout(function () {
-                    btn.innerHTML = '<i class="bi bi-save me-2"></i>Save All Changes';
-                    btn.classList.replace('btn-success', 'btn-primary');
-                }, 2000);
-            } else {
-                btn.innerHTML = originalLabel;
-                alert('Failed to save some changes:\n' + res.message);
-            }
-        });
-    });
+                return fetch('/prog_chair/edit_review_item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ item_id: parseInt(itemId), reviewed_quantity: qty, item_remarks: remarks.trim() }),
+                })
+                    .then(function (r) {
+                        if (!r.ok) {
+                            return r.text().then(text => { throw new Error(text || `HTTP ${r.status}`); });
+                        }
+                        return r.json();
+                    })
+                    .then(function (res) {
+                        if (res.success) {
+                            // Update initial attributes to current values upon successful save
+                            inp.dataset.initialVal = qty;
+                            const remarksTextarea = document.getElementById(`remarks-${itemId}`);
+                            if (remarksTextarea) {
+                                remarksTextarea.dataset.initialRemarks = remarks.trim();
+                            }
 
-    function proceedDecision(action, remarks) {
-        const btnApprove = document.getElementById('btnApprove');
-        const btnReject = document.getElementById('btnReject');
-        if (btnApprove) btnApprove.disabled = true;
-        if (btnReject) btnReject.disabled = true;
+                            const original = parseInt(inp.dataset.original || '0', 10);
+                            const tag = inp.parentElement.querySelector('.qty-edited-tag');
+                            if (tag) {
+                                if (qty !== original) {
+                                    tag.style.display = '';
+                                    tag.className = 'qty-edited-tag text-warning d-block mt-1';
+                                    tag.innerHTML = '<i class="bi bi-pencil-fill"></i> Edited';
+                                } else {
+                                    tag.style.display = 'none';
+                                }
+                            }
+                        }
+                        return res;
+                    });
+            });
 
-        saveAllEdits().then(function (res) {
-            if (!res.success) {
-                if (btnApprove) btnApprove.disabled = false;
-                if (btnReject) btnReject.disabled = false;
-                alert('Could not process decision because target changes failed to save:\n' + res.message);
-                return;
-            }
+            return Promise.all(savePromises)
+                .then(function (results) {
+                    const failed = results.filter(r => !r.success);
+                    if (failed.length > 0) {
+                        return {
+                            success: false,
+                            message: failed.map(r => r.message || 'Save failed.').join('\n')
+                        };
+                    }
+                    return { success: true };
+                })
+                .catch(function (err) {
+                    return { success: false, message: err.message || err };
+                });
+        }
+
+        function proceedDecision(action, remarks) {
+            const btnApprove = document.getElementById('btnApprove');
+            const btnReject = document.getElementById('btnReject');
+            if (btnApprove) btnApprove.disabled = true;
+            if (btnReject) btnReject.disabled = true;
+
+            const items = [];
+            document.querySelectorAll('.reviewed-qty-input:not([disabled])').forEach(function (inp) {
+                const itemId = parseInt(inp.dataset.itemId, 10);
+                const qty = parseInt(inp.value, 10) || 0;
+                const remarksTextarea = document.getElementById(`remarks-${itemId}`);
+                const itemRemarks = remarksTextarea ? remarksTextarea.value.trim() : '';
+                items.push({
+                    item_id: itemId,
+                    reviewed_quantity: qty,
+                    item_remarks: itemRemarks
+                });
+            });
 
             document.getElementById('decisionReviewId').value = document.getElementById('modalReviewId').value;
             document.getElementById('decisionAction').value = action;
             document.getElementById('decisionRemarks').value = remarks;
+            document.getElementById('decisionItemsJson').value = JSON.stringify(items);
             document.getElementById('decisionForm').submit();
-        });
-    }
-
-    // Helper to show custom confirmation modal
-    window.showCustomConfirm = function({ title, mainText, subText, confirmText, confirmClass, iconClass, onConfirm }) {
-        const modal = new bootstrap.Modal(document.getElementById('customConfirmModal'));
-        
-        document.getElementById('confirmModalTitle').textContent = title;
-        document.getElementById('confirmModalTextMain').innerHTML = mainText;
-        document.getElementById('confirmModalTextSub').textContent = subText;
-        
-        const confirmBtn = document.getElementById('confirmModalConfirmBtn');
-        confirmBtn.className = `btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2 ${confirmClass}`;
-        
-        const confirmTextSpan = document.getElementById('confirmModalConfirmText');
-        confirmTextSpan.textContent = confirmText;
-        
-        const icon = document.getElementById('confirmModalIcon');
-        if (iconClass) {
-            icon.className = `bi ${iconClass}`;
-            icon.style.display = '';
-        } else {
-            icon.style.display = 'none';
         }
-        
-        // Remove previous listeners
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        
-        newConfirmBtn.addEventListener('click', function() {
-            modal.hide();
-            onConfirm();
-        });
-        
-        modal.show();
-    };
 
-    // ── Submit approve/reject decision ───────────────────────────
-    window.submitDecision = function (action) {
-        const remarks = document.getElementById('overallRemarks').value.trim();
-        const textarea = document.getElementById('overallRemarks');
-        textarea.classList.remove('is-invalid');
+        // Helper to show custom confirmation modal
+        window.showCustomConfirm = function ({ title, mainText, subText, confirmText, confirmClass, iconClass, onConfirm }) {
+            const modal = new bootstrap.Modal(document.getElementById('customConfirmModal'));
 
-        if (action === 'approve') {
-            showCustomConfirm({
-                title: "Approve IPCR?",
-                mainText: "This will approve the draft IPCR for this faculty member.",
-                subText: "They will be notified and can proceed to lock and commit their final targets.",
-                confirmText: "Yes, Approve",
-                confirmClass: "btn-success",
-                iconClass: "bi-check-circle-fill",
-                onConfirm: () => proceedDecision('approve', remarks)
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalTextMain').innerHTML = mainText;
+            document.getElementById('confirmModalTextSub').textContent = subText;
+
+            const confirmBtn = document.getElementById('confirmModalConfirmBtn');
+            confirmBtn.className = `btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2 ${confirmClass}`;
+
+            const confirmTextSpan = document.getElementById('confirmModalConfirmText');
+            confirmTextSpan.textContent = confirmText;
+
+            const icon = document.getElementById('confirmModalIcon');
+            if (iconClass) {
+                icon.className = `bi ${iconClass}`;
+                icon.style.display = '';
+            } else {
+                icon.style.display = 'none';
+            }
+
+            // Remove previous listeners
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.addEventListener('click', function () {
+                modal.hide();
+                onConfirm();
             });
-        } else {
-            showCustomConfirm({
-                title: "Return Draft IPCR?",
-                mainText: "This will return the draft IPCR to the designated faculty.",
-                subText: "They will be able to review your remarks, make changes, and re-submit.",
-                confirmText: "Yes, Return",
-                confirmClass: "btn-danger",
-                iconClass: "bi-x-circle",
-                onConfirm: () => proceedDecision('reject', remarks)
-            });
-        }
-    };
-});
+
+            modal.show();
+        };
+
+        // ── Submit approve/reject decision ───────────────────────────
+        window.submitDecision = function (action) {
+            const remarksInput = document.getElementById('overallRemarks');
+            const remarks = remarksInput.value.trim();
+            remarksInput.classList.remove('is-invalid');
+
+            // Remarks are only required when returning/rejecting, not when approving
+            if (action !== 'approve' && !remarks) {
+                remarksInput.classList.add('is-invalid');
+                remarksInput.focus();
+                return;
+            }
+
+            if (action === 'approve') {
+                showCustomConfirm({
+                    title: "Approve IPCR?",
+                    mainText: "This will approve the draft IPCR for this faculty member.",
+                    subText: "They will be notified and can proceed to lock and commit their final targets.",
+                    confirmText: "Yes, Approve",
+                    confirmClass: "btn-success",
+                    iconClass: "bi-check-circle-fill",
+                    onConfirm: () => proceedDecision('approve', remarks)
+                });
+            } else {
+                proceedDecision('reject', remarks);
+            }
+        };
+
+    });
 </script>
 
 <!-- Custom Confirmation Modal (z-index 1060 to overlay on top of review modal) -->
@@ -1065,16 +1117,25 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="font-size: 0.85rem; opacity: 0.6;"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="font-size: 0.85rem; opacity: 0.6;"></button>
             </div>
             <div class="modal-body text-center px-4 pb-4 pt-1">
-                <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle" style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
-                <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain" style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
-                <p class="text-muted small px-3 mb-0" id="confirmModalTextSub" style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
+                <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle"
+                    style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
+                <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain"
+                    style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
+                <p class="text-muted small px-3 mb-0" id="confirmModalTextSub"
+                    style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
             </div>
             <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
-                <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal" id="confirmModalCancelBtn" style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
-                <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2" id="confirmModalConfirmBtn" style="border-radius: 10px; font-size: 0.9rem; min-width: 140px; transition: all 0.2s;">
+                <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
+                    id="confirmModalCancelBtn"
+                    style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                <button type="button"
+                    class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
+                    id="confirmModalConfirmBtn"
+                    style="border-radius: 10px; font-size: 0.9rem; min-width: 140px; transition: all 0.2s;">
                     <i class="" id="confirmModalIcon"></i>
                     <span id="confirmModalConfirmText">Confirm</span>
                 </button>
@@ -1087,9 +1148,10 @@ document.addEventListener('DOMContentLoaded', function () {
     #customConfirmModal .btn-close:focus {
         box-shadow: none;
     }
+
     #customConfirmModal .btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.12) !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12) !important;
     }
 </style>
 {% endblock %}

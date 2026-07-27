@@ -1078,17 +1078,18 @@
             }
             const isLocked = deanReviewData.overall_status === 'Approved' || deanReviewData.overall_status === 'Rejected';
 
-            // Original Qty display: if -1, show badge "Added by Dean"
+            // Original Qty display: if -1, show 0
             const origQtyDisplay = item.original_quantity === -1
-                ? '<span class="badge bg-info text-dark">Added by Dean</span>'
+                ? '0'
                 : item.original_quantity;
 
             tbody.innerHTML += `
             <tr class="${item.original_quantity === -1 ? 'table-info' : ''}">
                 <td class="small text-muted">${item.category_name || ''}</td>
                 <td>
-                    ${item.indicator_description}
+                    <div>${item.indicator_description}</div>
                     ${item.is_custom == 1 ? '<span class="badge bg-warning text-dark ms-1">Custom</span>' : ''}
+                    ${item.original_quantity === -1 ? '<span class="badge bg-info text-dark mt-1" style="font-size: 0.75rem; width: fit-content; display: block;">Added by Dean</span>' : ''}
                 </td>
                 <td class="text-center">${origQtyDisplay}</td>
                 <td class="text-center">

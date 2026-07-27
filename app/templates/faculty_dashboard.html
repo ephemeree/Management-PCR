@@ -86,26 +86,26 @@
         </span>
         {% elif chair_review and chair_review.overall_status == 'Approved' %}
         <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-check-circle-fill me-2"></i>Approved by Program Chair
+            <i class="bi bi-check-circle-fill me-2"></i>Approved by Both
         </span>
         {% elif chair_review and chair_review.overall_status == 'Rejected' %}
         <span class="badge bg-danger px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-arrow-counterclockwise me-2"></i>Returned by Program Chair
+            <i class="bi bi-arrow-counterclockwise me-2"></i>Returned
         </span>
         {% elif ret_review and ret_review.overall_status == 'Rejected' %}
         <span class="badge bg-danger px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-arrow-counterclockwise me-2"></i>Returned by RET Chair
+            <i class="bi bi-arrow-counterclockwise me-2"></i>Returned
         </span>
         {% elif has_submitted %}
-            {% if ret_review and ret_review.overall_status == 'Approved' %}
-            <span class="badge bg-info text-dark px-3 py-2 fs-6 shadow-sm">
-                <i class="bi bi-hourglass-split me-2"></i>Waiting for Program Chair Approval
-            </span>
-            {% else %}
-            <span class="badge bg-warning text-dark px-3 py-2 fs-6 shadow-sm">
-                <i class="bi bi-hourglass-split me-2"></i>Waiting for RET Approval
-            </span>
-            {% endif %}
+        {% if ret_review and ret_review.overall_status == 'Approved' %}
+        <span class="badge bg-info text-dark px-3 py-2 fs-6 shadow-sm">
+            <i class="bi bi-hourglass-split me-2"></i>Waiting for Approval
+        </span>
+        {% else %}
+        <span class="badge bg-warning text-dark px-3 py-2 fs-6 shadow-sm">
+            <i class="bi bi-hourglass-split me-2"></i>Waiting for RET Review &amp; Approval
+        </span>
+        {% endif %}
         {% else %}
         <span class="badge bg-secondary px-3 py-2 fs-6 shadow-sm">
             <i class="bi bi-pencil-square me-2"></i>Draft Mode
@@ -120,9 +120,10 @@
         <div class="d-flex align-items-start gap-3">
             <i class="bi bi-exclamation-circle-fill text-danger fs-4 mt-1"></i>
             <div>
-                <h6 class="fw-bold mb-1 text-danger">Your Research &amp; Extension choices were Returned by the RET Chair</h6>
+                <h6 class="fw-bold mb-1 text-danger">Your Research &amp; Extension choices were Returned by the RET
+                    Chair</h6>
                 <p class="mb-1 text-dark"><strong>Remarks:</strong> {{ ret_review.overall_remarks }}</p>
-                <small class="text-muted">Please update your selections below and click "Submit IPCR for Approval" to resubmit.</small>
+                <small class="text-muted">Please review the remarks and the edited choices below, and click "Submit IPCR for Approval" to resubmit.</small>
             </div>
         </div>
     </div>
@@ -137,42 +138,49 @@
             <div>
                 <h6 class="fw-bold mb-1" style="color: #b45309 !important;">Your Draft IPCR was Returned by your Program Chair</h6>
                 <p class="mb-1 text-dark"><strong>Remarks:</strong> {{ chair_review.overall_remarks }}</p>
-                <small class="text-muted">Please review the changes and remarks made by the Program Chair below, and
-                    click "Submit IPCR for Approval" to acknowledge and send it back for approval.</small>
+                <small class="text-muted">Please review the changes and remarks made by the Program Chair below, and click "Submit IPCR for Approval" to acknowledge and send it back for approval.</small>
             </div>
         </div>
     </div>
     {% endif %}
 
     {# ── Waiting Banners ────────────────────────────────────── #}
-    {% if has_submitted and not is_locked and not (chair_review and chair_review.overall_status == 'Approved') %}
-        {% if ret_review and ret_review.overall_status == 'Approved' %}
-        <div class="alert border-0 shadow-sm mb-4" role="alert"
-            style="background: linear-gradient(135deg, #e8f4ff 0%, #dbedff 100%); border-left: 5px solid #0d6efd !important; border-radius: 10px;">
-            <div class="d-flex align-items-start gap-3">
-                <i class="bi bi-clock-history text-primary fs-4 mt-1"></i>
-                <div>
-                    <h6 class="fw-bold text-primary mb-1">Waiting for Program Chair Approval</h6>
-                    <p class="mb-0 text-muted small">Your Research and Extension targets have been approved by the RET Chair. The draft IPCR is now awaiting final review and approval by your Program Chair.</p>
-                </div>
+    {% if ipcr_status in ('waiting_for_ret_chair_review', 'pending_ret_review', 'waiting_for_program_chair_review') %}
+    {% if ipcr_status == 'waiting_for_program_chair_review' %}
+    <div class="alert border-0 shadow-sm mb-4" role="alert"
+        style="background: linear-gradient(135deg, #e8f4ff 0%, #dbedff 100%); border-left: 5px solid #0d6efd !important; border-radius: 10px;">
+        <div class="d-flex align-items-start gap-3">
+            <i class="bi bi-clock-history text-primary fs-4 mt-1"></i>
+            <div>
+                <h6 class="fw-bold text-primary mb-1">Waiting for Program Chair Approval</h6>
+                <p class="mb-0 text-muted small">Your Research and Extension targets have been approved by the RET
+                    Chair. The draft IPCR is now awaiting final review and approval by your Program Chair.</p>
             </div>
         </div>
-        {% else %}
-        <div class="alert border-0 shadow-sm mb-4" role="alert"
-            style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #ffc107 !important; border-radius: 10px;">
-            <div class="d-flex align-items-start gap-3">
-                <i class="bi bi-clock-history text-warning fs-4 mt-1" style="color: #d97706 !important;"></i>
-                <div>
-                    <h6 class="fw-bold mb-1" style="color: #b45309 !important;">Waiting for RET Chair Approval</h6>
-                    <p class="mb-0 text-muted small">Your selected Research and Extension targets are currently being reviewed by the RET Chair. Once approved, they will be forwarded to your Program Chair for final approval.</p>
-                </div>
+    </div>
+    {% else %}
+    <div class="alert border-0 shadow-sm mb-4" role="alert"
+        style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #ffc107 !important; border-radius: 10px;">
+        <div class="d-flex align-items-start gap-3">
+            <i class="bi bi-clock-history text-warning fs-4 mt-1" style="color: #d97706 !important;"></i>
+            <div>
+                <h6 class="fw-bold mb-1" style="color: #b45309 !important;">
+                    Waiting for RET Chair Approval
+                    {% if ipcr_status == 'pending_ret_review' %}
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning ms-2" style="font-size: 0.75rem;">Under Active Review</span>
+                    {% endif %}
+                </h6>
+                <p class="mb-0 text-muted small">Your selected Research and Extension targets are currently being
+                    reviewed by the RET Chair. Once approved, they will be forwarded to your Program Chair for final
+                    approval.</p>
             </div>
         </div>
-        {% endif %}
+    </div>
+    {% endif %}
     {% endif %}
 
     {# ── Chair Approval Alert ───────────────────────────────── #}
-    {% if is_locked %}
+    {% if is_locked or ipcr_status == 'completed' %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
         style="background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%); border-left: 5px solid #212529 !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
@@ -184,14 +192,14 @@
             </div>
         </div>
     </div>
-    {% elif chair_review and chair_review.overall_status == 'Approved' %}
+    {% elif ipcr_status == 'approved_by_program_chair' %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
         style="background: linear-gradient(135deg, #f0fff4 0%, #dcffe4 100%); border-left: 5px solid #198754 !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
             <i class="bi bi-check-circle-fill text-success fs-4 mt-1"></i>
             <div>
                 <h6 class="fw-bold text-success mb-1">Your Draft IPCR has been Approved by your Program Chair</h6>
-                {% if chair_review.overall_remarks %}
+                {% if chair_review and chair_review.overall_remarks %}
                 <p class="mb-0 text-dark"><strong>Remarks:</strong> {{ chair_review.overall_remarks }}</p>
                 {% endif %}
             </div>
@@ -215,7 +223,8 @@
                 <!-- Instructions Card -->
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-star-fill me-2"></i>A. Strategic Priorities</h5>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-star-fill me-2"></i>A. Strategic Priorities
+                        </h5>
                         <p class="small mb-0 text-muted">Assigned teaching and instructional workloads</p>
                     </div>
                     <div class="card-body p-0">
@@ -341,27 +350,28 @@
                         {% if ret_menu.research_indicators|length > 0 %}
                         <div class="ret-options-container" style="max-height: 250px; overflow-y: auto;">
                             {% for ind in ret_menu.research_indicators %}
-                            {% set ns = namespace(is_selected=false) %}
+                            {% set ns = namespace(is_selected=false, quantity=ind.target_quantity) %}
                             {% for t in assigned_targets %}
-                            {% if t.indicator_id == ind.indicator_id %}
+                            {% if t.indicator_id == ind.indicator_id and t.assigned_quantity > 0 %}
                             {% set ns.is_selected = true %}
+                            {% set ns.quantity = t.assigned_quantity %}
                             {% endif %}
                             {% endfor %}
                             <label
                                 class="ret-card d-block p-3 mb-2 bg-white rounded shadow-sm border border-light transition-all hover-shadow"
-                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or (chair_review and chair_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
+                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
                                 <div class="d-flex align-items-start gap-3">
                                     <div class="form-check mt-1">
                                         <input class="form-check-input research-checkbox" type="checkbox"
                                             name="ret_indicators[]" value="{{ ind.indicator_id }}" {% if ns.is_selected
-                                            %}checked{% endif %} {% if has_submitted or (chair_review and chair_review.overall_status == 'Rejected') %}disabled{% endif %}
+                                            %}checked{% endif %} {% if has_submitted or (chair_review and
+                                            chair_review.overall_status=='Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}disabled{% endif %}
                                             style="transform: scale(1.2);">
                                     </div>
                                     <div>
                                         <p class="mb-0 small text-secondary">
                                             {{ ind.indicator_description }}
-                                            <span class="badge bg-primary bg-opacity-10 text-primary ms-2">Qty: {{
-                                                ind.target_quantity }}</span>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary ms-2">Qty: {{ ns.quantity }}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -397,32 +407,38 @@
                         {% if ret_menu.extension_indicators|length > 0 %}
                         <div class="ret-options-container" style="max-height: 250px; overflow-y: auto;">
                             {% for ind in ret_menu.extension_indicators %}
-                            {% set ns = namespace(is_selected=false) %}
+                            {% set ns = namespace(is_selected=false, quantity=ind.target_quantity) %}
                             {% for t in assigned_targets %}
-                            {% if t.indicator_id == ind.indicator_id %}
+                            {% if t.indicator_id == ind.indicator_id and t.assigned_quantity > 0 %}
                             {% set ns.is_selected = true %}
+                            {% set ns.quantity = t.assigned_quantity %}
                             {% endif %}
                             {% endfor %}
                             <label
                                 class="ret-card d-block p-3 mb-2 bg-white rounded shadow-sm border border-light transition-all hover-shadow"
-                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or (chair_review and chair_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
+                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
                                 <div class="d-flex align-items-start gap-3">
                                     <div class="form-check mt-1">
                                         <input class="form-check-input extension-checkbox" type="checkbox"
                                             name="ret_indicators[]" value="{{ ind.indicator_id }}" {% if ns.is_selected
-                                            %}checked{% endif %} {% if has_submitted or (chair_review and chair_review.overall_status == 'Rejected') %}disabled{% endif %}
+                                            %}checked{% endif %} {% if has_submitted or (chair_review and
+                                            chair_review.overall_status=='Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}disabled{% endif %}
                                             style="transform: scale(1.2);">
                                     </div>
                                     <div>
                                         <p class="mb-0 small text-secondary">
                                             {{ ind.indicator_description }}
-                                            <span class="badge bg-warning bg-opacity-10 text-warning ms-2">Qty: {{
-                                                ind.target_quantity }}</span>
+                                            <span class="badge bg-warning bg-opacity-10 text-warning ms-2">Qty: {{ ns.quantity }}</span>
                                         </p>
                                     </div>
                                 </div>
                             </label>
                             {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-slash-circle fs-2 text-muted opacity-50 mb-2 d-block"></i>
+                            <p class="text-muted small">No Extension indicators available.</p>
                         </div>
                         {% endif %}
                     </div>
@@ -433,8 +449,8 @@
         <div class="mt-4 text-end">
             {% if not has_submitted %}
             <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="submitBtn" {% if
-                ret_menu.research_required> 0 or ret_menu.extension_required > 0 %}disabled{% endif %}>
-                {% if chair_review and chair_review.overall_status == 'Rejected' %}
+                ret_menu.research_required > 0 or ret_menu.extension_required > 0 %}disabled{% endif %}>
+                {% if (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}
                 <i class="bi bi-send-check-fill me-2"></i>Submit IPCR for Approval
                 {% else %}
                 <i class="bi bi-eye-fill me-2"></i>Submit IPCR for Review
@@ -446,11 +462,11 @@
                 {% endif %}
             </p>
             {% else %}
-            {% if is_locked %}
+            {% if is_locked or ipcr_status == 'completed' %}
             <div class="alert alert-dark d-inline-block border-0 shadow-sm rounded-pill px-4">
                 <i class="bi bi-lock-fill me-2"></i> Your IPCR is locked and committed.
             </div>
-            {% elif chair_review and chair_review.overall_status == 'Approved' %}
+            {% elif ipcr_status == 'approved_by_program_chair' %}
             <div class="d-inline-flex flex-column align-items-end gap-2">
                 <div class="alert alert-success border-0 shadow-sm rounded-pill px-4 py-2 m-0">
                     <i class="bi bi-check-circle-fill me-2"></i> Your IPCR has been approved by your Program Chair!
@@ -459,20 +475,16 @@
                     <i class="bi bi-lock-fill me-2"></i>Lock My IPCR
                 </button>
             </div>
-            {% elif chair_review and chair_review.overall_status == 'Rejected' %}
-            <div class="alert alert-danger d-inline-block border-0 shadow-sm rounded-pill px-4">
-                <i class="bi bi-arrow-counterclockwise me-2"></i> Returned by Program Chair (Read-Only)
-            </div>
             {% else %}
             <div class="alert alert-info d-inline-block border-0 shadow-sm rounded-pill px-4">
-                <i class="bi bi-info-circle-fill me-2"></i> Your IPCR is currently waiting for review.
+                <i class="bi bi-info-circle-fill me-2"></i> Your IPCR is currently waiting for Approval.
             </div>
             {% endif %}
             {% endif %}
         </div>
     </form>
 
-    {% if chair_review and chair_review.overall_status == 'Approved' and not is_locked %}
+    {% if ipcr_status == 'approved_by_program_chair' and not is_locked %}
     <form id="lockForm" action="{{ url_for('faculty.faculty_lock_ipcr') }}" method="POST" style="display:none;">
         <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
     </form>
@@ -512,7 +524,8 @@
                     class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-check-fill me-2"></i>My Evidence Submission
                         Checklist</h5>
-                    <span class="badge bg-light text-primary fw-semibold">{{ assigned_targets|length }} Target{{ 's' if assigned_targets|length != 1 }} Locked</span>
+                    <span class="badge bg-light text-primary fw-semibold">{{ assigned_targets|length }} Target{{ 's' if
+                        assigned_targets|length != 1 }} Locked</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -522,7 +535,7 @@
                                     <th class="ps-4" width="40%">Target Indicator</th>
                                     <th class="text-center" width="15%">Target Qty</th>
                                     <th class="text-center" width="15%">Accomplished Qty</th>
-                                    <th class="ps-3" width="30%">Evidence Submissions</th>
+                                    <th class="ps-3 text-center" width="30%">Evidence Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -534,86 +547,31 @@
                                         {% elif target.category_name == 'Support Functions' %}
                                         <span class="badge bg-light text-dark border mb-1">Support</span>
                                         {% else %}
-                                        <span class="badge bg-light text-dark border mb-1">{{ target.category_name }}</span>
+                                        <span class="badge bg-light text-dark border mb-1">{{ target.category_name
+                                            }}</span>
                                         {% endif %}
-                                        <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}</p>
+                                        <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}
+                                        </p>
                                     </td>
                                     <td class="text-center fw-bold fs-5 text-primary">
                                         {{ target.assigned_quantity }}
                                     </td>
                                     <td class="text-center fw-bold fs-5">
                                         {% if target.actual_quantity >= target.assigned_quantity %}
-                                            <span class="badge bg-success px-3 py-2 rounded-pill shadow-sm text-white" style="font-size: 0.85rem;"><i class="bi bi-check-circle-fill me-1"></i>{{ target.actual_quantity }}</span>
+                                        <span class="badge bg-success px-3 py-2 rounded-pill shadow-sm text-white"
+                                            style="font-size: 0.85rem;"><i class="bi bi-check-circle-fill me-1"></i>{{
+                                            target.actual_quantity }}</span>
                                         {% else %}
-                                            <span class="badge bg-secondary px-3 py-2 rounded-pill shadow-sm text-white" style="font-size: 0.85rem;">{{ target.actual_quantity }}</span>
+                                        <span class="badge bg-secondary px-3 py-2 rounded-pill shadow-sm text-white"
+                                            style="font-size: 0.85rem;">{{ target.actual_quantity }}</span>
                                         {% endif %}
                                     </td>
-                                    <td class="pe-4 py-4">
-                                        <div class="d-flex flex-column gap-2">
-                                            {% if target.evidence_list %}
-                                                {% for ev in target.evidence_list %}
-                                                <div class="p-2 border rounded bg-white shadow-xs d-flex align-items-center justify-content-between gap-3" style="border-radius: 8px;">
-                                                    <div class="d-flex align-items-center gap-2 overflow-hidden text-start">
-                                                        <i class="bi bi-file-earmark-arrow-up-fill text-primary fs-4"></i>
-                                                        <div class="text-start text-truncate" style="max-width: 250px;">
-                                                            {% set filename_parts = ev.file_path.split('/') %}
-                                                            {% set clean_name = filename_parts[-1][33:] %}
-                                                            <a href="/static/{{ ev.file_path }}" target="_blank" class="small fw-semibold text-decoration-none text-dark" title="View/Download">{{ clean_name }}</a>
-                                                            <div class="text-muted" style="font-size: 0.75rem;">
-                                                                Qty: {{ ev.actual_qty_Q }}
-                                                                {% if ev.is_co_authored %}
-                                                                    &bull; <span class="text-purple">Co-authored (by {{ ev.uploaded_by }})</span>
-                                                                {% endif %}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        {% if ev.verification_status == 'Approved' %}
-                                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.72rem;">Approved</span>
-                                                        {% elif ev.verification_status == 'Rejected' %}
-                                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.72rem;" title="Remarks: {{ ev.supervisor_comment or 'No comment' }}">Rejected</span>
-                                                        {% else %}
-                                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size: 0.72rem;">Pending</span>
-                                                        {% endif %}
-                                                        
-                                                        {% if ev.verification_status == 'Pending' %}
-                                                            {% if ev.is_co_authored %}
-                                                                <form action="{{ url_for('faculty.faculty_unclaim_evidence') }}" method="POST" class="m-0 d-inline">
-                                                                    <input type="hidden" name="co_author_id" value="{{ ev.co_author_id }}">
-                                                                    <input type="hidden" name="target_id" value="{{ target.target_id }}">
-                                                                    <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Unlink Co-authored paper">
-                                                                        <i class="bi bi-trash-fill"></i>
-                                                                    </button>
-                                                                </form>
-                                                            {% else %}
-                                                                <form action="{{ url_for('faculty.faculty_delete_evidence') }}" method="POST" class="m-0 d-inline">
-                                                                    <input type="hidden" name="evidence_id" value="{{ ev.evidence_id }}">
-                                                                    <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
-                                                                        <i class="bi bi-trash-fill"></i>
-                                                                    </button>
-                                                                </form>
-                                                            {% endif %}
-                                                        {% endif %}
-                                                    </div>
-                                                </div>
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted small italic text-start d-block mb-1">No evidence uploaded yet.</span>
-                                            {% endif %}
-                                            
-                                            <div class="d-flex gap-2 mt-2">
-                                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-3 fw-bold rounded-pill"
-                                                    onclick="openUploadModal('{{ target.target_id }}', '{{ target.indicator_id }}', {{ 'true' if 'Research' in target.category_name else 'false' }}, '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}')">
-                                                    <i class="bi bi-cloud-arrow-up-fill me-1"></i>Upload File
-                                                </button>
-                                                {% if 'Research' in target.category_name %}
-                                                    <button type="button" class="btn btn-sm btn-outline-purple py-1 px-3 fw-bold rounded-pill"
-                                                        onclick="openClaimModal('{{ target.target_id }}', '{{ target.indicator_id }}')">
-                                                        <i class="bi bi-link-45deg me-1"></i>Link Co-authored
-                                                    </button>
-                                                {% endif %}
-                                            </div>
-                                        </div>
+                                    <td class="text-center pe-4 py-4">
+                                        <button type="button"
+                                            class="btn btn-primary btn-sm px-4 py-2 fw-bold rounded-pill shadow-sm transition-all hover-shadow"
+                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', {{ 'true' if 'Research' in target.category_name else 'false' }}, '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.assigned_quantity }}', '{{ target.actual_quantity }}')">
+                                            <i class="bi bi-folder-plus me-1"></i>Add/View Evidence
+                                        </button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -647,17 +605,60 @@
     .text-purple {
         color: #6f42c1 !important;
     }
+
     .bg-purple {
         background-color: #6f42c1 !important;
     }
+
     .btn-outline-purple {
         color: #6f42c1;
         border-color: #6f42c1;
     }
+
     .btn-outline-purple:hover {
         color: #fff;
         background-color: #6f42c1;
         border-color: #6f42c1;
+    }
+
+    .shadow-xs {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .bg-success-subtle {
+        background-color: #d1e7dd !important;
+    }
+
+    .text-success {
+        color: #0f5132 !important;
+    }
+
+    .border-success-subtle {
+        border-color: #badbcc !important;
+    }
+
+    .bg-danger-subtle {
+        background-color: #f8d7da !important;
+    }
+
+    .text-danger {
+        color: #842029 !important;
+    }
+
+    .border-danger-subtle {
+        border-color: #f5c2c7 !important;
+    }
+
+    .bg-warning-subtle {
+        background-color: #fff3cd !important;
+    }
+
+    .text-warning {
+        color: #664d03 !important;
+    }
+
+    .border-warning-subtle {
+        border-color: #ffecb5 !important;
     }
 </style>
 
@@ -672,6 +673,7 @@
         const rRequiredCount = {{ ret_menu.research_required }};
         const eRequiredCount = {{ ret_menu.extension_required }};
         const hasSubmitted = {{ 'true' if has_submitted else 'false' }};
+        const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
 
     function updateSelectionCount() {
         let rSelected = Array.from(researchCheckboxes).filter(cb => cb.checked).length;
@@ -681,6 +683,14 @@
         if (eCountDisplay) eCountDisplay.innerText = `${eSelected} / ${eRequiredCount}`;
 
         if (hasSubmitted) return;
+
+        // If returned by RET Chair, the RET choices are locked.
+        // We should allow resubmitting since the faculty cannot modify these locked choices.
+        if (isRetRejected) {
+            if (submitBtn) submitBtn.disabled = false;
+            if (helpText) helpText.style.display = 'none';
+            return;
+        }
 
         let rValid = rSelected === rRequiredCount;
         let eValid = eSelected === eRequiredCount;
@@ -761,32 +771,42 @@
     if (submitBtn) {
         submitBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            const isRejected = {{ 'true' if (chair_review and chair_review.overall_status == 'Rejected') else 'false'
-    }};
+            const isChairRejected = {{ 'true' if (chair_review and chair_review.overall_status == 'Rejected') else 'false' }};
+            const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
 
-    if (isRejected) {
-        showCustomConfirm({
-            title: "Submit IPCR for Approval?",
-            mainText: "This will resubmit your draft IPCR for final approval.",
-            subText: "Your Program Chair will review and finalize the commitments.",
-            confirmText: "Yes, Submit",
-            confirmClass: "btn-success",
-            iconClass: "bi-send-check-fill",
-            onConfirm: () => document.getElementById('ipcrForm').submit()
-        });
-    } else {
-        showCustomConfirm({
-            title: "Submit IPCR for Review?",
-            mainText: "This will submit your draft IPCR to the Program Chair.",
-            subText: "They will verify your targets. You won't be able to edit while it is pending review.",
-            confirmText: "Yes, Submit for Review",
-            confirmClass: "btn-primary",
-            iconClass: "bi-eye-fill",
-            onConfirm: () => document.getElementById('ipcrForm').submit()
+            if (isChairRejected) {
+                showCustomConfirm({
+                    title: "Submit IPCR for Approval?",
+                    mainText: "This will resubmit your draft IPCR for final approval.",
+                    subText: "Your Program Chair will review and finalize the commitments.",
+                    confirmText: "Yes, Submit",
+                    confirmClass: "btn-success",
+                    iconClass: "bi-send-check-fill",
+                    onConfirm: () => document.getElementById('ipcrForm').submit()
+                });
+            } else if (isRetRejected) {
+                showCustomConfirm({
+                    title: "Submit IPCR for Approval?",
+                    mainText: "This will resubmit your draft to the RET Chair for final approval.",
+                    subText: "They will verify your targets. You won't be able to edit while it is pending review.",
+                    confirmText: "Yes, Submit for Approval",
+                    confirmClass: "btn-success",
+                    iconClass: "bi-send-check-fill",
+                    onConfirm: () => document.getElementById('ipcrForm').submit()
+                });
+            } else {
+                showCustomConfirm({
+                    title: "Submit IPCR for Review?",
+                    mainText: "This will submit your draft to the verifier for validation.",
+                    subText: "They will verify your targets. You won't be able to edit while it is pending review.",
+                    confirmText: "Yes, Submit for Review",
+                    confirmClass: "btn-primary",
+                    iconClass: "bi-eye-fill",
+                    onConfirm: () => document.getElementById('ipcrForm').submit()
+                });
+            }
         });
     }
-            });
-        }
 
     // Lock Button Event Hook
     const lockBtn = document.getElementById('lockBtn');
@@ -806,19 +826,35 @@
     }
 
     // Process 6 Modal helpers
-    window.openUploadModal = function (targetId, indicatorId, isResearch, description) {
-        document.getElementById('uploadTargetId').value = targetId;
-        document.getElementById('uploadIndicatorDesc').textContent = description;
+    window.openEvidenceModal = function (targetId, indicatorId, isResearch, description, targetQty, actualQty) {
+        // Set standard elements
+        document.getElementById('evidenceTargetId').value = targetId;
+        document.getElementById('evidenceIndicatorDesc').textContent = description;
+        document.getElementById('evidenceTargetQty').textContent = targetQty;
+        document.getElementById('evidenceActualQty').textContent = actualQty;
         document.getElementById('evidenceFile').value = '';
         document.getElementById('evidenceQty').value = '1';
-        
+
+        // Containers
+        const submissionsContainer = document.getElementById('submissionsListContainer');
+        submissionsContainer.innerHTML = '<div class="text-center text-muted py-3 small"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading submissions...</div>';
+
         const coAuthorSection = document.getElementById('coAuthorSection');
         const coAuthorList = document.getElementById('coAuthorList');
+        const claimCoAuthoredSection = document.getElementById('claimCoAuthoredSection');
+        const claimEvidenceListBody = document.getElementById('claimEvidenceListBody');
+
         coAuthorList.innerHTML = '';
-        
+        claimEvidenceListBody.innerHTML = '';
+
         if (isResearch) {
             coAuthorSection.style.display = 'block';
             coAuthorList.innerHTML = '<p class="text-muted small">Loading eligible co-authors...</p>';
+
+            claimCoAuthoredSection.style.display = 'block';
+            claimEvidenceListBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-2 small">Loading unclaimed files...</td></tr>';
+
+            // 1. Fetch eligible co-authors
             fetch(`/faculty/eligible_co_authors/${indicatorId}`)
                 .then(res => res.json())
                 .then(data => {
@@ -842,53 +878,130 @@
                 .catch(err => {
                     coAuthorList.innerHTML = '<p class="text-danger small text-start">Error loading co-authors.</p>';
                 });
+
+            // 2. Fetch unclaimed co-authored evidence
+            fetch(`/faculty/unclaimed_co_authored_evidence/${indicatorId}`)
+                .then(res => res.json())
+                .then(data => {
+                    claimEvidenceListBody.innerHTML = '';
+                    if (data.success && data.evidence_list.length > 0) {
+                        data.evidence_list.forEach(item => {
+                            const parts = item.file_path.split('/');
+                            const cleanName = parts[parts.length - 1].substring(33);
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class="small fw-semibold text-dark text-start">${cleanName}</td>
+                                <td class="text-center small">${item.actual_qty_Q}</td>
+                                <td class="small text-secondary text-start">${item.uploaded_by}</td>
+                                <td class="text-end">
+                                    <form action="/faculty/claim_evidence" method="POST" class="m-0">
+                                        <input type="hidden" name="co_author_id" value="${item.co_author_id}">
+                                        <input type="hidden" name="target_id" value="${targetId}">
+                                        <button type="submit" class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill" style="font-size: 0.75rem;">
+                                            Link File
+                                        </button>
+                                    </form>
+                                </td>
+                            `;
+                            claimEvidenceListBody.appendChild(row);
+                        });
+                    } else {
+                        claimEvidenceListBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3 small">No unclaimed co-authored files found.</td></tr>';
+                    }
+                })
+                .catch(err => {
+                    claimEvidenceListBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-2 small">Error loading co-authored files.</td></tr>';
+                });
         } else {
             coAuthorSection.style.display = 'none';
+            claimCoAuthoredSection.style.display = 'none';
         }
-        
-        const myModal = new bootstrap.Modal(document.getElementById('uploadEvidenceModal'));
-        myModal.show();
-    };
 
-    window.openClaimModal = function (targetId, indicatorId) {
-        document.getElementById('claimTargetId').value = targetId;
-        const listBody = document.getElementById('claimEvidenceListBody');
-        listBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Loading unclaimed documents...</td></tr>';
-        
-        fetch(`/faculty/unclaimed_co_authored_evidence/${indicatorId}`)
-            .then(res => res.json())
+        // 3. Fetch current submissions for the target
+        fetch(`/faculty/target_evidence/${targetId}/${indicatorId}`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+                }
+                return res.json();
+            })
             .then(data => {
-                listBody.innerHTML = '';
-                if (data.success && data.evidence_list.length > 0) {
-                    data.evidence_list.forEach(item => {
-                        const parts = item.file_path.split('/');
-                        const cleanName = parts[parts.length - 1].substring(33);
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="small fw-semibold text-dark text-start">${cleanName}</td>
-                            <td class="text-center small">${item.actual_qty_Q}</td>
-                            <td class="small text-secondary text-start">${item.uploaded_by}</td>
-                            <td class="text-end">
-                                <form action="/faculty/claim_evidence" method="POST" class="m-0">
-                                    <input type="hidden" name="co_author_id" value="${item.co_author_id}">
-                                    <input type="hidden" name="target_id" value="${targetId}">
-                                    <button type="submit" class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill">
-                                        Link File
-                                    </button>
-                                </form>
-                            </td>
-                        `;
-                        listBody.appendChild(row);
-                    });
+                submissionsContainer.innerHTML = '';
+                if (data.success) {
+                    if (data.evidence_list.length > 0) {
+                        data.evidence_list.forEach(ev => {
+                            const parts = ev.file_path.split('/');
+                            const cleanName = parts[parts.length - 1].substring(33);
+
+                            let badgeHtml = '';
+                            if (ev.verification_status === 'Approved') {
+                                badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.72rem;">Approved</span>`;
+                            } else if (ev.verification_status === 'Rejected') {
+                                const remarks = ev.supervisor_comment || 'No comment';
+                                badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.72rem;" title="Remarks: ${remarks}">Rejected</span>`;
+                            } else {
+                                badgeHtml = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size: 0.72rem;">Pending</span>`;
+                            }
+
+                            let actionHtml = '';
+                            if (ev.verification_status === 'Pending') {
+                                if (ev.is_co_authored) {
+                                    actionHtml = `
+                                        <form action="/faculty/unclaim_evidence" method="POST" class="m-0 d-inline">
+                                            <input type="hidden" name="co_author_id" value="${ev.co_author_id}">
+                                            <input type="hidden" name="target_id" value="${targetId}">
+                                            <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Unlink Co-authored paper">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    `;
+                                } else {
+                                    actionHtml = `
+                                        <form action="/faculty/delete_evidence" method="POST" class="m-0 d-inline">
+                                            <input type="hidden" name="evidence_id" value="${ev.evidence_id}">
+                                            <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    `;
+                                }
+                            }
+
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = 'p-3 border rounded bg-white shadow-xs d-flex align-items-center justify-content-between gap-3 text-start';
+                            itemDiv.style.borderRadius = '10px';
+                            itemDiv.innerHTML = `
+                                <div class="d-flex align-items-center gap-2 overflow-hidden text-start">
+                                    <i class="bi bi-file-earmark-arrow-up-fill text-primary fs-4"></i>
+                                    <div class="text-start text-truncate" style="max-width: 250px;">
+                                        <a href="/static/${ev.file_path}" target="_blank" class="small fw-semibold text-decoration-none text-dark" title="View/Download">${cleanName}</a>
+                                        <div class="text-muted" style="font-size: 0.75rem;">
+                                            Qty: ${ev.actual_qty_Q}
+                                            ${ev.is_co_authored ? `&bull; <span class="text-purple">Co-authored (by ${ev.uploaded_by})</span>` : ''}
+                                        </div>
+                                        ${ev.supervisor_comment ? `<div class="text-danger small mt-1" style="font-size: 0.72rem;"><strong>Remark:</strong> ${ev.supervisor_comment}</div>` : ''}
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    ${badgeHtml}
+                                    ${actionHtml}
+                                </div>
+                            `;
+                            submissionsContainer.appendChild(itemDiv);
+                        });
+                    } else {
+                        submissionsContainer.innerHTML = '<div class="text-center text-muted py-4 small">No evidence uploaded yet.</div>';
+                    }
                 } else {
-                    listBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No unclaimed co-authored files found for this indicator.</td></tr>';
+                    submissionsContainer.innerHTML = `<div class="text-center text-danger py-3 small">Error: ${data.message || 'Failed to load submissions'}</div>`;
                 }
             })
             .catch(err => {
-                listBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">Error loading co-authored files.</td></tr>';
+                submissionsContainer.innerHTML = `<div class="text-center text-danger py-3 small">Error loading submissions: ${err.message}</div>`;
             });
-            
-        const myModal = new bootstrap.Modal(document.getElementById('claimEvidenceModal'));
+
+        // Open Modal
+        const myModal = new bootstrap.Modal(document.getElementById('evidenceGatheringModal'));
         myModal.show();
     };
 
@@ -897,76 +1010,138 @@
     });
 </script>
 
-<!-- Upload Evidence Modal -->
-<div class="modal fade" id="uploadEvidenceModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<!-- Unified Evidence Gathering Modal -->
+<div class="modal fade" id="evidenceGatheringModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-            <div class="modal-header bg-primary text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-cloud-upload-fill me-2"></i>Upload Evidence</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="/faculty/upload_evidence" method="POST" enctype="multipart/form-data">
-                <div class="modal-body p-4">
-                    <input type="hidden" name="target_id" id="uploadTargetId">
-                    <div class="mb-3 text-start">
-                        <label class="form-label fw-semibold text-secondary">Indicator</label>
-                        <p id="uploadIndicatorDesc" class="form-control-plaintext small fw-bold text-dark bg-light p-2 rounded border text-start"></p>
-                    </div>
-                    <div class="mb-3 text-start">
-                        <label for="evidenceFile" class="form-label fw-semibold text-secondary">Select File</label>
-                        <input type="file" class="form-control" id="evidenceFile" name="file" required>
-                        <small class="text-muted">Allowed formats: .pdf, .png, .jpg, .jpeg, .docx (Max 10MB)</small>
-                    </div>
-                    <div class="mb-3 text-start">
-                        <label for="evidenceQty" class="form-label fw-semibold text-secondary">Accomplished Qty (Q)</label>
-                        <input type="number" class="form-control" id="evidenceQty" name="quantity" min="1" value="1" required style="max-width: 120px;">
-                        <small class="text-muted">Specify how many accomplishments this document represents.</small>
-                    </div>
-                    <div id="coAuthorSection" class="mb-3 text-start" style="display: none;">
-                        <label class="form-label fw-semibold text-purple"><i class="bi bi-people-fill me-1"></i>Tag Co-Authors</label>
-                        <div id="coAuthorList" class="p-3 border rounded bg-light" style="max-height: 200px; overflow-y: auto;">
-                            <!-- Checkboxes will be populated dynamically -->
-                        </div>
-                        <small class="text-muted">Tagged co-authors will see this paper in their co-authored list to link/claim it.</small>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                    <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-semibold px-4 rounded-pill">Upload & Submit</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Link Co-authored Evidence Modal -->
-<div class="modal fade" id="claimEvidenceModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-            <div class="modal-header bg-purple text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background-color: #6f42c1;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-link-45deg me-2"></i>Link Co-authored Document</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header text-white border-0 py-3"
+                style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+                <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-check-fill me-2"></i>Evidence Gathering
+                    Checklist</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <input type="hidden" id="claimTargetId">
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="text-start">File Name</th>
-                                <th class="text-center">Qty (Q)</th>
-                                <th class="text-start">Uploaded By</th>
-                                <th class="text-end">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="claimEvidenceListBody">
-                            <!-- Populated dynamically via AJAX -->
-                        </tbody>
-                    </table>
+                <!-- Target Header Box -->
+                <div class="mb-4 p-3 border border-light shadow-xs bg-light text-start" style="border-radius: 12px;">
+                    <div class="row align-items-center">
+                        <div class="col-md-8 text-start">
+                            <label class="form-label fw-bold text-secondary mb-1 small text-uppercase"
+                                style="letter-spacing: 0.5px;">Target Indicator</label>
+                            <p id="evidenceIndicatorDesc" class="mb-0 fw-semibold text-dark text-start"
+                                style="font-size: 0.95rem;"></p>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                            <span
+                                class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 rounded-pill me-2">
+                                Target Qty: <span id="evidenceTargetQty" class="fw-bold">0</span>
+                            </span>
+                            <span
+                                class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-3 py-2 rounded-pill">
+                                Accomplished: <span id="evidenceActualQty" class="fw-bold">0</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Left Column: Actions (Upload & Claims) -->
+                    <div class="col-lg-6">
+                        <!-- Upload Form -->
+                        <div class="card border border-light shadow-xs mb-4"
+                            style="border-radius: 12px; overflow: hidden;">
+                            <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
+                                <h6 class="fw-bold text-dark mb-0"><i
+                                        class="bi bi-cloud-upload-fill me-2 text-primary"></i>Upload New Evidence</h6>
+                            </div>
+                            <div class="card-body">
+                                <form id="uploadEvidenceForm" action="/faculty/upload_evidence" method="POST"
+                                    enctype="multipart/form-data" class="m-0">
+                                    <input type="hidden" name="target_id" id="evidenceTargetId">
+                                    <div class="mb-3 text-start">
+                                        <label for="evidenceFile"
+                                            class="form-label fw-semibold text-secondary small">Select File</label>
+                                        <input type="file" class="form-control" id="evidenceFile" name="file" required>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Allowed formats: .pdf,
+                                            .png, .jpg, .jpeg, .docx (Max 10MB)</small>
+                                    </div>
+                                    <div class="mb-3 text-start">
+                                        <label for="evidenceQty"
+                                            class="form-label fw-semibold text-secondary small">Accomplished Qty
+                                            (Q)</label>
+                                        <input type="number" class="form-control" id="evidenceQty" name="quantity"
+                                            min="1" value="1" required style="max-width: 120px;">
+                                        <small class="text-muted" style="font-size: 0.72rem;">Specify how many
+                                            accomplishments this document represents.</small>
+                                    </div>
+                                    <div id="coAuthorSection" class="mb-3 text-start" style="display: none;">
+                                        <label class="form-label fw-semibold text-purple small"><i
+                                                class="bi bi-people-fill me-1"></i>Tag Co-Authors</label>
+                                        <div id="coAuthorList" class="p-3 border rounded bg-light"
+                                            style="max-height: 150px; overflow-y: auto;">
+                                            <!-- Checkboxes populated dynamically -->
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Tagged co-authors will see
+                                            this paper in their co-authored list to link/claim it.</small>
+                                    </div>
+                                    <div class="text-start mt-2">
+                                        <button type="submit"
+                                            class="btn btn-primary fw-semibold px-4 rounded-pill">Upload &
+                                            Submit</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Claim/Link Section (Research only) -->
+                        <div id="claimCoAuthoredSection" class="card border border-light shadow-xs"
+                            style="border-radius: 12px; overflow: hidden; display: none;">
+                            <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
+                                <h6 class="fw-bold text-dark mb-0"><i class="bi bi-link-45deg me-2 text-purple"></i>Link
+                                    Co-authored Documents</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="small text-start">File Name</th>
+                                                <th class="small text-center">Qty</th>
+                                                <th class="small text-start">Uploaded By</th>
+                                                <th class="small text-end">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="claimEvidenceListBody">
+                                            <!-- Populated dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Submissions View -->
+                    <div class="col-lg-6">
+                        <div class="card border border-light shadow-xs h-100"
+                            style="border-radius: 12px; overflow: hidden;">
+                            <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
+                                <h6 class="fw-bold text-dark mb-0"><i class="bi bi-files me-2 text-success"></i>Current
+                                    Submissions</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="submissionsListContainer" class="d-flex flex-column gap-2"
+                                    style="max-height: 480px; overflow-y: auto;">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+            <div class="modal-footer border-0 p-3 bg-light"
+                style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill"
+                    data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
