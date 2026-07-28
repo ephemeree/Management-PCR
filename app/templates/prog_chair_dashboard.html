@@ -897,6 +897,9 @@
                 // Set up button warning for unapproved RET
                 const btnApprove = document.getElementById('btnApprove');
                 if (btnApprove) {
+                    btnApprove.dataset.decided = decided ? 'true' : 'false';
+                    btnApprove.dataset.unapprovedRet = hasUnapprovedRet ? 'true' : 'false';
+
                     if (hasUnapprovedRet) {
                         btnApprove.disabled = true;
                         btnApprove.setAttribute('title', 'Cannot approve. Awaiting RET Chair approval of Research/Extension targets.');
@@ -921,15 +924,67 @@
                     }
                 }
 
+                checkProgChairEdits();
             }
-
-
 
             // Show modal body and footer
             document.getElementById('modalLoader').style.display = 'none';
             document.getElementById('modalBody').style.display = 'block';
             document.getElementById('modalFooter').style.display = 'block';
-        }    // Helper to save all edits on review items
+        }
+
+        function checkProgChairEdits() {
+            const btnApprove = document.getElementById('btnApprove');
+            if (!btnApprove) return;
+
+            if (btnApprove.dataset.decided === 'true') {
+                btnApprove.disabled = true;
+                return;
+            }
+            if (btnApprove.dataset.unapprovedRet === 'true') {
+                btnApprove.disabled = true;
+                btnApprove.setAttribute('title', 'Cannot approve. Awaiting RET Chair approval of Research/Extension targets.');
+                return;
+            }
+
+            let hasEdits = false;
+            document.querySelectorAll('.reviewed-qty-input:not([disabled])').forEach(function (inp) {
+                const currentQty = parseInt(inp.value, 10);
+                const initialQty = parseInt(inp.dataset.initialVal, 10);
+                if (!isNaN(currentQty) && !isNaN(initialQty) && currentQty !== initialQty) {
+                    hasEdits = true;
+                }
+            });
+
+            if (hasEdits) {
+                btnApprove.disabled = true;
+                btnApprove.setAttribute('title', 'Target quantities were edited. You must return this IPCR to the faculty.');
+            } else {
+                btnApprove.disabled = false;
+                btnApprove.removeAttribute('title');
+            }
+        }
+
+        document.getElementById('reviewItemsBody')?.addEventListener('input', function (e) {
+            if (e.target.classList.contains('reviewed-qty-input')) {
+                const inp = e.target;
+                const currentQty = parseInt(inp.value, 10);
+                const originalQty = parseInt(inp.dataset.original || '0', 10);
+                const tag = inp.parentElement.querySelector('.qty-edited-tag');
+                if (tag) {
+                    if (!isNaN(currentQty) && currentQty !== originalQty) {
+                        tag.style.display = '';
+                        tag.className = 'qty-edited-tag text-warning d-block mt-1';
+                        tag.innerHTML = '<i class="bi bi-pencil-fill"></i> Edited';
+                    } else {
+                        tag.style.display = 'none';
+                    }
+                }
+                checkProgChairEdits();
+            }
+        });
+
+        // Helper to save all edits on review items
         function saveAllEdits() {
             const inputs = document.querySelectorAll('.reviewed-qty-input:not([disabled])');
             if (inputs.length === 0) return Promise.resolve({ success: true });

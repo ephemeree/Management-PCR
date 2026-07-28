@@ -120,16 +120,24 @@ def get_pending_drafts_count(cursor, specialization, term_id):
         SELECT COUNT(DISTINCT dt.emp_id)
         FROM tbl_draft_targets dt
         JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         JOIN tbl_employee_profiles ep ON dt.emp_id = ep.emp_id
-        LEFT JOIN tbl_ipcr_chair_review cr
-            ON cr.emp_id = dt.emp_id AND cr.term_id = %s
+        LEFT JOIN tbl_ipcr_chair_review cr ON cr.emp_id = dt.emp_id AND cr.term_id = mi.term_id
+        LEFT JOIN tbl_ipcr_chair_review_items ri ON ri.review_id = cr.review_id AND ri.draft_id = dt.draft_id
+        LEFT JOIN tbl_ipcr_ret_review rr ON rr.emp_id = dt.emp_id AND rr.term_id = mi.term_id
+        LEFT JOIN tbl_ipcr_ret_review_items rri ON rri.review_id = rr.review_id AND rri.indicator_id = dt.indicator_id
         WHERE mi.term_id = %s
           AND ep.specialization = %s
           AND ep.designation = 'Regular Faculty'
-          AND dt.review_status = 'Pending Review'
+          AND dt.review_status IN ('Pending Review', 'Waiting for Approval')
+          AND (
+              (tc.category_name IN ('A. Instructions', 'Support Functions') AND COALESCE(ri.reviewed_quantity, dt.proposed_quantity) > 0)
+              OR (tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') AND COALESCE(rri.reviewed_quantity, dt.proposed_quantity) > 0)
+              OR (tc.category_name NOT IN ('A. Instructions', 'Support Functions', 'A. Research', 'B. Extension Services / Training / Advisory') AND dt.proposed_quantity > 0)
+          )
           AND (cr.overall_status IS NULL OR cr.overall_status = 'Pending' OR cr.overall_status = 'Waiting for Approval')
     """
-    cursor.execute(query, (term_id, term_id, specialization))
+    cursor.execute(query, (term_id, specialization))
     result = cursor.fetchone()
     return result[0] if result else 0
 
@@ -147,11 +155,26 @@ def get_pending_draft_ipcrs(cursor, specialization, term_id):
             CONCAT(ep.first_name, ' ', ep.last_name) AS faculty_name,
             ep.academic_rank,
             ep.specialization,
-            COUNT(dt.draft_id)                          AS target_count,
+            (
+                SELECT COUNT(dt2.draft_id)
+                FROM tbl_draft_targets dt2
+                JOIN tbl_master_indicators mi2 ON dt2.indicator_id = mi2.indicator_id
+                JOIN tbl_target_categories tc2 ON mi2.category_id = tc2.category_id
+                LEFT JOIN tbl_ipcr_chair_review cr2 ON cr2.emp_id = ep.emp_id AND cr2.term_id = mi2.term_id
+                LEFT JOIN tbl_ipcr_chair_review_items ri2 ON ri2.review_id = cr2.review_id AND ri2.draft_id = dt2.draft_id
+                LEFT JOIN tbl_ipcr_ret_review rr2 ON rr2.emp_id = ep.emp_id AND rr2.term_id = mi2.term_id
+                LEFT JOIN tbl_ipcr_ret_review_items rri2 ON rri2.review_id = rr2.review_id AND rri2.indicator_id = dt2.indicator_id
+                WHERE dt2.emp_id = ep.emp_id AND mi2.term_id = %s
+                  AND (
+                      (tc2.category_name IN ('A. Instructions', 'Support Functions') AND COALESCE(ri2.reviewed_quantity, dt2.proposed_quantity) > 0)
+                      OR (tc2.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') AND COALESCE(rri2.reviewed_quantity, dt2.proposed_quantity) > 0)
+                      OR (tc2.category_name NOT IN ('A. Instructions', 'Support Functions', 'A. Research', 'B. Extension Services / Training / Advisory') AND dt2.proposed_quantity > 0)
+                  )
+            ) AS target_count,
             CASE 
                 WHEN (SELECT COUNT(*) FROM tbl_committed_targets ct 
                       JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
-                      WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s) > 0 THEN 'Locked'
+                      WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s AND ct.assigned_quantity > 0) > 0 THEN 'Locked'
                 ELSE MAX(dt.review_status)
             END AS review_status,
             cr.review_id,
@@ -170,14 +193,14 @@ def get_pending_draft_ipcrs(cursor, specialization, term_id):
           AND NOT EXISTS (
               SELECT 1 FROM tbl_committed_targets ct 
               JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
-              WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s
+              WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s AND ct.assigned_quantity > 0
           )
         GROUP BY ep.emp_id, ep.first_name, ep.last_name,
                  ep.academic_rank, ep.specialization,
                  cr.review_id, cr.overall_status, cr.overall_remarks, cr.reviewed_at
         ORDER BY ep.last_name, ep.first_name
     """
-    cursor.execute(query, (term_id, term_id, specialization, term_id))
+    cursor.execute(query, (term_id, term_id, term_id, specialization, term_id))
     columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
@@ -196,11 +219,11 @@ def get_locked_faculty_ipcrs(cursor, specialization, term_id):
             ep.specialization,
             (SELECT COUNT(*) FROM tbl_committed_targets ct 
              JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
-             WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s) AS target_count,
+             WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s AND ct.assigned_quantity > 0) AS target_count,
             CASE
                 WHEN (SELECT COUNT(*) FROM tbl_committed_targets ct 
                       JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
-                      WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s) > 0
+                      WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s AND ct.assigned_quantity > 0) > 0
                 THEN 'Locked'
                 ELSE 'Approved'
             END AS review_status,

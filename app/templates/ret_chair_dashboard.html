@@ -887,6 +887,30 @@
     // ── RET Review Modal Logic ──────────────────────────
     let retReviewData = null;
     let retReviewItems = [];
+    let retInitialSnapshot = null;
+
+    function checkRetEdits() {
+        const btnApprove = document.getElementById('btnRetApprove');
+        if (!btnApprove) return;
+        const isDecided = retReviewData && (retReviewData.overall_status === 'Approved' || retReviewData.overall_status === 'Rejected');
+        if (isDecided) {
+            btnApprove.disabled = true;
+            return;
+        }
+        if (!retInitialSnapshot) return;
+        const currentSnapshot = JSON.stringify(retReviewItems.map(x => ({
+            indicator_id: x.indicator_id,
+            reviewed_quantity: parseInt(x.reviewed_quantity) || 0
+        })).filter(x => x.reviewed_quantity > 0).sort((a, b) => a.indicator_id - b.indicator_id));
+
+        const hasEdits = (currentSnapshot !== retInitialSnapshot);
+        btnApprove.disabled = hasEdits;
+        if (hasEdits) {
+            btnApprove.title = "Target choices or quantities were modified. You must return this IPCR to the faculty.";
+        } else {
+            btnApprove.removeAttribute('title');
+        }
+    }
 
     console.log("[DEBUG] RET script loaded.");
 
@@ -930,6 +954,7 @@
                 const val = parseInt(input.value) || 0;
                 const item = retReviewItems.find(x => x.indicator_id === indId);
                 if (item) item.reviewed_quantity = val;
+                checkRetEdits();
             } else if (input.classList.contains('ret-item-remarks-input')) {
                 const val = input.value;
                 const item = retReviewItems.find(x => x.indicator_id === indId);
@@ -984,6 +1009,11 @@
         document.getElementById('retModalEmpId').value = data.emp_id;
         document.getElementById('retOverallRemarks').value = data.overall_remarks || '';
 
+        retInitialSnapshot = JSON.stringify(retReviewItems.map(x => ({
+            indicator_id: x.indicator_id,
+            reviewed_quantity: parseInt(x.reviewed_quantity) || 0
+        })).filter(x => x.reviewed_quantity > 0).sort((a, b) => a.indicator_id - b.indicator_id));
+
         // Status badge
         const badge = document.getElementById('retModalStatusBadge');
         const statusMap = {
@@ -1005,6 +1035,7 @@
         // Render both tables
         populateRetReviewItems(retReviewItems, isDecided);
         populateRetUnpickedItems(data.unpicked, isDecided);
+        checkRetEdits();
 
         // Show modal body and footer
         document.getElementById('retModalLoader').style.display = 'none';
@@ -1170,6 +1201,7 @@
             const isDecided = retReviewData.overall_status === 'Approved' || retReviewData.overall_status === 'Rejected';
             populateRetReviewItems(retReviewItems, isDecided);
             populateRetUnpickedItems(retReviewData.unpicked, isDecided);
+            checkRetEdits();
         }
     }
 
@@ -1199,6 +1231,7 @@
             const isDecided = retReviewData.overall_status === 'Approved' || retReviewData.overall_status === 'Rejected';
             populateRetReviewItems(retReviewItems, isDecided);
             populateRetUnpickedItems(retReviewData.unpicked, isDecided);
+            checkRetEdits();
         }
     }
 
@@ -1257,6 +1290,40 @@
         document.getElementById('retDecisionForm').submit();
     }
 
+    // Helper to show custom confirmation modal for RET Chair
+    window.showCustomRetConfirm = function ({ title, mainText, subText, confirmText, confirmClass, iconClass, onConfirm }) {
+        const modal = new bootstrap.Modal(document.getElementById('customRetConfirmModal'));
+
+        document.getElementById('retConfirmModalTitle').textContent = title;
+        document.getElementById('retConfirmModalTextMain').innerHTML = mainText;
+        document.getElementById('retConfirmModalTextSub').textContent = subText;
+
+        const confirmBtn = document.getElementById('retConfirmModalConfirmBtn');
+        confirmBtn.className = `btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2 ${confirmClass}`;
+
+        const confirmTextSpan = document.getElementById('retConfirmModalConfirmText');
+        confirmTextSpan.textContent = confirmText;
+
+        const icon = document.getElementById('retConfirmModalIcon');
+        if (iconClass) {
+            icon.className = `bi ${iconClass}`;
+            icon.style.display = '';
+        } else {
+            icon.style.display = 'none';
+        }
+
+        // Remove previous listeners
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.addEventListener('click', function () {
+            modal.hide();
+            onConfirm();
+        });
+
+        modal.show();
+    };
+
     window.submitRetDecision = function (action) {
         const remarksInput = document.getElementById('retOverallRemarks');
         const remarks = remarksInput.value.trim();
@@ -1270,10 +1337,61 @@
         }
 
         if (action === 'approve') {
-            proceedRetDecision('approve', remarks);
+            showCustomRetConfirm({
+                title: "Approve RET Choices?",
+                mainText: "This will approve the Research & Extension choices for this faculty member.",
+                subText: "They will be notified and can proceed to Program Chair verification.",
+                confirmText: "Yes, Approve",
+                confirmClass: "btn-success",
+                iconClass: "bi-check-circle-fill",
+                onConfirm: () => proceedRetDecision('approve', remarks)
+            });
         } else {
             proceedRetDecision('reject', remarks);
         }
     };
 </script>
+
+<!-- Custom Confirmation Modal for RET Chair (z-index 1060 to overlay on top of review modal) -->
+<div class="modal fade" id="customRetConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="font-size: 0.85rem; opacity: 0.6;"></button>
+            </div>
+            <div class="modal-body text-center px-4 pb-4 pt-1">
+                <h5 class="modal-title fw-bold text-dark mb-3" id="retConfirmModalTitle"
+                    style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
+                <p class="mb-2 text-secondary fw-semibold px-2" id="retConfirmModalTextMain"
+                    style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
+                <p class="text-muted small px-3 mb-0" id="retConfirmModalTextSub"
+                    style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
+                <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
+                    id="retConfirmModalCancelBtn"
+                    style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                <button type="button"
+                    class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
+                    id="retConfirmModalConfirmBtn"
+                    style="border-radius: 10px; font-size: 0.9rem; min-width: 140px; transition: all 0.2s;">
+                    <i class="" id="retConfirmModalIcon"></i>
+                    <span id="retConfirmModalConfirmText">Confirm</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #customRetConfirmModal .btn-close:focus {
+        box-shadow: none;
+    }
+
+    #customRetConfirmModal .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12) !important;
+    }
+</style>
 {% endblock %}

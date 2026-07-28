@@ -4,6 +4,17 @@ import time
 import logging
 from dotenv import load_dotenv
 
+# Ensure openpyxl is installed
+try:
+    import openpyxl
+except ImportError:
+    import subprocess
+    import sys
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
+    except Exception as e:
+        logging.error(f"Failed to auto-install openpyxl: {str(e)}")
+
 load_dotenv()
 
 # Configure logging

@@ -45,9 +45,9 @@
             </p>
         </div>
         <div>
-            <button class="btn btn-success fw-bold shadow-sm" onclick="alert('Export feature coming soon')">
-                <i class="bi bi-file-earmark-excel"></i> Export & Print DPCR
-            </button>
+            <a href="{{ url_for('dean.export_dpcr') }}" class="btn btn-success fw-bold shadow-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export DPCR (Excel)
+            </a>
         </div>
     </div>
 
