@@ -3,5 +3,6 @@ __pycache__/
 *.pyc
 .env
 .vscode/
+.github/
 *.deb
 TODO.md
