@@ -130,8 +130,7 @@
                 {% set ns_res.found = true %}
                 <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <span>
-                        <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('A. ', '')
-                            }}</span>
+                        <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('A. ', '') }}</span>
                         {{ ind.indicator_description }}
                     </span>
                     <span class="badge bg-primary rounded-pill px-3 py-2">Quota: {{ ind.dean_quota }}</span>
@@ -163,8 +162,7 @@
                 {% set ns_ext.found = true %}
                 <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <span>
-                        <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('B. ', '')
-                            }}</span>
+                        <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('B. ', '') }}</span>
                         {{ ind.indicator_description }}
                     </span>
                     <span class="badge bg-primary rounded-pill px-3 py-2">Quota: {{ ind.dean_quota }}</span>
@@ -207,8 +205,7 @@
                 whether quotas are met.</small>
         </div>
         <div class="card-body p-3">
-            {% for category_name, title in [('A. Research', 'Research'), ('B. Extension Services / Training / Advisory',
-            'Extension')] %}
+            {% for category_name, title in [('A. Research', 'Research'), ('B. Extension Services / Training / Advisory', 'Extension')] %}
             {% set ns_cat = namespace(found=false) %}
             {% for ind in ret_indicators %}
             {% if ind.category_name == category_name %}
@@ -238,9 +235,7 @@
                             <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully
                                 Distributed</span>
                             {% else %}
-                            <span class="badge bg-warning text-dark px-3 py-2"><i
-                                    class="bi bi-hourglass-split me-1"></i>Under Distributed (-{{ quota - distributed
-                                }})</span>
+                            <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Under Distributed (-{{ quota - distributed }})</span>
                             {% endif %}
                         </div>
                     </div>
@@ -270,41 +265,45 @@
                             <tr>
                                 <td class="fw-semibold small">
                                     {{ assignment.faculty_name }}
-                                 </td>
-                                 <td class="small">
+                                </td>
+                                <td class="small">
                                     {{ assignment.specialization or 'N/A' }}
-                                 </td>
-                                 <td class="text-center fw-bold text-primary small">
+                                </td>
+                                <td class="text-center fw-bold text-primary small">
                                     {{ assignment.target_quantity }}
-                                 </td>
-                                 <td class="text-center">
+                                </td>
+                                <td class="text-center">
                                     {% if assignment.review_status == 'Approved' %}
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
-                                            <i class="bi bi-check-circle-fill me-1"></i>
-                                            Approved
-                                        </span>
-                                    {% elif assignment.review_status == 'Rejected' or assignment.review_status == 'Returned' %}  
-                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small">
-                                            <i class="bi bi-arrow-counterclockwise me-1"></i>
-                                            Returned
-                                        </span>  
+                                    <span
+                                        class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
+                                        <i class="bi bi-check-circle-fill me-1"></i>
+                                        Approved
+                                    </span>
+                                    {% elif assignment.review_status == 'Rejected' or assignment.review_status ==
+                                    'Returned' %}
+                                    <span
+                                        class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                        Returned
+                                    </span>
                                     {% else %}
-                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small">
-                                            <i class="bi bi-hourglass-split me-1"></i>
-                                            Pending Review
-                                        </span>
+                                    <span
+                                        class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small">
+                                        <i class="bi bi-hourglass-split me-1"></i>
+                                        Pending Review
+                                    </span>
                                     {% endif %}
-                                 </td>
+                                </td>
                             </tr>
                             {% endif %}
                             {% endfor %}
                             {% if not ns_faculty.found %}
-                                    <tr>
-                                        <td colspan="4" class="text-center text-muted py-3">
-                                            <i class="bi bi-info-circle me-1"></i>
-                                            No faculty drafts available for this indicator yet.
-                                        </td>
-                                    </tr>
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    No faculty drafts available for this indicator yet.
+                                </td>
+                            </tr>
                             {% endif %}
                         </tbody>
                     </table>
@@ -336,7 +335,8 @@
             <span class="badge bg-primary"><i class="bi bi-gear-fill me-1"></i> Setup Rules</span>
         </div>
         <div class="card-body">
-            <p class="text-muted small mb-4">Map the registered research and extension targets to specific academic ranks to
+            <p class="text-muted small mb-4">Map the registered research and extension targets to specific academic
+                ranks to
                 generate the faculty selection menus.</p>
             <form action="{{ url_for('ret_chair.ret_chair_save_rule') }}" method="POST">
                 <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
@@ -382,7 +382,8 @@
                     <div class="row">
                         <!-- Research Indicators -->
                         <div class="col-md-6 mb-3">
-                            <div class="card shadow-sm border-0 h-100" style="border-top: 3px solid #0d6efd !important;">
+                            <div class="card shadow-sm border-0 h-100"
+                                style="border-top: 3px solid #0d6efd !important;">
                                 <div class="card-header bg-light py-2">
                                     <h6 class="fw-bold text-primary mb-0 small">Research Options</h6>
                                 </div>
@@ -405,8 +406,8 @@
                                         <div style="width: 80px;">
                                             <input type="number" class="form-control form-control-sm text-center"
                                                 id="qty_{{ ind.indicator_id }}"
-                                                name="research_quantity_{{ ind.indicator_id }}" value="1" min="1" disabled
-                                                placeholder="Qty">
+                                                name="research_quantity_{{ ind.indicator_id }}" value="1" min="1"
+                                                disabled placeholder="Qty">
                                         </div>
                                     </li>
                                     {% endif %}
@@ -420,7 +421,8 @@
                         </div>
                         <!-- Extension Indicators -->
                         <div class="col-md-6 mb-3">
-                            <div class="card shadow-sm border-0 h-100" style="border-top: 3px solid #fd7e14 !important;">
+                            <div class="card shadow-sm border-0 h-100"
+                                style="border-top: 3px solid #fd7e14 !important;">
                                 <div class="card-header bg-light py-2">
                                     <h6 class="fw-bold text-warning mb-0 small">Extension Options</h6>
                                 </div>
@@ -443,8 +445,8 @@
                                         <div style="width: 80px;">
                                             <input type="number" class="form-control form-control-sm text-center"
                                                 id="qty_{{ ind.indicator_id }}"
-                                                name="extension_quantity_{{ ind.indicator_id }}" value="1" min="1" disabled
-                                                placeholder="Qty">
+                                                name="extension_quantity_{{ ind.indicator_id }}" value="1" min="1"
+                                                disabled placeholder="Qty">
                                         </div>
                                     </li>
                                     {% endif %}
@@ -1082,6 +1084,11 @@
         document.getElementById('retModalFooter').style.display = 'block';
     }
 
+    function cleanCategoryName(catName) {
+        if (!catName) return '';
+        return catName.replace(/^A\.\s*/, '').replace(/^B\.\s*/, '').replace(/^C\.\s*/, '');
+    }
+
     function populateRetReviewItems(items, isDecided) {
         const tbody = document.getElementById('retReviewItemsBody');
         tbody.innerHTML = '';
@@ -1108,14 +1115,15 @@
 
         let lastCategory = null;
         activeItems.forEach(function (item) {
+            const displayCat = cleanCategoryName(item.category_name);
             // Insert category banner row if category changes
-            if (item.category_name !== lastCategory) {
-                lastCategory = item.category_name;
+            if (displayCat !== lastCategory) {
+                lastCategory = displayCat;
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-secondary';
                 headerTr.innerHTML = `
                     <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
-                        ${item.category_name}
+                        ${displayCat}
                     </td>
                 `;
                 tbody.appendChild(headerTr);
@@ -1129,7 +1137,7 @@
                 : item.original_quantity;
 
             tr.innerHTML = `
-                <td><span class="badge bg-light text-dark border small">${item.category_name}</span></td>
+                <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
                 <td>
                     <div class="small fw-semibold">${item.indicator_description}</div>
                     ${item.original_quantity === -1 ? '<span class="badge bg-info text-dark mt-1" style="font-size: 0.75rem; width: fit-content; display: block;">Added by RET</span>' : ''}
@@ -1183,14 +1191,15 @@
 
         let lastCategory = null;
         items.forEach(function (ind) {
+            const displayCat = cleanCategoryName(ind.category_name);
             // Insert category banner row if category changes
-            if (ind.category_name !== lastCategory) {
-                lastCategory = ind.category_name;
+            if (displayCat !== lastCategory) {
+                lastCategory = displayCat;
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-secondary';
                 headerTr.innerHTML = `
                     <td colspan="3" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
-                        ${ind.category_name}
+                        ${displayCat}
                     </td>
                 `;
                 tbody.appendChild(headerTr);
@@ -1199,7 +1208,7 @@
             const tr = document.createElement('tr');
             tr.className = 'table-warning';
             tr.innerHTML = `
-                <td><span class="badge bg-light text-dark border small">${ind.category_name}</span></td>
+                <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
                 <td>${ind.indicator_description}</td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-unpicked-btn fw-bold"

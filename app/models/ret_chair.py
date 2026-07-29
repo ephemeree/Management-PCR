@@ -150,12 +150,8 @@ def get_pending_ret_draft_ipcrs(cursor, term_id):
                 LEFT JOIN tbl_ipcr_ret_review rr2 ON rr2.emp_id = ep.emp_id AND rr2.term_id = mi2.term_id
                 LEFT JOIN tbl_ipcr_ret_review_items ri2 ON ri2.review_id = rr2.review_id AND ri2.draft_id = dt2.draft_id
                 WHERE dt2.emp_id = ep.emp_id AND mi2.term_id = %s
-<<<<<<< HEAD
                   AND (tc2.category_name LIKE '%%Research%%' OR tc2.category_name LIKE '%%Extension%%' OR tc2.category_name LIKE '%%Training%%' OR tc2.category_name LIKE '%%Advisory%%')
                   AND COALESCE(ri2.reviewed_quantity, dt2.proposed_quantity) > 0
-=======
-                  AND (tc2.category_name LIKE '%%Research%%' OR tc2.category_name LIKE '%%Extension%%' OR tc2.category_name LIKE '%%Training%%' OR tc2.category_name LIKE '%%Advisory%%')                  
->>>>>>> 398305084b4f5f062863456750496e4850d9fd05
             ) AS target_count,
             COALESCE(rr.overall_status, 'Pending Review') AS review_status,
             rr.review_id,

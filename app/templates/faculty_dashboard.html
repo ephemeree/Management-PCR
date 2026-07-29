@@ -123,7 +123,8 @@
                 <h6 class="fw-bold mb-1 text-danger">Your Research &amp; Extension choices were Returned by the RET
                     Chair</h6>
                 <p class="mb-1 text-dark"><strong>Remarks:</strong> {{ ret_review.overall_remarks }}</p>
-                <small class="text-muted">Please review the remarks and the edited choices below, and click "Submit IPCR for Approval" to resubmit.</small>
+                <small class="text-muted">Please review the remarks and the edited choices below, and click "Submit IPCR
+                    for Approval" to resubmit.</small>
             </div>
         </div>
     </div>
@@ -136,9 +137,11 @@
         <div class="d-flex align-items-start gap-3">
             <i class="bi bi-exclamation-circle-fill text-warning fs-4 mt-1" style="color: #d97706 !important;"></i>
             <div>
-                <h6 class="fw-bold mb-1" style="color: #b45309 !important;">Your Draft IPCR was Returned by your Program Chair</h6>
+                <h6 class="fw-bold mb-1" style="color: #b45309 !important;">Your Draft IPCR was Returned by your Program
+                    Chair</h6>
                 <p class="mb-1 text-dark"><strong>Remarks:</strong> {{ chair_review.overall_remarks }}</p>
-                <small class="text-muted">Please review the changes and remarks made by the Program Chair below, and click "Submit IPCR for Approval" to acknowledge and send it back for approval.</small>
+                <small class="text-muted">Please review the changes and remarks made by the Program Chair below, and
+                    click "Submit IPCR for Approval" to acknowledge and send it back for approval.</small>
             </div>
         </div>
     </div>
@@ -167,7 +170,8 @@
                 <h6 class="fw-bold mb-1" style="color: #b45309 !important;">
                     Waiting for RET Chair Approval
                     {% if ipcr_status == 'pending_ret_review' %}
-                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning ms-2" style="font-size: 0.75rem;">Under Active Review</span>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning ms-2"
+                        style="font-size: 0.75rem;">Under Active Review</span>
                     {% endif %}
                 </h6>
                 <p class="mb-0 text-muted small">Your selected Research and Extension targets are currently being
@@ -223,7 +227,7 @@
                 <!-- Instructions Card -->
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-star-fill me-2"></i>A. Strategic Priorities
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-star-fill me-2"></i>Strategic Priorities
                         </h5>
                         <p class="small mb-0 text-muted">Assigned teaching and instructional workloads</p>
                     </div>
@@ -278,7 +282,7 @@
                 <!-- Support Functions Card -->
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-tools me-2"></i>C. Support Functions</h5>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-tools me-2"></i>Support Functions</h5>
                         <p class="small mb-0 text-muted">Assigned administrative and support workloads</p>
                     </div>
                     <div class="card-body p-0">
@@ -365,13 +369,15 @@
                                         <input class="form-check-input research-checkbox" type="checkbox"
                                             name="ret_indicators[]" value="{{ ind.indicator_id }}" {% if ns.is_selected
                                             %}checked{% endif %} {% if has_submitted or (chair_review and
-                                            chair_review.overall_status=='Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}disabled{% endif %}
+                                            chair_review.overall_status=='Rejected' ) or (ret_review and
+                                            ret_review.overall_status=='Rejected' ) %}disabled{% endif %}
                                             style="transform: scale(1.2);">
                                     </div>
                                     <div>
                                         <p class="mb-0 small text-secondary">
                                             {{ ind.indicator_description }}
-                                            <span class="badge bg-primary bg-opacity-10 text-primary ms-2">Qty: {{ ns.quantity }}</span>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary ms-2">Qty: {{
+                                                ns.quantity }}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -422,13 +428,15 @@
                                         <input class="form-check-input extension-checkbox" type="checkbox"
                                             name="ret_indicators[]" value="{{ ind.indicator_id }}" {% if ns.is_selected
                                             %}checked{% endif %} {% if has_submitted or (chair_review and
-                                            chair_review.overall_status=='Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}disabled{% endif %}
+                                            chair_review.overall_status=='Rejected' ) or (ret_review and
+                                            ret_review.overall_status=='Rejected' ) %}disabled{% endif %}
                                             style="transform: scale(1.2);">
                                     </div>
                                     <div>
                                         <p class="mb-0 small text-secondary">
                                             {{ ind.indicator_description }}
-                                            <span class="badge bg-warning bg-opacity-10 text-warning ms-2">Qty: {{ ns.quantity }}</span>
+                                            <span class="badge bg-warning bg-opacity-10 text-warning ms-2">Qty: {{
+                                                ns.quantity }}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -449,8 +457,9 @@
         <div class="mt-4 text-end">
             {% if not has_submitted %}
             <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="submitBtn" {% if
-                ret_menu.research_required > 0 or ret_menu.extension_required > 0 %}disabled{% endif %}>
-                {% if (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}
+                ret_menu.research_required> 0 or ret_menu.extension_required > 0 %}disabled{% endif %}>
+                {% if (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and
+                ret_review.overall_status == 'Rejected') %}
                 <i class="bi bi-send-check-fill me-2"></i>Submit IPCR for Approval
                 {% else %}
                 <i class="bi bi-eye-fill me-2"></i>Submit IPCR for Review
@@ -547,8 +556,7 @@
                                         {% elif target.category_name == 'Support Functions' %}
                                         <span class="badge bg-light text-dark border mb-1">Support</span>
                                         {% else %}
-                                        <span class="badge bg-light text-dark border mb-1">{{ target.category_name
-                                            }}</span>
+                                        <span class="badge bg-light text-dark border mb-1">{{ target.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}</span>
                                         {% endif %}
                                         <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}
                                         </p>
@@ -569,7 +577,9 @@
                                     <td class="text-center pe-4 py-4">
                                         <button type="button"
                                             class="btn btn-primary btn-sm px-4 py-2 fw-bold rounded-pill shadow-sm transition-all hover-shadow"
-                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', {{ 'true' if 'Research' in target.category_name else 'false' }}, '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.assigned_quantity }}', '{{ target.actual_quantity }}')">
+                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', {{ 'true' if 'Research' in target.category_name else 'false' }}, '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '
+                                            \\\"') }}', '{{ target.assigned_quantity }}'
+                                            , '{{ target.actual_quantity }}' )">
                                             <i class="bi bi-folder-plus me-1"></i>Add/View Evidence
                                         </button>
                                     </td>
@@ -672,8 +682,8 @@
         const helpText = document.getElementById('submitHelpText');
         const rRequiredCount = {{ ret_menu.research_required }};
         const eRequiredCount = {{ ret_menu.extension_required }};
-        const hasSubmitted = {{ 'true' if has_submitted else 'false' }};
-        const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
+    const hasSubmitted = {{ 'true' if has_submitted else 'false' }};
+    const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
 
     function updateSelectionCount() {
         let rSelected = Array.from(researchCheckboxes).filter(cb => cb.checked).length;
@@ -771,40 +781,41 @@
     if (submitBtn) {
         submitBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            const isChairRejected = {{ 'true' if (chair_review and chair_review.overall_status == 'Rejected') else 'false' }};
-            const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
+            const isChairRejected = {{ 'true' if (chair_review and chair_review.overall_status == 'Rejected') else 'false'
+    }};
+    const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
 
-            if (isChairRejected) {
-                showCustomConfirm({
-                    title: "Submit IPCR for Approval?",
-                    mainText: "This will resubmit your draft IPCR for final approval.",
-                    subText: "Your Program Chair will review and finalize the commitments.",
-                    confirmText: "Yes, Submit",
-                    confirmClass: "btn-success",
-                    iconClass: "bi-send-check-fill",
-                    onConfirm: () => document.getElementById('ipcrForm').submit()
-                });
-            } else if (isRetRejected) {
-                showCustomConfirm({
-                    title: "Submit IPCR for Approval?",
-                    mainText: "This will resubmit your draft to the RET Chair for final approval.",
-                    subText: "They will verify your targets. You won't be able to edit while it is pending review.",
-                    confirmText: "Yes, Submit for Approval",
-                    confirmClass: "btn-success",
-                    iconClass: "bi-send-check-fill",
-                    onConfirm: () => document.getElementById('ipcrForm').submit()
-                });
-            } else {
-                showCustomConfirm({
-                    title: "Submit IPCR for Review?",
-                    mainText: "This will submit your draft to the verifier for validation.",
-                    subText: "They will verify your targets. You won't be able to edit while it is pending review.",
-                    confirmText: "Yes, Submit for Review",
-                    confirmClass: "btn-primary",
-                    iconClass: "bi-eye-fill",
-                    onConfirm: () => document.getElementById('ipcrForm').submit()
-                });
-            }
+    if (isChairRejected) {
+        showCustomConfirm({
+            title: "Submit IPCR for Approval?",
+            mainText: "This will resubmit your draft IPCR for final approval.",
+            subText: "Your Program Chair will review and finalize the commitments.",
+            confirmText: "Yes, Submit",
+            confirmClass: "btn-success",
+            iconClass: "bi-send-check-fill",
+            onConfirm: () => document.getElementById('ipcrForm').submit()
+        });
+    } else if (isRetRejected) {
+        showCustomConfirm({
+            title: "Submit IPCR for Approval?",
+            mainText: "This will resubmit your draft to the RET Chair for final approval.",
+            subText: "They will verify your targets. You won't be able to edit while it is pending review.",
+            confirmText: "Yes, Submit for Approval",
+            confirmClass: "btn-success",
+            iconClass: "bi-send-check-fill",
+            onConfirm: () => document.getElementById('ipcrForm').submit()
+        });
+    } else {
+        showCustomConfirm({
+            title: "Submit IPCR for Review?",
+            mainText: "This will submit your draft to the verifier for validation.",
+            subText: "They will verify your targets. You won't be able to edit while it is pending review.",
+            confirmText: "Yes, Submit for Review",
+            confirmClass: "btn-primary",
+            iconClass: "bi-eye-fill",
+            onConfirm: () => document.getElementById('ipcrForm').submit()
+        });
+    }
         });
     }
 
