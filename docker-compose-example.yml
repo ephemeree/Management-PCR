@@ -1,0 +1,51 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: dipcr-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./ipcr_db_dump.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - dipcr
+    healthcheck:
+      test: mysql -u${DB_USER} -p${DB_PASSWORD} -e "SELECT 1" 2>/dev/null || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+  web:
+    image: nightingzine/dipcr-web:alpha
+    container_name: dipcr-web
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY}
+      FLASK_DEBUG: "false"
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - evidence_data:/app/app/static/uploads/evidence
+    networks:
+      - dipcr
+
+volumes:
+  mysql_data:
+  evidence_data:
+
+networks:
+  dipcr:
+    driver: bridge
