@@ -372,16 +372,9 @@
         <!-- Accomplishments Column -->
         <div class="col-lg-12">
             <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
-<<<<<<< HEAD
                 <div
                     class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-check-fill me-2"></i>My Evidence Submission Checklist</h5>
-=======
-                <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-file-earmark-check-fill me-2"></i>My Evidence
-                        Submission
-                        Checklist</h5>
->>>>>>> main
                     {% set selected_targets_count = namespace(count=0) %}
                     {% for target in dpcr_targets %}
                     {% if target.is_selected %}
@@ -837,17 +830,9 @@
                                     enctype="multipart/form-data" class="m-0">
                                     <input type="hidden" name="target_id" id="evidenceTargetId">
                                     <div class="mb-3 text-start">
-<<<<<<< HEAD
                                         <label for="evidenceFile" class="form-label fw-semibold text-secondary small">Select File</label>
                                         <input type="file" class="form-control" id="evidenceFile" name="file" accept=".pdf,application/pdf" required>
                                         <small class="text-muted" style="font-size: 0.72rem;">Allowed format: .pdf (Max 10MB)</small>
-=======
-                                        <label for="evidenceFile"
-                                            class="form-label fw-semibold text-secondary small">Select File</label>
-                                        <input type="file" class="form-control" id="evidenceFile" name="file" required>
-                                        <small class="text-muted" style="font-size: 0.72rem;">Allowed formats: .pdf,
-                                            .png, .jpg, .jpeg, .docx (Max 10MB)</small>
->>>>>>> main
                                     </div>
                                     <div class="mb-3 text-start">
                                         <label for="evidenceQty"
