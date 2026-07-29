@@ -2,6 +2,7 @@ services:
   db:
     image: mysql:8.0
     container_name: dipcr-db
+    command: --log-bin-trust-function-creators=1
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
@@ -9,7 +10,6 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./ipcr_db_dump.sql:/docker-entrypoint-initdb.d/01-init.sql
     networks:
       - dipcr
     healthcheck:
