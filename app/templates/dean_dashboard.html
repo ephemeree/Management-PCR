@@ -603,7 +603,7 @@
                         {% for q in college_wide_quotas %}
                         <tr>
                             <td class="fw-bold">{{ q.indicator_description }}</td>
-                            <td>{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Strategic Priorities{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</td>
+                            <td>{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Instructions{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</td>
                             <td class="text-center">
                                 <span class="badge bg-success fs-6">{{ q.total_target_value }}</span>
                             </td>
@@ -639,7 +639,7 @@
                         <h6 class="fw-bold text-dark mb-1">
                             <i class="bi bi-bullseye text-success me-1"></i> {{ q.indicator_description }}
                         </h6>
-                        <span class="badge bg-secondary small">{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Strategic Priorities{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span>
+                        <span class="badge bg-secondary small">{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Instructions{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span>
                     </div>
                     <div class="d-flex align-items-center gap-3">
                         <div class="text-end">

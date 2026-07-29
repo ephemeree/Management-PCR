@@ -347,11 +347,11 @@
             {% if 'Research' in ind.category_name or 'Extension' in ind.category_name or 'EXTENSIONS' in ind.category_name %}
             {% set ns.found = true %}
             <tr>
-                <td style="width: 4%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
-                <td style="width: 28%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
-                <td style="width: 36%;" class="small">{{ ind.indicator_description }}</td>
-                <td style="width: 18%; text-align: center;"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
-                <td style="width: 14%; text-align: center;">
+                <td style="width: 5%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
+                <td style="width: 25%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
+                <td style="width: 50%;" class="small">{{ ind.indicator_description }}</td>
+                <td style="width: 10%; text-align: center;"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
+                <td style="width: 10%; text-align: center;">
                     {% if ind.is_cascaded %}
                     <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
                     {% else %}
@@ -375,11 +375,11 @@
             {% if ind.category_name == category_filter %}
             {% set ns.found = true %}
             <tr>
-                <td style="width: 4%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
-                <td style="width: 28%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
-                <td style="width: 36%;" class="small">{{ ind.indicator_description }}</td>
-                <td style="width: 18%; text-align: center;"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
-                <td style="width: 14%; text-align: center;">
+                <td style="width: 5%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
+                <td style="width: 25%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
+                <td style="width: 50%;" class="small">{{ ind.indicator_description }}</td>
+                <td style="width: 10%; text-align: center;"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
+                <td style="width: 10%; text-align: center;">
                     {% if ind.is_cascaded %}
                     <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
                     {% else %}
@@ -425,19 +425,19 @@
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
                             <colgroup>
-                                <col style="width: 4%;">
-                                <col style="width: 28%;">
-                                <col style="width: 36%;">
-                                <col style="width: 18%;">
-                                <col style="width: 14%;">
+                                <col style="width: 5%;">
+                                <col style="width: 25%;">
+                                <col style="width: 50%;">
+                                <col style="width: 10%;">
+                                <col style="width: 10%;">
                             </colgroup>
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 4%;" class="ps-3">#</th>
-                                    <th style="width: 28%;">Category</th>
-                                    <th style="width: 36%;">Description</th>
-                                    <th style="width: 18%; text-align: center;">Type</th>
-                                    <th style="width: 14%; text-align: center;">Actions</th>
+                                    <th style="width: 5%;" class="ps-3">#</th>
+                                    <th style="width: 25%;">Category</th>
+                                    <th style="width: 50%;">Description</th>
+                                    <th style="width: 10%; text-align: center;">Type</th>
+                                    <th style="width: 10%; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -463,19 +463,19 @@
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
                             <colgroup>
-                                <col style="width: 4%;">
-                                <col style="width: 28%;">
-                                <col style="width: 36%;">
-                                <col style="width: 18%;">
-                                <col style="width: 14%;">
+                                <col style="width: 5%;">
+                                <col style="width: 25%;">
+                                <col style="width: 50%;">
+                                <col style="width: 10%;">
+                                <col style="width: 10%;">
                             </colgroup>
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 4%;" class="ps-3">#</th>
-                                    <th style="width: 28%;">Category</th>
-                                    <th style="width: 36%;">Description</th>
-                                    <th style="width: 18%; text-align: center;">Type</th>
-                                    <th style="width: 14%; text-align: center;">Actions</th>
+                                    <th style="width: 5%;" class="ps-3">#</th>
+                                    <th style="width: 25%;">Category</th>
+                                    <th style="width: 50%;">Description</th>
+                                    <th style="width: 10%; text-align: center;">Type</th>
+                                    <th style="width: 10%; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -501,19 +501,19 @@
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
                             <colgroup>
-                                <col style="width: 4%;">
-                                <col style="width: 28%;">
-                                <col style="width: 36%;">
-                                <col style="width: 18%;">
-                                <col style="width: 14%;">
+                                <col style="width: 5%;">
+                                <col style="width: 25%;">
+                                <col style="width: 50%;">
+                                <col style="width: 10%;">
+                                <col style="width: 10%;">
                             </colgroup>
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 4%;" class="ps-3">#</th>
-                                    <th style="width: 28%;">Category</th>
-                                    <th style="width: 36%;">Description</th>
-                                    <th style="width: 18%; text-align: center;">Type</th>
-                                    <th style="width: 14%; text-align: center;">Actions</th>
+                                    <th style="width: 5%;" class="ps-3">#</th>
+                                    <th style="width: 25%;">Category</th>
+                                    <th style="width: 50%;">Description</th>
+                                    <th style="width: 10%; text-align: center;">Type</th>
+                                    <th style="width: 10%; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
