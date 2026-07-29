@@ -17,6 +17,7 @@ def ret_chair_dashboard():
         ret_indicators = []
         ret_rules = []
         pending_ret_drafts = []
+        ret_assignments = []
         pending_ret_count = 0
 
         ranks_result = timed_query(cursor,
@@ -29,6 +30,7 @@ def ret_chair_dashboard():
             ret_indicators = get_ret_indicators(cursor, term_id)
             ret_rules = get_ret_rules(cursor, term_id)
             pending_ret_drafts = get_pending_ret_draft_ipcrs(cursor, term_id)
+            ret_assignments = get_ret_target_assignments(cursor, term_id)
             # Enrich each draft with dynamically computed ipcr_status
             from app.models.connection import get_overall_ipcr_status
             for draft in pending_ret_drafts:
@@ -41,6 +43,7 @@ def ret_chair_dashboard():
                                ret_rules=ret_rules,
                                academic_ranks=academic_ranks,
                                pending_ret_drafts=pending_ret_drafts,
+                               ret_assignments=ret_assignments,
                                pending_ret_count=pending_ret_count)
     finally:
         cursor.close()

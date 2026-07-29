@@ -257,16 +257,55 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Faculty Member</th>
-                                <th class="text-center" width="150">Dept Quota</th>
-                                <th class="text-center" width="150">Distributed Targets</th>
+                                <th>Specialization</th>
+                                <th class="text-center" width="150">Quantity</th>
+                                <th class="text-center" width="150">Review Status</th>
                             </tr>
                         </thead>
                         <tbody>
+                            {% set ns_faculty = namespace(found=false) %}
+                            {% for assignment in ret_assignments %}
+                            {% if assignment.indicator_id == ind.indicator_id and assignment.target_quantity|int > 0 %}
+                            {% set ns_faculty.found = true %}
                             <tr>
-                                <td class="fw-semibold small">{{ ind.indicator_description }}</td>
-                                <td class="text-center fw-bold text-primary small">{{ quota }}</td>
-                                <td class="text-center fw-bold text-success small">{{ distributed }} / {{ quota }}</td>
+                                <td class="fw-semibold small">
+                                    {{ assignment.faculty_name }}
+                                 </td>
+                                 <td class="small">
+                                    {{ assignment.specialization or 'N/A' }}
+                                 </td>
+                                 <td class="text-center fw-bold text-primary small">
+                                    {{ assignment.target_quantity }}
+                                 </td>
+                                 <td class="text-center">
+                                    {% if assignment.review_status == 'Approved' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
+                                            <i class="bi bi-check-circle-fill me-1"></i>
+                                            Approved
+                                        </span>
+                                    {% elif assignment.review_status == 'Rejected' or assignment.review_status == 'Returned' %}  
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                            Returned
+                                        </span>  
+                                    {% else %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small">
+                                            <i class="bi bi-hourglass-split me-1"></i>
+                                            Pending Review
+                                        </span>
+                                    {% endif %}
+                                 </td>
                             </tr>
+                            {% endif %}
+                            {% endfor %}
+                            {% if not ns_faculty.found %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-3">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            No faculty drafts available for this indicator yet.
+                                        </td>
+                                    </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
@@ -599,7 +638,7 @@
                             <th>Faculty Name</th>
                             <th>Rank</th>
                             <th>Specialization</th>
-                            <th class="text-center">Targets Selected</th>
+                            <th class="text-center">Quantity</th>
                             <th>Status</th>
                             <th class="text-end pe-4">Actions</th>
                         </tr>
