@@ -74,16 +74,18 @@ def designated_dashboard():
             else:
                 can_edit = False
 
+        evidence_readiness = None
         if is_committed:
             can_edit = False
             has_submitted = True
-            from app.models.designated import get_designated_committed_targets
+            from app.models.designated import get_designated_committed_targets, check_designated_evidence_readiness
             from app.models.faculty import get_evidence_by_target
             dpcr_targets = get_designated_committed_targets(cursor, emp_id, term_id)
             for t in dpcr_targets:
                 t['is_selected'] = True
                 t['total_target_value'] = t['assigned_quantity']
                 t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+            evidence_readiness = check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets)
         elif can_edit:
             # Load standard selectable indicators
             standard_targets = get_designated_selectable_indicators(cursor, term_id)
@@ -118,10 +120,7 @@ def designated_dashboard():
                     t['is_selected'] = True
                 else:
                     t['total_target_value'] = 0
-                    t['status'] = None
-                    t['dean_remarks'] = None
-                    t['original_quantity'] = None
-                    t['reviewed_quantity'] = None
+                    t['status'] = 'Draft'
                     t['is_selected'] = False
                 dpcr_targets.append(t)
                 
@@ -160,7 +159,39 @@ def designated_dashboard():
                            dpcr_targets=dpcr_targets,
                            has_submitted=has_submitted,
                            can_edit=can_edit,
-                           dean_review=dean_review)
+                           dean_review=dean_review,
+                           evidence_readiness=evidence_readiness)
+
+
+@designated_bp.route('/submit_evidence', methods=['POST'])
+@role_required('DESIGNATED_FACULTY')
+def designated_submit_evidence():
+    emp_id = session.get('user_id')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            flash("No active term.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+
+        term_id = active_term['term_id']
+        from app.models.designated import submit_designated_evidences
+        success, msg = submit_designated_evidences(conn, cursor, emp_id, term_id)
+        if success:
+            flash(msg, "success")
+        else:
+            flash(msg, "danger")
+    except Exception as e:
+        flash(f"Error submitting evidences: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('designated.designated_dashboard'))
+
 
 
 @designated_bp.route('/submit', methods=['POST'])
@@ -263,11 +294,11 @@ def designated_upload_evidence():
         return redirect(url_for('designated.designated_dashboard'))
 
     # Check file extension
-    allowed_extensions = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
+    allowed_extensions = {'pdf'}
     filename = file.filename
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
     if ext not in allowed_extensions:
-        flash(f"Unsupported file format. Allowed formats: {', '.join(allowed_extensions)}", "danger")
+        flash("Unsupported file format. Allowed format: .pdf", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
     # Save the file

@@ -63,13 +63,15 @@ def faculty_dashboard():
         else:
             has_submitted = True
 
+        evidence_readiness = None
         if is_locked:
             has_submitted = True
-            from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
+            from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target, check_faculty_evidence_readiness
             assigned_targets = get_faculty_committed_targets(cursor, emp_id, term_id)
             # Fetch evidence for each target
             for target in assigned_targets:
                 target['evidence_list'] = get_evidence_by_target(cursor, target['target_id'], emp_id, target['indicator_id'])
+            evidence_readiness = check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets)
 
     cursor.close()
     conn.close()
@@ -84,7 +86,39 @@ def faculty_dashboard():
                            is_locked=is_locked,
                            chair_review=chair_review,
                            ret_review=ret_review,
-                           ipcr_status=ipcr_status)
+                           ipcr_status=ipcr_status,
+                           evidence_readiness=evidence_readiness)
+
+
+@faculty_bp.route('/submit_evidence', methods=['POST'])
+@role_required('FACULTY')
+def faculty_submit_evidence():
+    emp_id = session.get('user_id')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            flash("No active term.", "danger")
+            return redirect(url_for('faculty.faculty_dashboard'))
+
+        term_id = active_term['term_id']
+        from app.models.faculty import submit_faculty_evidences
+        success, msg = submit_faculty_evidences(conn, cursor, emp_id, term_id)
+        if success:
+            flash(msg, "success")
+        else:
+            flash(msg, "danger")
+    except Exception as e:
+        flash(f"Error submitting evidences: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('faculty.faculty_dashboard'))
+
 @faculty_bp.route('/submit_ipcr', methods=['POST'])
 @role_required('FACULTY')
 def faculty_submit_ipcr():
@@ -220,11 +254,11 @@ def faculty_upload_evidence():
         return redirect(url_for('faculty.faculty_dashboard'))
 
     # Check file extension
-    allowed_extensions = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
+    allowed_extensions = {'pdf'}
     filename = file.filename
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
     if ext not in allowed_extensions:
-        flash(f"Unsupported file format. Allowed formats: {', '.join(allowed_extensions)}", "danger")
+        flash("Unsupported file format. Allowed format: .pdf", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
     # Save the file

@@ -502,3 +502,71 @@ def get_tagged_co_authors(cursor, evidence_id):
     """
     return timed_query(cursor, query, (evidence_id,), label="get_tagged_co_authors")
 
+
+
+def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
+    if not assigned_targets:
+        return {
+            'all_evidence_ready': False,
+            'evidence_submitted': False,
+            'total_targets': 0,
+            'targets_with_evidence': 0,
+            'targets_met_qty': 0
+        }
+
+    total_targets = len(assigned_targets)
+    targets_with_evidence = 0
+    targets_met_qty = 0
+    submitted_count = 0
+
+    for t in assigned_targets:
+        ev_list = t.get('evidence_list')
+        if ev_list is None:
+            ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+            t['evidence_list'] = ev_list
+
+        if len(ev_list) > 0:
+            targets_with_evidence += 1
+
+        actual_q = t.get('actual_quantity') or 0
+        assigned_q = t.get('assigned_quantity') or 0
+        if actual_q >= assigned_q and assigned_q > 0:
+            targets_met_qty += 1
+
+        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified'):
+            submitted_count += 1
+
+    all_ready = (total_targets > 0) and (targets_with_evidence == total_targets) and (targets_met_qty == total_targets)
+    evidence_submitted = (submitted_count == total_targets) and (total_targets > 0)
+
+    return {
+        'all_evidence_ready': all_ready,
+        'evidence_submitted': evidence_submitted,
+        'total_targets': total_targets,
+        'targets_with_evidence': targets_with_evidence,
+        'targets_met_qty': targets_met_qty
+    }
+
+
+def submit_faculty_evidences(conn, cursor, emp_id, term_id):
+    targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+    if not targets:
+        return False, "No committed targets found."
+
+    readiness = check_faculty_evidence_readiness(cursor, emp_id, term_id, targets)
+    if readiness['evidence_submitted']:
+        return False, "Evidences have already been submitted for verification."
+
+    if not readiness['all_evidence_ready']:
+        return False, "All targets must have uploaded evidence and meet target quantities before submitting."
+
+    try:
+        update_sql = "UPDATE tbl_committed_targets ct JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id SET ct.status = 'Submitted' WHERE ct.emp_id = %s AND mi.term_id = %s"
+        cursor.execute(update_sql, (emp_id, term_id))
+        conn.commit()
+        return True, "Evidences submitted successfully for verification."
+    except Exception as e:
+        conn.rollback()
+        return False, f"Error submitting evidences: {str(e)}"
+
+

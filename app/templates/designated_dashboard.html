@@ -362,34 +362,22 @@
         </span>
     </div>
 
-    <div class="alert border-0 shadow-sm mb-4" role="alert"
-        style="background: linear-gradient(135deg, #eaf2ff 0%, #dbe9ff 100%); border-left: 5px solid #0d6efd !important; border-radius: 10px;">
-        <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-info-circle-fill text-primary fs-4 mt-1"></i>
-            <div>
-                <h6 class="fw-bold text-primary mb-1">Committed Evaluation Targets</h6>
-                <p class="mb-0 text-muted small">Please fill out the accomplishment boxes and upload necessary files for
-                    verification by your department dean.</p>
-            </div>
-        </div>
-    </div>
-
     <div class="row g-4">
         <!-- Accomplishments Column -->
         <div class="col-lg-12">
             <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                 <div
-                    class="card-header border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-file-earmark-check-fill me-2"></i>My Evidence Submission
-                        Checklist</h5>
+                    class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-check-fill me-2"></i>My Evidence Submission Checklist</h5>
                     {% set selected_targets_count = namespace(count=0) %}
                     {% for target in dpcr_targets %}
                     {% if target.is_selected %}
                     {% set selected_targets_count.count = selected_targets_count.count + 1 %}
                     {% endif %}
                     {% endfor %}
-                    <span class="badge bg-light text-primary fw-semibold">{{ selected_targets_count.count }} Target{{
-                        's' if selected_targets_count.count != 1 }} Locked</span>
+                    <span class="badge bg-light text-primary fw-bold fs-6">
+                        <i class="bi bi-card-checklist me-1"></i>Progress: {{ evidence_readiness.targets_met_qty if evidence_readiness else 0 }} / {{ evidence_readiness.total_targets if evidence_readiness else selected_targets_count.count }} Completed
+                    </span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">                        <table class="table align-middle mb-0">
@@ -445,6 +433,24 @@
                     </div>
                 </div>
             </div>
+
+            {% if evidence_readiness %}
+            <div class="mt-3 text-end">
+                {% if evidence_readiness.evidence_submitted %}
+                <span class="badge bg-success px-4 py-3 fs-6 shadow-sm rounded-pill">
+                    <i class="bi bi-check-circle-fill me-2"></i>Evidences Submitted for Verification
+                </span>
+                {% else %}
+                <form id="submitEvidenceForm" action="{{ url_for('designated.designated_submit_evidence') }}" method="POST" class="d-inline">
+                    <button type="button" id="submitEvidenceBtn"
+                        class="btn {% if evidence_readiness.all_evidence_ready %}btn-success shadow-lg{% else %}btn-secondary opacity-75{% endif %} btn-lg px-5 fw-bold rounded-pill transition-all"
+                        {% if not evidence_readiness.all_evidence_ready %}disabled title="Upload evidence to all targets and reach target quantities to unlock"{% endif %}>
+                        <i class="bi bi-send-check-fill me-2"></i>Submit Evidences
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -607,7 +613,58 @@
                 }
             });
         }
+
+        // Helper to show custom confirmation modal
+        window.showCustomConfirm = function ({ title, mainText, subText, confirmText, confirmClass, iconClass, onConfirm }) {
+            const modal = new bootstrap.Modal(document.getElementById('customConfirmModal'));
+
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalTextMain').innerHTML = mainText;
+            document.getElementById('confirmModalTextSub').textContent = subText;
+
+            const confirmBtn = document.getElementById('confirmModalConfirmBtn');
+            confirmBtn.className = `btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2 ${confirmClass}`;
+
+            const confirmTextSpan = document.getElementById('confirmModalConfirmText');
+            confirmTextSpan.textContent = confirmText;
+
+            const icon = document.getElementById('confirmModalIcon');
+            if (iconClass) {
+                icon.className = `bi ${iconClass}`;
+                icon.style.display = '';
+            } else {
+                icon.style.display = 'none';
+            }
+
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.addEventListener('click', function () {
+                modal.hide();
+                onConfirm();
+            });
+
+            modal.show();
+        };
+
+        // Submit Evidences Button Event Hook
+        const submitEvidenceBtn = document.getElementById('submitEvidenceBtn');
+        if (submitEvidenceBtn && !submitEvidenceBtn.disabled) {
+            submitEvidenceBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                showCustomConfirm({
+                    title: "Submit Evidences for Verification?",
+                    mainText: "This will submit all your uploaded evidence files and accomplished quantities for verification.",
+                    subText: "Your department Dean will verify your evidence submissions. You will still be able to view your files.",
+                    confirmText: "Yes, Submit Evidences",
+                    confirmClass: "btn-success",
+                    iconClass: "bi-send-check-fill",
+                    onConfirm: () => document.getElementById('submitEvidenceForm').submit()
+                });
+            });
+        }
     });
+
 
     function checkEmptyTable(categoryId) {
         const tbody = document.getElementById(`tbody-${categoryId}`);
@@ -752,8 +809,8 @@
                                     <input type="hidden" name="target_id" id="evidenceTargetId">
                                     <div class="mb-3 text-start">
                                         <label for="evidenceFile" class="form-label fw-semibold text-secondary small">Select File</label>
-                                        <input type="file" class="form-control" id="evidenceFile" name="file" required>
-                                        <small class="text-muted" style="font-size: 0.72rem;">Allowed formats: .pdf, .png, .jpg, .jpeg, .docx (Max 10MB)</small>
+                                        <input type="file" class="form-control" id="evidenceFile" name="file" accept=".pdf,application/pdf" required>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Allowed format: .pdf (Max 10MB)</small>
                                     </div>
                                     <div class="mb-3 text-start">
                                         <label for="evidenceQty" class="form-label fw-semibold text-secondary small">Accomplished Qty (Q)</label>
@@ -785,6 +842,38 @@
             </div>
             <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
                 <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Confirmation Modal -->
+<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="font-size: 0.85rem; opacity: 0.6;"></button>
+            </div>
+            <div class="modal-body text-center px-4 pb-4 pt-1">
+                <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle"
+                    style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
+                <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain"
+                    style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
+                <p class="text-muted small px-3 mb-0" id="confirmModalTextSub"
+                    style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
+                <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
+                    id="confirmModalCancelBtn"
+                    style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                <button type="button"
+                    class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
+                    id="confirmModalConfirmBtn"
+                    style="border-radius: 10px; font-size: 0.9rem; min-width: 140px; transition: all 0.2s;">
+                    <i class="" id="confirmModalIcon"></i>
+                    <span id="confirmModalConfirmText">Confirm</span>
+                </button>
             </div>
         </div>
     </div>
