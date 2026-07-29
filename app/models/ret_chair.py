@@ -148,7 +148,7 @@ def get_pending_ret_draft_ipcrs(cursor, term_id):
                 JOIN tbl_master_indicators mi2 ON dt2.indicator_id = mi2.indicator_id
                 JOIN tbl_target_categories tc2 ON mi2.category_id = tc2.category_id
                 WHERE dt2.emp_id = ep.emp_id AND mi2.term_id = %s
-                  AND (tc2.category_name LIKE '%%Research%%' OR tc2.category_name LIKE '%%Extension%%' OR tc2.category_name LIKE '%%Training%%' OR tc2.category_name LIKE '%%Advisory%%')
+                  AND (tc2.category_name LIKE '%%Research%%' OR tc2.category_name LIKE '%%Extension%%' OR tc2.category_name LIKE '%%Training%%' OR tc2.category_name LIKE '%%Advisory%%')                  
             ) AS target_count,
             COALESCE(rr.overall_status, 'Pending Review') AS review_status,
             rr.review_id,
@@ -167,6 +167,40 @@ def get_pending_ret_draft_ipcrs(cursor, term_id):
         ORDER BY ep.last_name, ep.first_name
     """
     cursor.execute(query, (term_id, term_id, term_id))
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+def get_ret_target_assignments(cursor, term_id):
+    """
+    Returns individual RET target assignments with quantities.
+    Used for the new task assignment tracking.
+    """
+    query = """
+        SELECT
+            ep.emp_id,
+            CONCAT(ep.first_name, ' ', ep.last_name) AS faculty_name,
+            ep.academic_rank,
+            ep.specialization,
+            dt.indicator_id,
+            mi.indicator_description,
+            tc.category_name,
+            dt.proposed_quantity AS target_quantity,
+            dt.review_status
+        FROM tbl_draft_targets dt
+        JOIN tbl_employee_profiles ep ON dt.emp_id = ep.emp_id
+        JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        WHERE mi.term_id = %s
+          AND ep.designation = 'Regular Faculty'
+          AND (tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%' OR tc.category_name LIKE '%%Training%%' OR tc.category_name LIKE '%%Advisory%%')
+        ORDER BY
+            ep.last_name,
+            ep.first_name,
+            tc.category_name,
+            mi.indicator_id
+    """
+
+    cursor.execute(query, (term_id,))
     columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
