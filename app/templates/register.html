@@ -2,34 +2,158 @@
 {% block title %}Claim Your Account{% endblock %}
 
 {% block auth_content %}
-<div class="text-center mb-4">
-    <h4 class="fw-bold">Claim Your Account</h4>
-    <div class="alert alert-warning border-0 shadow-sm mt-3" style="font-size: 0.85em; text-align: left;">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        <strong>HR Notice:</strong> Your profile must be pre-registered by HR. If your ID is not recognized, please contact the System Administrator.
+<div class="mb-3">
+    <div class="alert border-0 shadow-sm p-2 mb-3" style="font-size: 0.82rem; border-radius: 10px; background-color: #fef9c3; color: #854d0e;">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>HR Notice:</strong> Your profile must be pre-registered by HR.
     </div>
+    
+    <h3 class="fw-bold mb-1" style="color: #0f172a; font-size: 1.75rem;">Claim Your Account</h3>
+    <p class="text-secondary small mb-0" style="font-size: 0.88rem;">Set up your credentials to access your profile.</p>
 </div>
 
-<form action="{{ url_for('auth.register') }}" method="POST">
+<form id="registerForm" action="{{ url_for('auth.register') }}" method="POST">
     <div class="mb-3">
-        <label for="employee_id_number" class="form-label text-muted small fw-bold">Employee ID Number</label>
+        <label for="employee_id_number" class="form-label text-dark small fw-bold mb-1">Employee ID Number</label>
         <input type="text" name="employee_id_number" id="employee_id_number" class="form-control" placeholder="Official ID (e.g. 2024-1045)" required autofocus>
     </div>
     
     <div class="mb-3">
-        <label for="email" class="form-label text-muted small fw-bold">Corporate Email</label>
+        <label for="email" class="form-label text-dark small fw-bold mb-1">Corporate Email</label>
         <input type="email" name="email" id="email" class="form-control" placeholder="name@company.com" required>
     </div>
     
-    <div class="mb-4">
-        <label for="password" class="form-label text-muted small fw-bold">Create Password</label>
-        <input type="password" name="password" id="password" class="form-control" placeholder="••••••••" required>
+    <!-- New password -->
+    <div class="mb-3">
+        <label for="password" class="form-label text-dark small fw-bold mb-1">New password</label>
+        <div class="password-field-wrapper">
+            <input type="password" name="password" id="password" class="form-control" placeholder="SamplePassword@123" required>
+            <button class="toggle-password-btn" type="button" data-target="password" tabindex="-1" title="Toggle Password Visibility">
+                <i class="bi bi-eye-slash fs-5"></i>
+            </button>
+        </div>
     </div>
-    
-    <button type="submit" class="btn btn-dipcr w-100 mb-3">Claim Account</button>
+
+    <!-- Confirm password -->
+    <div class="mb-3">
+        <label for="confirm_password" class="form-label text-dark small fw-bold mb-1">Confirm password</label>
+        <div class="password-field-wrapper">
+            <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="SamplePassword@123" required>
+            <button class="toggle-password-btn" type="button" data-target="confirm_password" tabindex="-1" title="Toggle Password Visibility">
+                <i class="bi bi-eye-slash fs-5"></i>
+            </button>
+        </div>
+        <div id="confirmPasswordError" class="text-danger small mt-1" style="display: none;">
+            <i class="bi bi-exclamation-circle me-1"></i> Passwords do not match.
+        </div>
+    </div>
+
+    <!-- Password policy section (2 Columns matching reference image) -->
+    <div class="password-policy-box" id="passwordPolicyBox">
+        <div class="policy-title">Password policy</div>
+        <div class="row row-cols-2 g-2">
+            <div class="col">
+                <div id="req-length" class="policy-item invalid">
+                    <i class="bi bi-check2 me-2"></i> <span>At least 8 characters</span>
+                </div>
+                <div id="req-uppercase" class="policy-item invalid">
+                    <i class="bi bi-check2 me-2"></i> <span>One uppercase letter</span>
+                </div>
+                <div id="req-lowercase" class="policy-item invalid">
+                    <i class="bi bi-check2 me-2"></i> <span>One lowercase letter</span>
+                </div>
+            </div>
+            <div class="col">
+                <div id="req-number" class="policy-item invalid">
+                    <i class="bi bi-check2 me-2"></i> <span>One number</span>
+                </div>
+                <div id="req-special" class="policy-item invalid">
+                    <i class="bi bi-check2 me-2"></i> <span>One special character</span>
+                </div>
+                <div id="req-nospace" class="policy-item valid">
+                    <i class="bi bi-check2 me-2"></i> <span>No spaces</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" id="claimAccountBtn" class="btn btn-dipcr w-100 mb-3" style="padding: 12px;">Claim Account</button>
 </form>
 
 <div class="text-center">
-    <p class="mb-0 small text-muted">Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></p>
+    <p class="mb-0 small text-secondary">Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></p>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const confirmError = document.getElementById('confirmPasswordError');
+    const registerForm = document.getElementById('registerForm');
+
+    function checkPasswordPolicy() {
+        const val = passwordInput ? passwordInput.value || '' : '';
+
+        const hasLength = val.length >= 8;
+        const hasLower = /[a-z]/.test(val);
+        const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(val);
+        const hasUpper = /[A-Z]/.test(val);
+        const hasNumber = /[0-9]/.test(val);
+        const noSpace = val.length === 0 || !/\s/.test(val);
+
+        updateReq('req-length', hasLength);
+        updateReq('req-lowercase', hasLower);
+        updateReq('req-special', hasSpecial);
+        updateReq('req-uppercase', hasUpper);
+        updateReq('req-number', hasNumber);
+        updateReq('req-nospace', noSpace);
+
+        let isConfirmValid = true;
+        if (confirmPasswordInput && confirmPasswordInput.value) {
+            if (confirmPasswordInput.value !== val) {
+                confirmError.style.display = 'block';
+                isConfirmValid = false;
+            } else {
+                confirmError.style.display = 'none';
+            }
+        } else {
+            confirmError.style.display = 'none';
+        }
+
+        return hasLength && hasLower && hasSpecial && hasUpper && hasNumber && noSpace && isConfirmValid;
+    }
+
+    function updateReq(id, isValid) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (isValid) {
+            el.className = 'policy-item valid';
+        } else {
+            el.className = 'policy-item invalid';
+        }
+    }
+
+    if (passwordInput) {
+        passwordInput.addEventListener('input', checkPasswordPolicy);
+    }
+    if (confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('input', checkPasswordPolicy);
+    }
+
+    if (registerForm) {
+        registerForm.addEventListener('submit', function(e) {
+            if (!checkPasswordPolicy()) {
+                e.preventDefault();
+                if (confirmPasswordInput && passwordInput.value !== confirmPasswordInput.value) {
+                    confirmError.style.display = 'block';
+                    confirmPasswordInput.focus();
+                } else {
+                    alert('Password does not meet all security policy requirements. Please check the rules below.');
+                    passwordInput.focus();
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

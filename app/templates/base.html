@@ -11,13 +11,13 @@
         :root {
             --sidebar-width: 260px;
             --sidebar-collapsed: 70px;
-            --sidebar-bg: #0A1628;
-            --sidebar-hover: rgba(255,255,255,0.07);
-            --sidebar-active: rgba(79,140,255,0.15);
-            --sidebar-accent: #4F8CFF;
-            --sidebar-text: rgba(255,255,255,0.65);
+            --sidebar-bg: #063175;
+            --sidebar-hover: rgba(255,255,255,0.08);
+            --sidebar-active: rgba(255,255,255,0.16);
+            --sidebar-accent: #38BDF8;
+            --sidebar-text: rgba(255,255,255,0.72);
             --sidebar-text-active: #ffffff;
-            --content-bg: #F1F4F9;
+            --content-bg: #F8FAFC;
             --transition-speed: 0.3s;
         }
 
@@ -222,10 +222,12 @@
         }
 
         .sidebar-nav .nav-item i {
-            font-size: 17px;
+            font-size: 1.15rem;
             flex-shrink: 0;
             width: 20px;
             text-align: center;
+            display: inline-block;
+            transition: all 0.2s ease;
         }
 
         .sidebar-nav .nav-item .nav-text {
@@ -233,18 +235,31 @@
             transition: opacity calc(var(--transition-speed) * 0.6) ease;
         }
 
-        .collapsed .nav-item .nav-text {
-            opacity: 0;
-            pointer-events: none;
+        .collapsed .nav-item .nav-text,
+        .collapsed .nav-item .badge {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
         }
 
         .collapsed .nav-item {
-            justify-content: center;
-            padding: 10px;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 12px 0 !important;
+            width: 100% !important;
         }
 
         .collapsed .nav-item i {
-            margin: 0;
+            margin: 0 !important;
+            font-size: 1.25rem !important;
+            width: 100% !important;
+            text-align: center !important;
+            display: inline-block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
 
         /* Sidebar footer */
@@ -744,8 +759,55 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        .collapsed .nav-item:hover::after {
-            opacity: 1;
+        /* ── Reference Design Tokens ── */
+        .btn-dark-navy {
+            background-color: #063175 !important;
+            color: #ffffff !important;
+            border: none !important;
+        }
+        .btn-dark-navy:hover {
+            background-color: #042254 !important;
+            color: #ffffff !important;
+        }
+        .btn-outline-dark-navy {
+            background-color: transparent !important;
+            color: #063175 !important;
+            border: 1.5px solid #063175 !important;
+        }
+        .btn-outline-dark-navy:hover {
+            background-color: #063175 !important;
+            color: #ffffff !important;
+        }
+        .badge-status-active {
+            background-color: #DCFCE7 !important;
+            color: #166534 !important;
+            font-weight: 700;
+        }
+        .badge-status-inactive {
+            background-color: #F1F5F9 !important;
+            color: #475569 !important;
+            font-weight: 700;
+        }
+        .search-pill-wrapper {
+            position: relative;
+        }
+        .search-pill-wrapper .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1rem;
+            pointer-events: none;
+        }
+        .search-pill-wrapper input {
+            padding-left: 44px !important;
+        }
+        .card-elevated {
+            background: #ffffff;
+            border-radius: 20px !important;
+            border: none !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.035) !important;
         }
     </style>
     {% block extra_styles %}{% endblock %}
@@ -763,10 +825,10 @@
     <!-- Sidebar -->
     <aside class="dipcr-sidebar" id="sidebar">
         <div class="sidebar-brand">
-            <div class="brand-icon">D</div>
+            <div class="brand-icon" style="background: transparent; border: 2px solid rgba(255,255,255,0.25); font-weight: 800; font-size: 16px; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white;">iD</div>
             <div class="brand-text">
-                <h6>D-IPCR</h6>
-                <small>IPCR System</small>
+                <h6 style="margin: 0; font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.3px;">D-IPCR</h6>
+                <small style="font-size: 11px; opacity: 0.8; color: #fff;">Digital IPCR System</small>
             </div>
         </div>
 
@@ -884,6 +946,16 @@
             } else if (firstNav) {
                 showSection(firstNav.dataset.section);
             }
+
+            // Auto-populate data-tooltip for all nav items
+            document.querySelectorAll('.dipcr-sidebar .nav-item').forEach(item => {
+                if (!item.getAttribute('data-tooltip')) {
+                    const textEl = item.querySelector('.nav-text');
+                    if (textEl) {
+                        item.setAttribute('data-tooltip', textEl.textContent.trim());
+                    }
+                }
+            });
         });
     </script>
     {% block scripts %}{% endblock %}
