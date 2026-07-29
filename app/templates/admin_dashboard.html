@@ -45,27 +45,28 @@
         <p>Engine Room: System governance and database integrity.</p>
     </div>
 
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card shadow-sm border-0 border-start border-info border-4">
-            <div class="card-body">
-                <h6 class="text-muted fw-bold mb-1">Roster Adoption Rate</h6>
-                <h3 class="text-dark mb-0">{{ kpis.adoption_rate }}%
-                    <span class="fs-6 text-muted ps-1">{{ kpis.claimed_accounts }} / {{ kpis.total_roster }} Accounts
-                        Claimed</span>
-                </h3>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 border-start border-info border-4">
+                <div class="card-body">
+                    <h6 class="text-muted fw-bold mb-1">Roster Adoption Rate</h6>
+                    <h3 class="text-dark mb-0">{{ kpis.adoption_rate }}%
+                        <span class="fs-6 text-muted ps-1">{{ kpis.claimed_accounts }} / {{ kpis.total_roster }}
+                            Accounts
+                            Claimed</span>
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 border-start border-warning border-4">
+                <div class="card-body">
+                    <h6 class="text-muted fw-bold mb-1">Term Deadline</h6>
+                    <h3 class="text-dark mb-0">{{ kpis.term_status }}</h3>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card shadow-sm border-0 border-start border-warning border-4">
-            <div class="card-body">
-                <h6 class="text-muted fw-bold mb-1">Term Deadline</h6>
-                <h3 class="text-dark mb-0">{{ kpis.term_status }}</h3>
-            </div>
-        </div>
-    </div>
-</div>
 </div>
 
 <!-- Flash messages for CSV imports and saving -->
@@ -88,568 +89,585 @@
     </div>
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold text-dark mb-0">HR Roster Management</h5>
-                        <div>
-                            <button class="btn btn-outline-success btn-sm me-2" data-bs-toggle="modal"
-                                data-bs-target="#csvUploadModal">
-                                <i class="bi bi-upload"></i> Upload CSV Roster
-                            </button>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#facultyModal"
-                                onclick="resetForm()">
-                                <i class="bi bi-person-plus"></i> Add New Faculty
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-8">
-                                <input type="text" id="rosterSearch" class="form-control"
-                                    placeholder="Search by ID, Name, Program, or Designation...">
-                            </div>
-                            <div class="col-md-4">
-                                <select id="rosterStatusFilter" class="form-select">
-                                    <option value="">All Statuses</option>
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive / Others</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle" id="rosterTable">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Employee ID</th>
-                                        <th>Full Name</th>
-                                        <th>Program</th>
-                                        <th>Specialization</th>
-                                        <th>Rank</th>
-                                        <th>Designation</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for p in profiles %}
-                                    <tr>
-                                        <td>{{ p.employee_id_number }}</td>
-                                        <td>{{ p.last_name }}, {{ p.first_name }}</td>
-                                        <td>{{ p.college }} / {{ p.assigned_program }}</td>
-                                        <td>{{ p.specialization or 'None' }}</td>
-                                        <td>{{ p.academic_rank }}</td>
-                                        <td>{{ p.designation or 'None' }}</td>
-                                        <td>
-                                            {% if p.leave_status == 'Active' %}
-                                            <span class="badge bg-success">Active</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">{{ p.leave_status }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-outline-primary btn-sm me-1"
-                                                onclick='editFaculty({{ p | tojson | safe }})'>Edit</button>
-                                            <form method="POST" action="{{ url_for('admin.toggle_status') }}"
-                                                class="d-inline">
-                                                <input type="hidden" name="employee_id_number"
-                                                    value="{{ p.employee_id_number }}">
-                                                {% if p.leave_status == 'Active' %}
-                                                <button type="submit"
-                                                    class="btn btn-outline-danger btn-sm">Deactivate</button>
-                                                {% else %}
-                                                <button type="submit"
-                                                    class="btn btn-outline-success btn-sm">Activate</button>
-                                                {% endif %}
-                                            </form>
-                                        </td>
-                                    </tr>
+            <h5 class="fw-bold text-dark mb-0">HR Roster Management</h5>
+            <div>
+                <button class="btn btn-outline-success btn-sm me-2" data-bs-toggle="modal"
+                    data-bs-target="#csvUploadModal">
+                    <i class="bi bi-upload"></i> Upload CSV Roster
+                </button>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#facultyModal"
+                    onclick="resetForm()">
+                    <i class="bi bi-person-plus"></i> Add New Faculty
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-8">
+                    <input type="text" id="rosterSearch" class="form-control"
+                        placeholder="Search by ID, Name, Program, or Designation...">
+                </div>
+                <div class="col-md-4">
+                    <select id="rosterStatusFilter" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive / Others</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="rosterTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Full Name</th>
+                            <th>Program</th>
+                            <th>Specialization</th>
+                            <th>Rank</th>
+                            <th>Designation</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in profiles %}
+                        <tr>
+                            <td>{{ p.employee_id_number }}</td>
+                            <td>{{ p.last_name }}, {{ p.first_name }}</td>
+                            <td>{{ p.college }} / {{ p.assigned_program }}</td>
+                            <td>{{ p.specialization or 'None' }}</td>
+                            <td>{{ p.academic_rank }}</td>
+                            <td>{{ p.designation or 'None' }}</td>
+                            <td>
+                                {% if p.leave_status == 'Active' %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ p.leave_status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-outline-primary btn-sm me-1"
+                                    onclick='editFaculty({{ p | tojson | safe }})'>Edit</button>
+                                <form method="POST" action="{{ url_for('admin.toggle_status') }}" class="d-inline">
+                                    <input type="hidden" name="employee_id_number" value="{{ p.employee_id_number }}">
+                                    {% if p.leave_status == 'Active' %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Deactivate</button>
                                     {% else %}
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">No HR Roster data available.
-                                            Update via CSV to populate.</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TERM CONFIGURATION SECTION -->
-            <div id="nav-term" class="dashboard-section">
-                <div class="page-header">
-                    <h2>Term Configuration</h2>
-                    <p>Open new academic terms and view term history.</p>
-                </div>
-                <div class="row">
-                    <div class="col-md-5">
-                        <div class="card shadow-sm border-0 mb-4">
-                            <div class="card-header bg-white border-0 pt-4 pb-2">
-                                <h5 class="fw-bold text-dark mb-0">Open New Term</h5>
-                            </div>
-                            <div class="card-body">
-                                <form action="{{ url_for('admin.admin_open_term') }}" method="POST">
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Academic Year</label>
-                                        <input type="text" class="form-control" name="academic_year"
-                                            placeholder="e.g. 2024-2025" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Semester</label>
-                                        <select class="form-select" name="semester" required>
-                                            <option value="1st Semester">1st Semester</option>
-                                            <option value="2nd Semester">2nd Semester</option>
-                                            <option value="Mid Year">Mid Year</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Submission Deadline</label>
-                                        <input type="date" class="form-control" name="deadline_date" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary w-100 fw-bold">Open Term & Deactivate
-                                        Others</button>
+                                    <button type="submit" class="btn btn-outline-success btn-sm">Activate</button>
+                                    {% endif %}
                                 </form>
-                            </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">No HR Roster data available.
+                                Update via CSV to populate.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TERM CONFIGURATION SECTION -->
+<div id="nav-term" class="dashboard-section">
+    <div class="page-header">
+        <h2>Term Configuration</h2>
+        <p>Open new academic terms and view term history.</p>
+    </div>
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-2">
+                    <h5 class="fw-bold text-dark mb-0">Open New Term</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin.admin_open_term') }}" method="POST">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Academic Year</label>
+                            <input type="text" class="form-control" name="academic_year" placeholder="e.g. 2024-2025"
+                                required>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Semester</label>
+                            <select class="form-select" name="semester" required>
+                                <option value="1st Semester">1st Semester</option>
+                                <option value="2nd Semester">2nd Semester</option>
+                                <option value="Mid Year">Mid Year</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Submission Deadline</label>
+                            <input type="date" class="form-control" name="deadline_date" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">Open Term & Deactivate
+                            Others</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-2">
+                    <h5 class="fw-bold text-dark mb-0">Term History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>A.Y.</th>
+                                    <th>Semester</th>
+                                    <th>Deadline</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for term in terms %}
+                                <tr>
+                                    <td>{{ term.academic_year }}</td>
+                                    <td>{{ term.semester }}</td>
+                                    <td>{{ term.deadline_date }}</td>
+                                    <td>
+                                        {% if term.is_active == 1 %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Locked</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No academic terms
+                                        found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="col-md-7">
-                        <div class="card shadow-sm border-0 mb-4">
-                            <div class="card-header bg-white border-0 pt-4 pb-2">
-                                <h5 class="fw-bold text-dark mb-0">Term History</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>A.Y.</th>
-                                                <th>Semester</th>
-                                                <th>Deadline</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for term in terms %}
-                                            <tr>
-                                                <td>{{ term.academic_year }}</td>
-                                                <td>{{ term.semester }}</td>
-                                                <td>{{ term.deadline_date }}</td>
-                                                <td>
-                                                    {% if term.is_active == 1 %}
-                                                    <span class="badge bg-success">Active</span>
-                                                    {% else %}
-                                                    <span class="badge bg-secondary">Locked</span>
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                            {% else %}
-                                            <tr>
-                                                <td colspan="4" class="text-center text-muted py-4">No academic terms
-                                                    found.</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MASTER INDICATORS SECTION -->
+<div id="nav-indicators" class="dashboard-section">
+    <div class="page-header">
+        <h2>Master Indicators</h2>
+        <p>Manage the global bank of performance targets for the active term.</p>
+    </div>
+    <div class="row">
+        <!-- LEFT: Add Form -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-2">
+                    <h5 class="fw-bold text-dark mb-0">Add Master Indicator</h5>
+                </div>
+                <div class="card-body">
+                    {% if active_term %}
+                    <div class="alert alert-primary border-0 small mb-3">
+                        <i class="bi bi-calendar-check-fill me-1"></i>
+                        Active Term: <strong>{{ active_term.academic_year }} &mdash; {{ active_term.semester
+                            }}</strong>
+                    </div>
+                    <form action="{{ url_for('admin.admin_add_indicator') }}" method="POST">
+                        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Category (OPCR Group)</label>
+                            <select class="form-select" name="category_name" required>
+                                <optgroup label="Strategic Priorities (50%)">
+                                    <option value="A. Instructions">A. Instructions</option>
+                                </optgroup>
+                                <optgroup label="Core Functions (40%)">
+                                    <option value="B. Research">B. Research</option>
+                                    <option value="B. Extension Services / Training / Advisory">B. Extension
+                                        Services / Training / Advisory</option>
+                                </optgroup>
+                                <optgroup label="Support Functions (10%)">
+                                    <option value="Support Functions">Support Functions</option>
+                                </optgroup>
+                            </select>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Indicator Description</label>
+                            <textarea class="form-control" name="description" rows="4"
+                                placeholder="Enter performance indicator description..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Efficiency Type</label>
+                            <select class="form-select" name="efficiency_type" required>
+                                <option value="Quantity-Based">Quantity-Based</option>
+                                <option value="Adjectival">Adjectival</option>
+                                <option value="Client Satisfaction">Client Satisfaction</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                            <i class="bi bi-plus-circle me-1"></i> Add Indicator
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-warning border-0">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        No active term found. Please open a term under <strong>Term Configuration</strong>
+                        before adding indicators.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Data Tables (3 grouped) -->
+        <div class="col-md-8">
+
+            <!-- Header Card -->
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-0">Indicators for Active Term</h5>
+                        <p class="text-muted small mb-0">Grouped by OPCR functional category</p>
+                    </div>
+                    {% if active_term and not indicators %}
+                    <form action="{{ url_for('admin.admin_import_indicators') }}" method="POST">
+                        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-cloud-download me-1"></i> Import from Previous Term
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% macro indicator_rows(category_filter) %}
+            {% set ns = namespace(found=false) %}
+            {% for ind in indicators %}
+            {% if category_filter == 'core' %}
+            {% if 'Research' in ind.category_name or 'Extension' in ind.category_name or 'EXTENSIONS' in ind.category_name %}
+            {% set ns.found = true %}
+            <tr>
+                <td style="width: 4%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
+                <td style="width: 28%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
+                <td style="width: 36%;" class="small">{{ ind.indicator_description }}</td>
+                <td style="width: 18%; text-align: center;"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
+                <td style="width: 14%; text-align: center;">
+                    {% if ind.is_cascaded %}
+                    <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
+                    {% else %}
+                    <div class="d-inline-flex gap-1 justify-content-center">
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#editIndicatorModal" data-ind-id="{{ ind.indicator_id }}"
+                            data-ind-category="{{ ind.category_name | e }}"
+                            data-ind-desc="{{ ind.indicator_description | e }}"
+                            data-ind-type="{{ ind.efficiency_type | e }}" onclick="fillEditModal(this)">Edit</button>
+                        <form method="POST" action="{{ url_for('admin.admin_delete_indicator') }}" class="d-inline"
+                            onsubmit="return confirm('Delete this indicator? This cannot be undone.')">
+                            <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endif %}
+            {% else %}
+            {% if ind.category_name == category_filter %}
+            {% set ns.found = true %}
+            <tr>
+                <td style="width: 4%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
+                <td style="width: 28%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
+                <td style="width: 36%;" class="small">{{ ind.indicator_description }}</td>
+                <td style="width: 18%; text-align: center;"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
+                <td style="width: 14%; text-align: center;">
+                    {% if ind.is_cascaded %}
+                    <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
+                    {% else %}
+                    <div class="d-inline-flex gap-1 justify-content-center">
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#editIndicatorModal" data-ind-id="{{ ind.indicator_id }}"
+                            data-ind-category="{{ ind.category_name | e }}"
+                            data-ind-desc="{{ ind.indicator_description | e }}"
+                            data-ind-type="{{ ind.efficiency_type | e }}" onclick="fillEditModal(this)">Edit</button>
+                        <form method="POST" action="{{ url_for('admin.admin_delete_indicator') }}" class="d-inline"
+                            onsubmit="return confirm('Delete this indicator? This cannot be undone.')">
+                            <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+            {% if not ns.found %}
+            <tr>
+                <td colspan="5" class="text-center text-muted py-3">
+                    <i class="bi bi-inbox me-1"></i> No indicators in this group yet.
+                </td>
+            </tr>
+            {% endif %}
+            {% endmacro %}
+
+            <!-- TABLE 1: Strategic Priorities -->
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header border-0 py-2"
+                    style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-star-fill text-primary"></i>
+                        <span class="fw-bold text-primary">Strategic Priorities</span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary ms-1">50%</span>
+                        <span class="text-muted small ms-auto">Instructions</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
+                            <colgroup>
+                                <col style="width: 4%;">
+                                <col style="width: 28%;">
+                                <col style="width: 36%;">
+                                <col style="width: 18%;">
+                                <col style="width: 14%;">
+                            </colgroup>
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 4%;" class="ps-3">#</th>
+                                    <th style="width: 28%;">Category</th>
+                                    <th style="width: 36%;">Description</th>
+                                    <th style="width: 18%; text-align: center;">Type</th>
+                                    <th style="width: 14%; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ indicator_rows('A. Instructions') }}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- MASTER INDICATORS SECTION -->
-            <div id="nav-indicators" class="dashboard-section">
-                <div class="page-header">
-                    <h2>Master Indicators</h2>
-                    <p>Manage the global bank of performance targets for the active term.</p>
+            <!-- TABLE 2: Core Functions -->
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header border-0 py-2"
+                    style="background: linear-gradient(90deg, #e8fff4 0%, #f8fffb 100%); border-left: 4px solid #198754 !important;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-diagram-3-fill text-success"></i>
+                        <span class="fw-bold text-success">Core Functions</span>
+                        <span class="badge bg-success bg-opacity-10 text-success ms-1">40%</span>
+                        <span class="text-muted small ms-auto">Research &amp; Extension / Training</span>
+                    </div>
                 </div>
-                <div class="row">
-                    <!-- LEFT: Add Form -->
-                    <div class="col-md-4">
-                        <div class="card shadow-sm border-0 mb-4">
-                            <div class="card-header bg-white border-0 pt-4 pb-2">
-                                <h5 class="fw-bold text-dark mb-0">Add Master Indicator</h5>
-                            </div>
-                            <div class="card-body">
-                                {% if active_term %}
-                                <div class="alert alert-primary border-0 small mb-3">
-                                    <i class="bi bi-calendar-check-fill me-1"></i>
-                                    Active Term: <strong>{{ active_term.academic_year }} &mdash; {{ active_term.semester
-                                        }}</strong>
-                                </div>
-                                <form action="{{ url_for('admin.admin_add_indicator') }}" method="POST">
-                                    <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Category (OPCR Group)</label>
-                                        <select class="form-select" name="category_name" required>
-                                            <optgroup label="Strategic Priorities (50%)">
-                                                <option value="A. Instructions">A. Instructions</option>
-                                            </optgroup>
-                                            <optgroup label="Core Functions (40%)">
-                                                <option value="A. Research">A. Research</option>
-                                                <option value="B. Extension Services / Training / Advisory">B. Extension
-                                                    Services / Training / Advisory</option>
-                                            </optgroup>
-                                            <optgroup label="Support Functions (10%)">
-                                                <option value="Support Functions">Support Functions</option>
-                                            </optgroup>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Indicator Description</label>
-                                        <textarea class="form-control" name="description" rows="4"
-                                            placeholder="Enter performance indicator description..."
-                                            required></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-bold">Efficiency Type</label>
-                                        <select class="form-select" name="efficiency_type" required>
-                                            <option value="Quantity-Based">Quantity-Based</option>
-                                            <option value="Adjectival">Adjectival</option>
-                                            <option value="Client Satisfaction">Client Satisfaction</option>
-                                        </select>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary w-100 fw-bold">
-                                        <i class="bi bi-plus-circle me-1"></i> Add Indicator
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
+                            <colgroup>
+                                <col style="width: 4%;">
+                                <col style="width: 28%;">
+                                <col style="width: 36%;">
+                                <col style="width: 18%;">
+                                <col style="width: 14%;">
+                            </colgroup>
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 4%;" class="ps-3">#</th>
+                                    <th style="width: 28%;">Category</th>
+                                    <th style="width: 36%;">Description</th>
+                                    <th style="width: 18%; text-align: center;">Type</th>
+                                    <th style="width: 14%; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ indicator_rows('core') }}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLE 3: Support Functions -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header border-0 py-2"
+                    style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-tools text-warning"></i>
+                        <span class="fw-bold text-warning">Support Functions</span>
+                        <span class="badge bg-warning bg-opacity-10 text-warning ms-1">10%</span>
+                        <span class="text-muted small ms-auto">Support Functions</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
+                            <colgroup>
+                                <col style="width: 4%;">
+                                <col style="width: 28%;">
+                                <col style="width: 36%;">
+                                <col style="width: 18%;">
+                                <col style="width: 14%;">
+                            </colgroup>
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 4%;" class="ps-3">#</th>
+                                    <th style="width: 28%;">Category</th>
+                                    <th style="width: 36%;">Description</th>
+                                    <th style="width: 18%; text-align: center;">Type</th>
+                                    <th style="width: 14%; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ indicator_rows('Support Functions') }}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- SYSTEM SECURITY SECTION -->
+<div id="nav-security" class="dashboard-section">
+    <div class="page-header">
+        <h2 class="text-danger"><i class="bi bi-shield-lock-fill me-2"></i>System Security</h2>
+        <p>Emergency access controls and activity audit logs.</p>
+    </div>
+
+    <!-- Section 1: Emergency Access Controls -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-person-fill-lock me-2 text-danger"></i>Emergency
+                    Access Controls</h5>
+                <p class="text-muted small mb-0">Use with caution. All actions below are permanently
+                    recorded in the audit log.</p>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-8">
+                    <input type="text" id="securitySearch" class="form-control"
+                        placeholder="Search by name, role, or status...">
+                </div>
+                <div class="col-md-4">
+                    <select id="securityStatusFilter" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="locked">Locked / Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="securityTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Emp ID</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in security_users %}
+                        <tr>
+                            <td class="fw-semibold">{{ u['last_name'] }}, {{ u['first_name'] }}</td>
+                            <td class="text-muted small">{{ u['emp_id'] }}</td>
+                            <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ u['system_role'] }}</span>
+                            </td>
+                            <td>
+                                {% if u['account_status'] == 'Active' or u['account_status'] == 'Pending' %}
+                                <span class="badge bg-success">{{ u['account_status'] }}</span>
+                                {% elif u['account_status'] == 'Locked' %}
+                                <span class="badge bg-danger">Locked</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ u['account_status'] }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-flex gap-1">
+                                <form method="POST" action="{{ url_for('admin.admin_reset_password') }}"
+                                    class="d-inline"
+                                    onsubmit="return confirm('Issue a temporary password for this account? The admin must relay the new password to the user directly.')">
+                                    <input type="hidden" name="emp_id" value="{{ u['emp_id'] }}">
+                                    <button type="submit" class="btn btn-warning btn-sm">
+                                        <i class="bi bi-key-fill me-1"></i>Issue Temp Password
                                     </button>
                                 </form>
-                                {% else %}
-                                <div class="alert alert-warning border-0">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                                    No active term found. Please open a term under <strong>Term Configuration</strong>
-                                    before adding indicators.
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RIGHT: Data Tables (3 grouped) -->
-                    <div class="col-md-8">
-
-                        <!-- Header Card -->
-                        <div class="card shadow-sm border-0 mb-3">
-                            <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h5 class="fw-bold text-dark mb-0">Indicators for Active Term</h5>
-                                    <p class="text-muted small mb-0">Grouped by OPCR functional category</p>
-                                </div>
-                                {% if active_term and not indicators %}
-                                <form action="{{ url_for('admin.admin_import_indicators') }}" method="POST">
-                                    <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                        <i class="bi bi-cloud-download me-1"></i> Import from Previous Term
+                                <form method="POST" action="{{ url_for('admin.admin_lock_account') }}" class="d-inline"
+                                    onsubmit="return confirm('Force lock this account? The user will be unable to log in.')">
+                                    <input type="hidden" name="emp_id" value="{{ u['emp_id'] }}">
+                                    <button type="submit" class="btn btn-danger btn-sm" {% if
+                                        u['account_status']=='Locked' %}disabled{% endif %}>
+                                        <i class="bi bi-lock-fill me-1"></i>Lock Account
                                     </button>
                                 </form>
-                                {% endif %}
-                            </div>
-                        </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">No system users found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-                        {% macro indicator_rows(category_filter) %}
-                            {% set ns = namespace(found=false) %}
-                            {% for ind in indicators %}
-                                {% if category_filter == 'core' %}
-                                    {% if ind.category_name == 'A. Research' or ind.category_name == 'B. Extension Services / Training / Advisory' %}
-                                        {% set ns.found = true %}
-                                        <tr>
-                                            <td class="text-muted small ps-3">{{ ind.indicator_id }}</td>
-                                            <td><span class="badge bg-light text-dark border">{{ ind.category_name }}</span></td>
-                                            <td class="small">{{ ind.indicator_description }}</td>
-                                            <td><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
-                                            <td>
-                                                {% if ind.is_cascaded %}
-                                                <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
-                                                {% else %}
-                                                <button class="btn btn-outline-primary btn-sm me-1"
-                                                    data-bs-toggle="modal" data-bs-target="#editIndicatorModal"
-                                                    data-ind-id="{{ ind.indicator_id }}"
-                                                    data-ind-category="{{ ind.category_name | e }}"
-                                                    data-ind-desc="{{ ind.indicator_description | e }}"
-                                                    data-ind-type="{{ ind.efficiency_type | e }}"
-                                                    onclick="fillEditModal(this)">Edit</button>
-                                                <form method="POST" action="{{ url_for('admin.admin_delete_indicator') }}" class="d-inline"
-                                                    onsubmit="return confirm('Delete this indicator? This cannot be undone.')">
-                                                    <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
-                                                </form>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                    {% endif %}
+    <!-- Section 2: Activity Audit Log -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-0 pt-4 pb-2">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-journal-text me-2 text-secondary"></i>Activity Audit Log
+            </h5>
+            <p class="text-muted small mb-0">Last 50 system actions, most recent first. Read-only.</p>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Actor (Emp ID)</th>
+                            <th>Action</th>
+                            <th>Details</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in audit_logs %}
+                        <tr>
+                            <td class="text-nowrap small text-muted">{{ log['log_timestamp'].strftime('%b %d, %Y %H:%M')
+                                if log['log_timestamp'] else '—' }}</td>
+                            <td class="small fw-semibold">{{ log['actor_id'] or '—' }}</td>
+                            <td>
+                                {% if 'Lock' in log['action_type'] %}
+                                <span class="badge bg-danger bg-opacity-75">{{ log['action_type'] }}</span>
+                                {% elif 'Reset' in log['action_type'] %}
+                                <span class="badge bg-warning text-dark">{{ log['action_type'] }}</span>
+                                {% elif 'Import' in log['action_type'] %}
+                                <span class="badge bg-info text-dark">{{ log['action_type'] }}</span>
                                 {% else %}
-                                    {% if ind.category_name == category_filter %}
-                                        {% set ns.found = true %}
-                                        <tr>
-                                            <td class="text-muted small ps-3">{{ ind.indicator_id }}</td>
-                                            <td><span class="badge bg-light text-dark border">{{ ind.category_name }}</span></td>
-                                            <td class="small">{{ ind.indicator_description }}</td>
-                                            <td><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
-                                            <td>
-                                                {% if ind.is_cascaded %}
-                                                <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
-                                                {% else %}
-                                                <button class="btn btn-outline-primary btn-sm me-1"
-                                                    data-bs-toggle="modal" data-bs-target="#editIndicatorModal"
-                                                    data-ind-id="{{ ind.indicator_id }}"
-                                                    data-ind-category="{{ ind.category_name | e }}"
-                                                    data-ind-desc="{{ ind.indicator_description | e }}"
-                                                    data-ind-type="{{ ind.efficiency_type | e }}"
-                                                    onclick="fillEditModal(this)">Edit</button>
-                                                <form method="POST" action="{{ url_for('admin.admin_delete_indicator') }}" class="d-inline"
-                                                    onsubmit="return confirm('Delete this indicator? This cannot be undone.')">
-                                                    <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
-                                                </form>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                    {% endif %}
+                                <span class="badge bg-secondary">{{ log['action_type'] }}</span>
                                 {% endif %}
-                            {% endfor %}
-                            {% if not ns.found %}
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-3">
-                                    <i class="bi bi-inbox me-1"></i> No indicators in this group yet.
-                                </td>
-                            </tr>
-                            {% endif %}
-                        {% endmacro %}
-
-                        <!-- TABLE 1: Strategic Priorities -->
-                        <div class="card shadow-sm border-0 mb-3">
-                            <div class="card-header border-0 py-2" style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi bi-star-fill text-primary"></i>
-                                    <span class="fw-bold text-primary">Strategic Priorities</span>
-                                    <span class="badge bg-primary bg-opacity-10 text-primary ms-1">50%</span>
-                                    <span class="text-muted small ms-auto">A. Instructions</span>
-                                </div>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="ps-3">#</th>
-                                                <th>Category</th>
-                                                <th>Description</th>
-                                                <th>Type</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {{ indicator_rows('A. Instructions') }}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TABLE 2: Core Functions -->
-                        <div class="card shadow-sm border-0 mb-3">
-                            <div class="card-header border-0 py-2" style="background: linear-gradient(90deg, #e8fff4 0%, #f8fffb 100%); border-left: 4px solid #198754 !important;">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi bi-diagram-3-fill text-success"></i>
-                                    <span class="fw-bold text-success">Core Functions</span>
-                                    <span class="badge bg-success bg-opacity-10 text-success ms-1">40%</span>
-                                    <span class="text-muted small ms-auto">A. Research &amp; B. Extension / Training</span>
-                                </div>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="ps-3">#</th>
-                                                <th>Category</th>
-                                                <th>Description</th>
-                                                <th>Type</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {{ indicator_rows('core') }}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TABLE 3: Support Functions -->
-                        <div class="card shadow-sm border-0 mb-4">
-                            <div class="card-header border-0 py-2" style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi bi-tools text-warning"></i>
-                                    <span class="fw-bold text-warning">Support Functions</span>
-                                    <span class="badge bg-warning bg-opacity-10 text-warning ms-1">10%</span>
-                                    <span class="text-muted small ms-auto">Support Functions</span>
-                                </div>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="ps-3">#</th>
-                                                <th>Category</th>
-                                                <th>Description</th>
-                                                <th>Type</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {{ indicator_rows('Support Functions') }}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
+                            </td>
+                            <td class="small">{{ log['action_details'] }}</td>
+                            <td class="small text-muted">{{ log['ip_address'] or '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">No audit log entries yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-
-            <!-- SYSTEM SECURITY SECTION -->
-            <div id="nav-security" class="dashboard-section">
-                <div class="page-header">
-                    <h2 class="text-danger"><i class="bi bi-shield-lock-fill me-2"></i>System Security</h2>
-                    <p>Emergency access controls and activity audit logs.</p>
-                </div>
-
-                <!-- Section 1: Emergency Access Controls -->
-                <div class="card shadow-sm border-0 mb-4">
-                    <div
-                        class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="fw-bold text-dark mb-0"><i
-                                    class="bi bi-person-fill-lock me-2 text-danger"></i>Emergency Access Controls</h5>
-                            <p class="text-muted small mb-0">Use with caution. All actions below are permanently
-                                recorded in the audit log.</p>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-8">
-                                <input type="text" id="securitySearch" class="form-control"
-                                    placeholder="Search by name, role, or status...">
-                            </div>
-                            <div class="col-md-4">
-                                <select id="securityStatusFilter" class="form-select">
-                                    <option value="">All Statuses</option>
-                                    <option value="active">Active</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="locked">Locked / Inactive</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle" id="securityTable">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Emp ID</th>
-                                        <th>Role</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for u in security_users %}
-                                    <tr>
-                                        <td class="fw-semibold">{{ u['last_name'] }}, {{ u['first_name'] }}</td>
-                                        <td class="text-muted small">{{ u['emp_id'] }}</td>
-                                        <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ u['system_role'] }}</span>
-                                        </td>
-                                        <td>
-                                            {% if u['account_status'] == 'Active' or u['account_status'] == 'Pending' %}
-                                            <span class="badge bg-success">{{ u['account_status'] }}</span>
-                                            {% elif u['account_status'] == 'Locked' %}
-                                            <span class="badge bg-danger">Locked</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">{{ u['account_status'] }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="d-flex gap-1">
-                                            <form method="POST" action="{{ url_for('admin.admin_reset_password') }}"
-                                                class="d-inline"
-                                                onsubmit="return confirm('Issue a temporary password for this account? The admin must relay the new password to the user directly.')">
-                                                <input type="hidden" name="emp_id" value="{{ u['emp_id'] }}">
-                                                <button type="submit" class="btn btn-warning btn-sm">
-                                                    <i class="bi bi-key-fill me-1"></i>Issue Temp Password
-                                                </button>
-                                            </form>
-                                            <form method="POST" action="{{ url_for('admin.admin_lock_account') }}"
-                                                class="d-inline"
-                                                onsubmit="return confirm('Force lock this account? The user will be unable to log in.')">
-                                                <input type="hidden" name="emp_id" value="{{ u['emp_id'] }}">
-                                                <button type="submit" class="btn btn-danger btn-sm" {% if u['account_status']=='Locked'
-                                                    %}disabled{% endif %}>
-                                                    <i class="bi bi-lock-fill me-1"></i>Lock Account
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">No system users found.</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2: Activity Audit Log -->
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-white border-0 pt-4 pb-2">
-                        <h5 class="fw-bold text-dark mb-0"><i
-                                class="bi bi-journal-text me-2 text-secondary"></i>Activity Audit Log</h5>
-                        <p class="text-muted small mb-0">Last 50 system actions, most recent first. Read-only.</p>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Timestamp</th>
-                                        <th>Actor (Emp ID)</th>
-                                        <th>Action</th>
-                                        <th>Details</th>
-                                        <th>IP Address</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for log in audit_logs %}
-                                    <tr>
-                                        <td class="text-nowrap small text-muted">{{ log['log_timestamp'].strftime('%b %d, %Y %H:%M')
-                                            if log['log_timestamp'] else '—' }}</td>
-                                        <td class="small fw-semibold">{{ log['actor_id'] or '—' }}</td>
-                                        <td>
-                                            {% if 'Lock' in log['action_type'] %}
-                                            <span class="badge bg-danger bg-opacity-75">{{ log['action_type'] }}</span>
-                                            {% elif 'Reset' in log['action_type'] %}
-                                            <span class="badge bg-warning text-dark">{{ log['action_type'] }}</span>
-                                            {% elif 'Import' in log['action_type'] %}
-                                            <span class="badge bg-info text-dark">{{ log['action_type'] }}</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">{{ log['action_type'] }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="small">{{ log['action_details'] }}</td>
-                                        <td class="small text-muted">{{ log['ip_address'] or '—' }}</td>
-                                    </tr>
-                                    {% else %}
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">No audit log entries yet.
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Edit Indicator Modal -->
 <div class="modal fade" id="editIndicatorModal" tabindex="-1" aria-hidden="true">
@@ -669,7 +687,7 @@
                                 <option value="A. Instructions">A. Instructions</option>
                             </optgroup>
                             <optgroup label="Core Functions (40%)">
-                                <option value="A. Research">A. Research</option>
+                                <option value="B. Research">B. Research</option>
                                 <option value="B. Extension Services / Training / Advisory">B. Extension Services /
                                     Training / Advisory</option>
                             </optgroup>
@@ -692,9 +710,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -825,7 +843,8 @@
                 <div class="modal-body">
                     <div class="alert alert-info small border-0 shadow-sm">
                         <strong>Format Required:</strong> The CSV must contain headers matching: <em>employee_id_number,
-                            first_name, last_name, college, assigned_program, specialization, academic_rank, employment_status,
+                            first_name, last_name, college, assigned_program, specialization, academic_rank,
+                            employment_status,
                             leave_status, designation</em>.
                     </div>
                     <div class="mb-3">
@@ -848,19 +867,19 @@
         let textFilter = document.getElementById('rosterSearch').value.toLowerCase();
         let statusFilter = document.getElementById('rosterStatusFilter').value;
         let rows = document.querySelectorAll('#rosterTable tbody tr');
-        
+
         rows.forEach(row => {
             if (row.cells.length === 1) return; // Skip empty message row
-            
+
             let text = row.innerText.toLowerCase();
             let statusCell = row.querySelector('td:nth-child(7)');
             let status = statusCell ? statusCell.innerText.toLowerCase().trim() : '';
-            
+
             let matchesText = text.includes(textFilter);
-            let matchesStatus = statusFilter === "" || 
-                                (statusFilter === "active" && status === "active") || 
-                                (statusFilter === "inactive" && status !== "active");
-            
+            let matchesStatus = statusFilter === "" ||
+                (statusFilter === "active" && status === "active") ||
+                (statusFilter === "inactive" && status !== "active");
+
             row.style.display = (matchesText && matchesStatus) ? '' : 'none';
         });
     }
@@ -873,18 +892,18 @@
         let textFilter = document.getElementById('securitySearch').value.toLowerCase();
         let statusFilter = document.getElementById('securityStatusFilter').value;
         let rows = document.querySelectorAll('#securityTable tbody tr');
-        
+
         rows.forEach(row => {
             if (row.cells.length === 1) return; // Skip empty message row
-            
+
             let text = row.innerText.toLowerCase();
             let statusCell = row.querySelector('td:nth-child(4)');
             let status = statusCell ? statusCell.innerText.toLowerCase().trim() : '';
-            
+
             let matchesText = text.includes(textFilter);
-            let matchesStatus = statusFilter === "" || 
-                                (statusFilter === "locked" ? status !== "active" && status !== "pending" : status === statusFilter);
-            
+            let matchesStatus = statusFilter === "" ||
+                (statusFilter === "locked" ? status !== "active" && status !== "pending" : status === statusFilter);
+
             row.style.display = (matchesText && matchesStatus) ? '' : 'none';
         });
     }
@@ -895,7 +914,9 @@
     // Populate Indicator Edit Modal
     function fillEditModal(btn) {
         document.getElementById('editIndicatorId').value = btn.dataset.indId;
-        document.getElementById('editIndicatorCategory').value = btn.dataset.indCategory;
+        let cat = btn.dataset.indCategory;
+        if (cat === 'A. Research') cat = 'B. Research';
+        document.getElementById('editIndicatorCategory').value = cat;
         document.getElementById('editIndicatorDesc').value = btn.dataset.indDesc;
         document.getElementById('editIndicatorType').value = btn.dataset.indType;
     }

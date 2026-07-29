@@ -45,9 +45,9 @@
             </p>
         </div>
         <div>
-            <button class="btn btn-success fw-bold shadow-sm" onclick="alert('Export feature coming soon')">
-                <i class="bi bi-file-earmark-excel"></i> Export & Print DPCR
-            </button>
+            <a href="{{ url_for('dean.export_dpcr') }}" class="btn btn-success fw-bold shadow-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export DPCR (Excel)
+            </a>
         </div>
     </div>
 
@@ -126,7 +126,7 @@
                             {% set current_category.name = indicator.category_name %}
                             <tr class="table-secondary">
                                 <td colspan="7" class="fw-bold text-uppercase text-dark border-bottom border-2">
-                                    <i class="bi bi-folder2-open me-2"></i> {{ indicator.category_name }}
+                                    <i class="bi bi-folder2-open me-2"></i> {% if 'Instruction' in indicator.category_name or 'Strategic' in indicator.category_name %}Strategic Priorities{% else %}{{ indicator.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}
                                 </td>
                             </tr>
                             {% endif %}
@@ -484,7 +484,8 @@
                 <div class="px-4 pb-2">
                     <h6 class="fw-bold text-secondary text-uppercase mb-3">
                         <i class="bi bi-globe me-2"></i>College-Wide Targets
-                        <small class="text-muted fw-normal ms-2">(Cascaded college-wide targets. You can assign them to this faculty here.)</small>
+                        <small class="text-muted fw-normal ms-2">(Cascaded college-wide targets. You can assign them to
+                            this faculty here.)</small>
                     </h6>
                 </div>
                 <div class="table-responsive px-4 pb-3">
@@ -602,7 +603,7 @@
                         {% for q in college_wide_quotas %}
                         <tr>
                             <td class="fw-bold">{{ q.indicator_description }}</td>
-                            <td>{{ q.category_name }}</td>
+                            <td>{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Strategic Priorities{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</td>
                             <td class="text-center">
                                 <span class="badge bg-success fs-6">{{ q.total_target_value }}</span>
                             </td>
@@ -620,49 +621,52 @@
             <h5 class="fw-bold mb-0 text-primary">
                 <i class="bi bi-pie-chart-fill me-2"></i>College-Wide Distribution Tracker
             </h5>
-            <small class="text-muted">Track how cascaded College-Wide targets are distributed across Designated Faculty and if quotas are met.</small>
+            <small class="text-muted">Track how cascaded College-Wide targets are distributed across Designated Faculty
+                and if quotas are met.</small>
         </div>
         <div class="card-body p-3">
             {% for q in college_wide_quotas %}
             {% set allocs = college_wide_allocations.get(q.indicator_id, []) %}
             {% set total_allocated = namespace(val=0) %}
             {% for a in allocs %}
-                {% set total_allocated.val = total_allocated.val + a.proposed_quantity %}
+            {% set total_allocated.val = total_allocated.val + a.proposed_quantity %}
             {% endfor %}
             {% set percent = (total_allocated.val / q.total_target_value * 100) | round(0) | int %}
-            
+
             <div class="p-3 mb-4 rounded border shadow-sm bg-white">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                     <div style="flex: 1; min-width: 250px;">
                         <h6 class="fw-bold text-dark mb-1">
                             <i class="bi bi-bullseye text-success me-1"></i> {{ q.indicator_description }}
                         </h6>
-                        <span class="badge bg-secondary small">{{ q.category_name }}</span>
+                        <span class="badge bg-secondary small">{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Strategic Priorities{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span>
                     </div>
                     <div class="d-flex align-items-center gap-3">
                         <div class="text-end">
                             <span class="small text-muted d-block">Distribution Progress</span>
-                            <span class="fw-bold fs-5 {% if total_allocated.val >= q.total_target_value %}text-success{% else %}text-warning{% endif %}">
+                            <span
+                                class="fw-bold fs-5 {% if total_allocated.val >= q.total_target_value %}text-success{% else %}text-warning{% endif %}">
                                 {{ total_allocated.val }} / {{ q.total_target_value }}
                             </span>
                         </div>
                         <div>
                             {% if total_allocated.val >= q.total_target_value %}
-                            <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully Distributed</span>
+                            <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully
+                                Distributed</span>
                             {% else %}
-                            <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Under Allocated (-{{ q.total_target_value - total_allocated.val }})</span>
+                            <span class="badge bg-warning text-dark px-3 py-2"><i
+                                    class="bi bi-hourglass-split me-1"></i>Under Allocated (-{{ q.total_target_value -
+                                total_allocated.val }})</span>
                             {% endif %}
                         </div>
                     </div>
                 </div>
 
                 <div class="progress mb-3 shadow-sm" style="height: 10px;">
-                    <div class="progress-bar {% if total_allocated.val >= q.total_target_value %}bg-success{% else %}bg-warning{% endif %}" 
-                         role="progressbar" 
-                         style="width: {{ [percent, 100]|min }}%;" 
-                         aria-valuenow="{{ total_allocated.val }}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="{{ q.total_target_value }}"></div>
+                    <div class="progress-bar {% if total_allocated.val >= q.total_target_value %}bg-success{% else %}bg-warning{% endif %}"
+                        role="progressbar" style="width: {{ [percent, 100]|min }}%;"
+                        aria-valuenow="{{ total_allocated.val }}" aria-valuemin="0"
+                        aria-valuemax="{{ q.total_target_value }}"></div>
                 </div>
 
                 {% if allocs %}
@@ -684,15 +688,18 @@
                                 <td class="text-center fw-bold text-primary small">{{ a.proposed_quantity }}</td>
                                 <td class="text-center">
                                     {% if a.review_status == 'Approved' %}
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
+                                    <span
+                                        class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
                                         <i class="bi bi-check-circle-fill me-1"></i>Approved
                                     </span>
                                     {% elif a.review_status == 'Rejected' %}
-                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small">
+                                    <span
+                                        class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small">
                                         <i class="bi bi-x-circle-fill me-1"></i>Returned
                                     </span>
                                     {% else %}
-                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small">
+                                    <span
+                                        class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small">
                                         <i class="bi bi-hourglass-split me-1"></i>Pending Review
                                     </span>
                                     {% endif %}
@@ -704,7 +711,8 @@
                 </div>
                 {% else %}
                 <div class="text-center py-3 bg-light rounded border border-dashed">
-                    <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>This target has not been allocated to any faculty yet. Review drafts to assign it.</p>
+                    <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>This target has not been
+                        allocated to any faculty yet. Review drafts to assign it.</p>
                 </div>
                 {% endif %}
             </div>
@@ -1060,7 +1068,7 @@
         const catOrder = {
             'A. Instructions': 1,
             'Custom Target Items': 2,
-            'A. Research': 3,
+            'B. Research': 3,
             'B. Extension Services / Training / Advisory': 4,
             'Support Functions': 5
         };

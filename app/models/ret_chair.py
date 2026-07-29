@@ -147,8 +147,11 @@ def get_pending_ret_draft_ipcrs(cursor, term_id):
                 FROM tbl_draft_targets dt2
                 JOIN tbl_master_indicators mi2 ON dt2.indicator_id = mi2.indicator_id
                 JOIN tbl_target_categories tc2 ON mi2.category_id = tc2.category_id
+                LEFT JOIN tbl_ipcr_ret_review rr2 ON rr2.emp_id = ep.emp_id AND rr2.term_id = mi2.term_id
+                LEFT JOIN tbl_ipcr_ret_review_items ri2 ON ri2.review_id = rr2.review_id AND ri2.draft_id = dt2.draft_id
                 WHERE dt2.emp_id = ep.emp_id AND mi2.term_id = %s
-                  AND (tc2.category_name LIKE '%%Research%%' OR tc2.category_name LIKE '%%Extension%%' OR tc2.category_name LIKE '%%Training%%' OR tc2.category_name LIKE '%%Advisory%%')                  
+                  AND (tc2.category_name LIKE '%%Research%%' OR tc2.category_name LIKE '%%Extension%%' OR tc2.category_name LIKE '%%Training%%' OR tc2.category_name LIKE '%%Advisory%%')
+                  AND COALESCE(ri2.reviewed_quantity, dt2.proposed_quantity) > 0
             ) AS target_count,
             COALESCE(rr.overall_status, 'Pending Review') AS review_status,
             rr.review_id,
@@ -157,10 +160,15 @@ def get_pending_ret_draft_ipcrs(cursor, term_id):
         FROM tbl_employee_profiles ep
         -- Only check employees who have draft targets for the active term
         JOIN (
-            SELECT DISTINCT emp_id
+            SELECT DISTINCT dt3.emp_id
             FROM tbl_draft_targets dt3
             JOIN tbl_master_indicators mi3 ON dt3.indicator_id = mi3.indicator_id
+            JOIN tbl_target_categories tc3 ON mi3.category_id = tc3.category_id
+            LEFT JOIN tbl_ipcr_ret_review rr3 ON rr3.emp_id = dt3.emp_id AND rr3.term_id = mi3.term_id
+            LEFT JOIN tbl_ipcr_ret_review_items ri3 ON ri3.review_id = rr3.review_id AND ri3.draft_id = dt3.draft_id
             WHERE mi3.term_id = %s
+              AND (tc3.category_name LIKE '%%Research%%' OR tc3.category_name LIKE '%%Extension%%' OR tc3.category_name LIKE '%%Training%%' OR tc3.category_name LIKE '%%Advisory%%')
+              AND COALESCE(ri3.reviewed_quantity, dt3.proposed_quantity) > 0
         ) dt_sub ON ep.emp_id = dt_sub.emp_id
         LEFT JOIN tbl_ipcr_ret_review rr ON rr.emp_id = ep.emp_id AND rr.term_id = %s
         WHERE ep.designation = 'Regular Faculty'
