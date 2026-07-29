@@ -476,3 +476,24 @@ def save_ret_review_items(cursor, conn, review_id, items):
     except Exception as e:
         conn.rollback()
         return False, str(e)
+
+
+def get_ret_chair_evidence_faculty(cursor, term_id):
+    from app.models.connection import timed_query
+    query = """
+        SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization,
+               COUNT(DISTINCT ct.target_id) as total_targets,
+               SUM(CASE WHEN ct.actual_quantity >= ct.assigned_quantity AND ct.assigned_quantity > 0 THEN 1 ELSE 0 END) as met_targets,
+               MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified') THEN 1 ELSE 0 END) as has_submitted
+        FROM tbl_employee_profiles ep
+        JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
+        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        WHERE mi.term_id = %s AND (tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%')
+        GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization
+        ORDER BY ep.last_name, ep.first_name
+    """
+    rows = timed_query(cursor, query, (term_id,), label="get_ret_chair_evidence_faculty")
+    for r in rows:
+        r['evidence_status'] = 'Submitted' if r.get('has_submitted') == 1 else 'In Progress'
+    return rows

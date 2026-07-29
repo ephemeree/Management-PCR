@@ -36,6 +36,7 @@ def ret_chair_dashboard():
             for draft in pending_ret_drafts:
                 draft['ipcr_status'] = get_overall_ipcr_status(cursor, draft['emp_id'], term_id)
             pending_ret_count = sum(1 for d in pending_ret_drafts if d['ipcr_status'] in ('waiting_for_ret_chair_review', 'pending_ret_review'))
+            evidence_faculty_list = get_ret_chair_evidence_faculty(cursor, term_id)
 
         return render_template('ret_chair_dashboard.html',
                                active_term=active_term,
@@ -44,10 +45,57 @@ def ret_chair_dashboard():
                                academic_ranks=academic_ranks,
                                pending_ret_drafts=pending_ret_drafts,
                                ret_assignments=ret_assignments,
-                               pending_ret_count=pending_ret_count)
+                               pending_ret_count=pending_ret_count,
+                               evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [])
     finally:
         cursor.close()
         conn.close()
+
+
+@ret_chair_bp.route('/faculty_evidence_details/<int:emp_id>')
+@role_required('RET_CHAIR')
+def ret_chair_faculty_evidence_details(emp_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active term found'}), 400
+
+        term_id = active_term['term_id']
+
+        cursor.execute("SELECT first_name, last_name, academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        fac_row = cursor.fetchone()
+        if not fac_row:
+            return jsonify({'success': False, 'message': 'Faculty member not found'}), 404
+        faculty_name = f"{fac_row[0]} {fac_row[1]}"
+
+        from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
+        all_targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+
+        # RET Chair ONLY sees Research & Extension targets and their uploaded evidence files
+        ret_targets = []
+        for t in all_targets:
+            cat_name = t.get('category_name', '')
+            if ('Research' in cat_name) or ('Extension' in cat_name):
+                ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+                t['evidence_list'] = ev_list
+                t['is_ret'] = True
+                ret_targets.append(t)
+
+        return jsonify({
+            'success': True,
+            'faculty_name': faculty_name,
+            'academic_rank': fac_row[2] or '',
+            'targets': ret_targets
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 
 
 @ret_chair_bp.route('/save_rule', methods=['POST'])

@@ -32,6 +32,12 @@
     <i class="bi bi-handshake"></i>
     <span class="nav-text">Commitments</span>
 </button>
+
+<div class="nav-label">Verification</div>
+<button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
+    <i class="bi bi-file-earmark-check-fill"></i>
+    <span class="nav-text">Evidence Verification</span>
+</button>
 {% endblock %}
 
 {% block content %}
@@ -1431,6 +1437,226 @@
         </div>
     </div>
 </div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- EVIDENCE VERIFICATION                       -->
+<!-- ═══════════════════════════════════════════ -->
+<div id="nav-evidence-verification" class="dashboard-section">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2>Evidence Verification</h2>
+            <p>Review and verify Research &amp; Extension accomplishment evidence submitted by faculty members across departments.</p>
+        </div>
+        <span class="badge bg-primary px-3 py-2 fs-6 shadow-sm">
+            <i class="bi bi-journal-bookmark-fill me-2"></i>{{ evidence_faculty_list|length }} Faculty Listed
+        </span>
+    </div>
+
+    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-journal-check me-2 text-primary"></i>Faculty RET Evidence Submissions</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Department / Specialization</th>
+                            <th class="text-center">RET Targets Committed</th>
+                            <th class="text-center">RET Targets Met</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if evidence_faculty_list %}
+                            {% for fac in evidence_faculty_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center">{{ fac.specialization or 'Department Faculty' }}</td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    {% if fac.evidence_status == 'Submitted' %}
+                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Evidences Submitted</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary px-3 py-2 rounded-pill"><i class="bi bi-pencil-square me-1"></i>In Progress</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center pe-4">
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                        onclick="openRetFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                        <i class="bi bi-eye-fill me-1"></i>View Evidences
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    No faculty Research &amp; Extension evidence submissions found for this academic term.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- RET Faculty Evidence Verification Modal -->
+<div class="modal fade" id="retFacultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+                <h5 class="modal-title fw-bold" id="retEvidenceModalTitle"><i class="bi bi-file-earmark-check-fill me-2"></i>Research &amp; Extension Evidence Verification</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 p-3 bg-light rounded-3">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark" id="modalRetFacultyName">-</h6>
+                        <small class="text-muted" id="modalRetFacultyRank">-</small>
+                    </div>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold">
+                        RET Chair Verification View
+                    </span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table align-middle border mb-0" style="border-radius: 10px; overflow: hidden;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3" width="40%">Research &amp; Extension Indicator</th>
+                                <th class="text-center" width="12%">Target Qty</th>
+                                <th class="text-center" width="15%">Accomplished Qty</th>
+                                <th class="ps-3" width="33%">Uploaded Evidences</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalRetEvidenceTableBody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
+    document.getElementById('modalRetFacultyName').innerText = facultyName;
+    document.getElementById('modalRetFacultyRank').innerText = 'Loading details...';
+    const tbody = document.getElementById('modalRetEvidenceTableBody');
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading RET evidence files...</td></tr>';
+
+    const modal = new bootstrap.Modal(document.getElementById('retFacultyEvidenceVerificationModal'));
+    modal.show();
+
+    fetch(`/ret_chair/faculty_evidence_details/${empId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error: ${data.message}</td></tr>`;
+                return;
+            }
+
+            document.getElementById('modalRetFacultyRank').innerText = data.academic_rank || 'Faculty Member';
+            tbody.innerHTML = '';
+
+            if (!data.targets || data.targets.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No committed Research & Extension targets found for this faculty member.</td></tr>';
+                return;
+            }
+
+            function getCategoryHeaderInfo(rawCat) {
+                if (!rawCat) return { key: 'OTHERS', title: 'OTHER TARGETS' };
+                const lower = rawCat.toLowerCase();
+                if (lower.includes('research')) return { key: 'RESEARCH', title: 'RESEARCH' };
+                if (lower.includes('extension')) return { key: 'EXTENSION', title: 'EXTENSION SERVICES / TRAINING / ADVISORY' };
+                return { key: rawCat.toUpperCase(), title: rawCat.toUpperCase() };
+            }
+
+            const order = ['RESEARCH', 'EXTENSION'];
+            const groups = {};
+
+            data.targets.forEach(t => {
+                const info = getCategoryHeaderInfo(t.category_name);
+                if (!groups[info.key]) {
+                    groups[info.key] = { title: info.title, items: [] };
+                }
+                groups[info.key].items.push(t);
+            });
+
+            const sortedKeys = Object.keys(groups).sort((a, b) => {
+                let ia = order.indexOf(a);
+                let ib = order.indexOf(b);
+                if (ia === -1) ia = 99;
+                if (ib === -1) ib = 99;
+                return ia - ib;
+            });
+
+            sortedKeys.forEach(k => {
+                const group = groups[k];
+                const headerTr = document.createElement('tr');
+                headerTr.className = 'table-light fw-bold';
+                headerTr.innerHTML = `
+                    <td colspan="4" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: #f1f3f5; border-top: 2px solid #dee2e6;">
+                        <i class="bi bi-folder-fill me-2 text-primary"></i>${group.title}
+                    </td>
+                `;
+                tbody.appendChild(headerTr);
+
+                group.items.forEach(t => {
+                    const tr = document.createElement('tr');
+                    
+                    let evHtml = '';
+                    if (t.evidence_list && t.evidence_list.length > 0) {
+                        evHtml = t.evidence_list.map(ev => {
+                            const cleanName = ev.file_path ? ev.file_path.split('/').pop().split('_').slice(1).join('_') || ev.file_path.split('/').pop() : 'Evidence File';
+                            return `<div class="p-2 border rounded bg-light mb-1 d-flex align-items-center justify-content-between">
+                                <div class="text-truncate me-2" style="max-width: 220px;">
+                                    <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>
+                                    <span class="small font-monospace text-dark" title="${cleanName}">${cleanName}</span>
+                                </div>
+                                <span class="badge bg-primary rounded-pill small">Qty: ${ev.actual_qty_Q}</span>
+                            </div>`;
+                        }).join('');
+                    } else {
+                        evHtml = '<span class="badge bg-light text-muted border">No evidence files uploaded</span>';
+                    }
+
+                    const qtyMetBadge = (t.actual_quantity >= t.assigned_quantity && t.assigned_quantity > 0)
+                        ? `<span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>${t.actual_quantity}</span>`
+                        : `<span class="badge bg-secondary px-3 py-2 rounded-pill">${t.actual_quantity || 0}</span>`;
+
+                    tr.innerHTML = `
+                        <td class="ps-3 py-3">
+                            <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Research & Extension'}</span>
+                            <p class="mb-0 small fw-semibold text-dark">${t.indicator_description}</p>
+                        </td>
+                        <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
+                        <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
+                        <td class="ps-3 py-3">${evHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        })
+        .catch(err => {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
+        });
+}
+</script>
 
 <style>
     #customRetConfirmModal .btn-close:focus {

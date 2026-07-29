@@ -64,6 +64,7 @@ def prog_chair_dashboard():
                 draft['ipcr_status'] = get_overall_ipcr_status(cursor, draft['emp_id'], term_id)
             pending_drafts_count = get_pending_drafts_count(cursor, specialization, term_id)
             locked_drafts = get_locked_faculty_ipcrs(cursor, specialization, term_id)
+            evidence_faculty_list = get_program_chair_evidence_faculty(cursor, specialization, term_id)
 
         return render_template(
             'prog_chair_dashboard.html',
@@ -74,10 +75,59 @@ def prog_chair_dashboard():
             pending_drafts=pending_drafts,
             pending_drafts_count=pending_drafts_count,
             locked_drafts=locked_drafts,
+            evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else []
         )
     finally:
         cursor.close()
         conn.close()
+
+
+@prog_chair_bp.route('/faculty_evidence_details/<int:emp_id>')
+@role_required('PROGRAM_CHAIR')
+def prog_chair_faculty_evidence_details(emp_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active term found'}), 400
+
+        term_id = active_term['term_id']
+
+        cursor.execute("SELECT first_name, last_name, academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        fac_row = cursor.fetchone()
+        if not fac_row:
+            return jsonify({'success': False, 'message': 'Faculty member not found'}), 404
+        faculty_name = f"{fac_row[0]} {fac_row[1]}"
+
+        from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
+        targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+
+        for t in targets:
+            cat_name = t.get('category_name', '')
+            is_ret = ('Research' in cat_name) or ('Extension' in cat_name)
+            t['is_ret'] = is_ret
+
+            # Program Chair can ONLY view evidence files for Instructions & Support, NOT Research & Extension
+            if not is_ret:
+                ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+                t['evidence_list'] = ev_list
+            else:
+                t['evidence_list'] = []
+
+        return jsonify({
+            'success': True,
+            'faculty_name': faculty_name,
+            'academic_rank': fac_row[2] or '',
+            'targets': targets
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 
 
 # ─────────────────────────────────────────────
