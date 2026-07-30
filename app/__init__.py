@@ -31,7 +31,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dipcr_version_13_secret_key')
 
 # Configure upload settings
-app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads', 'evidence')
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads', 'evidence')
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB limit
 
 # Initialize DB connection pool at startup
@@ -58,6 +58,14 @@ def log_request_time(response):
 # Register route blueprints
 from app.routes import register_blueprints
 register_blueprints(app)
+
+
+@app.route('/evidence_uploads/<path:filename>')
+def serve_evidence(filename):
+    from flask import session, redirect, url_for, send_from_directory, abort
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.after_request
 def add_header(response):

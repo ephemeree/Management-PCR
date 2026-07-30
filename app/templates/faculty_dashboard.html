@@ -1009,7 +1009,7 @@
                                 <div class="d-flex align-items-center gap-2 overflow-hidden text-start">
                                     <i class="bi bi-file-earmark-arrow-up-fill text-primary fs-4"></i>
                                     <div class="text-start text-truncate" style="max-width: 250px;">
-                                        <a href="/static/${ev.file_path}" target="_blank" class="small fw-semibold text-decoration-none text-dark" title="View/Download">${cleanName}</a>
+                                        <a href="/evidence_uploads/${ev.file_path.startsWith('uploads/evidence/') ? ev.file_path.substring(17) : ev.file_path}" target="_blank" class="small fw-semibold text-decoration-none text-dark" title="View/Download">${cleanName}</a>
                                         <div class="text-muted" style="font-size: 0.75rem;">
                                             Qty: ${ev.actual_qty_Q}
                                             ${ev.is_co_authored ? `&bull; <span class="text-purple">Co-authored (by ${ev.uploaded_by})</span>` : ''}

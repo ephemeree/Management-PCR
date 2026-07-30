@@ -310,8 +310,7 @@ def designated_upload_evidence():
     file_path = os.path.join(upload_dir, unique_filename)
     file.save(file_path)
 
-    # Save path relative to static
-    relative_path = f"uploads/evidence/{unique_filename}"
+    relative_path = unique_filename
 
     conn = get_db_connection()
     cursor = conn.cursor()
