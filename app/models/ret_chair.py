@@ -491,9 +491,10 @@ def get_ret_chair_evidence_faculty(cursor, term_id):
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s AND (tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%')
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization
+        HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name
     """
     rows = timed_query(cursor, query, (term_id,), label="get_ret_chair_evidence_faculty")
     for r in rows:
-        r['evidence_status'] = 'Submitted' if r.get('has_submitted') == 1 else 'In Progress'
+        r['evidence_status'] = 'Submitted'
     return rows

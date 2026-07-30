@@ -1621,18 +1621,12 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
                     
                     let evHtml = '';
                     if (t.evidence_list && t.evidence_list.length > 0) {
-                        evHtml = t.evidence_list.map(ev => {
-                            const cleanName = ev.file_path ? ev.file_path.split('/').pop().split('_').slice(1).join('_') || ev.file_path.split('/').pop() : 'Evidence File';
-                            return `<div class="p-2 border rounded bg-light mb-1 d-flex align-items-center justify-content-between">
-                                <div class="text-truncate me-2" style="max-width: 220px;">
-                                    <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>
-                                    <span class="small font-monospace text-dark" title="${cleanName}">${cleanName}</span>
-                                </div>
-                                <span class="badge bg-primary rounded-pill small">Qty: ${ev.actual_qty_Q}</span>
-                            </div>`;
-                        }).join('');
+                        evHtml = `<button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold shadow-xs"
+                            onclick="alert('Evidence viewing will be enabled once database server integration is complete.')">
+                            <i class="bi bi-folder2-open me-1"></i>View Uploaded Evidence (${t.evidence_list.length})
+                        </button>`;
                     } else {
-                        evHtml = '<span class="badge bg-light text-muted border">No evidence files uploaded</span>';
+                        evHtml = '<span class="badge bg-light text-muted border">No evidence uploaded</span>';
                     }
 
                     const qtyMetBadge = (t.actual_quantity >= t.assigned_quantity && t.assigned_quantity > 0)

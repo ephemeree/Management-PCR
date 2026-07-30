@@ -540,10 +540,11 @@ def get_program_chair_evidence_faculty(cursor, specialization, term_id):
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         WHERE ep.specialization = %s AND mi.term_id = %s
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization
+        HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name
     """
     rows = timed_query(cursor, query, (specialization, term_id), label="get_program_chair_evidence_faculty")
     for r in rows:
-        r['evidence_status'] = 'Submitted' if r.get('has_submitted') == 1 else 'In Progress'
+        r['evidence_status'] = 'Submitted'
     return rows
 
