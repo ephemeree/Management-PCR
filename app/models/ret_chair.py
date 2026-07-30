@@ -131,9 +131,56 @@ def delete_ret_rule(conn, cursor, rule_id, category_type=None):
         return False
 
 
+def get_all_faculty_ret_access(cursor, term_id):
+    """
+    Returns all regular faculty profiles across all programs with their RET target access state (is_enabled).
+    """
+    query = """
+        SELECT 
+            ep.emp_id,
+            CONCAT(ep.first_name, ' ', ep.last_name) AS faculty_name,
+            ep.first_name,
+            ep.last_name,
+            ep.academic_rank,
+            ep.specialization,
+            ep.college,
+            COALESCE(fa.is_enabled, 0) AS is_enabled
+        FROM tbl_employee_profiles ep
+        LEFT JOIN tbl_ret_faculty_access fa ON ep.emp_id = fa.emp_id AND fa.term_id = %s
+        WHERE ep.designation = 'Regular Faculty'
+        ORDER BY ep.specialization, ep.last_name, ep.first_name
+    """
+    cursor.execute(query, (term_id,))
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def save_faculty_ret_access(conn, cursor, term_id, enabled_emp_ids):
+    """
+    Saves the list of faculty member emp_ids enabled for RET target selection for the term.
+    """
+    try:
+        # Delete existing access entries for this term
+        cursor.execute("DELETE FROM tbl_ret_faculty_access WHERE term_id = %s", (term_id,))
+        
+        # Insert enabled entries
+        for emp_id in enabled_emp_ids:
+            cursor.execute("""
+                INSERT INTO tbl_ret_faculty_access (emp_id, term_id, is_enabled)
+                VALUES (%s, %s, 1)
+                ON DUPLICATE KEY UPDATE is_enabled = 1
+            """, (emp_id, term_id))
+            
+        conn.commit()
+        return True, "RET target access settings updated successfully."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
 def get_pending_ret_draft_ipcrs(cursor, term_id):
     """
-    Returns all regular faculty members who have submitted their IPCR draft (i.e. tbl_draft_targets has entries for the term),
+    Returns all regular faculty members enabled for RET targets who have submitted their IPCR draft (i.e. tbl_draft_targets has entries for the term),
     with their RET review status from tbl_ipcr_ret_review.
     """
     query = """
@@ -172,11 +219,16 @@ def get_pending_ret_draft_ipcrs(cursor, term_id):
         ) dt_sub ON ep.emp_id = dt_sub.emp_id
         LEFT JOIN tbl_ipcr_ret_review rr ON rr.emp_id = ep.emp_id AND rr.term_id = %s
         WHERE ep.designation = 'Regular Faculty'
+          AND EXISTS (
+              SELECT 1 FROM tbl_ret_faculty_access fa 
+              WHERE fa.emp_id = ep.emp_id AND fa.term_id = %s AND fa.is_enabled = 1
+          )
         ORDER BY ep.last_name, ep.first_name
     """
-    cursor.execute(query, (term_id, term_id, term_id))
+    cursor.execute(query, (term_id, term_id, term_id, term_id))
     columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
 
 def get_ret_target_assignments(cursor, term_id):
     """

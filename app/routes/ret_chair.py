@@ -18,6 +18,7 @@ def ret_chair_dashboard():
         ret_rules = []
         pending_ret_drafts = []
         ret_assignments = []
+        faculty_access_list = []
         pending_ret_count = 0
 
         ranks_result = timed_query(cursor,
@@ -31,6 +32,7 @@ def ret_chair_dashboard():
             ret_rules = get_ret_rules(cursor, term_id)
             pending_ret_drafts = get_pending_ret_draft_ipcrs(cursor, term_id)
             ret_assignments = get_ret_target_assignments(cursor, term_id)
+            faculty_access_list = get_all_faculty_ret_access(cursor, term_id)
             # Enrich each draft with dynamically computed ipcr_status
             from app.models.connection import get_overall_ipcr_status
             for draft in pending_ret_drafts:
@@ -45,11 +47,43 @@ def ret_chair_dashboard():
                                academic_ranks=academic_ranks,
                                pending_ret_drafts=pending_ret_drafts,
                                ret_assignments=ret_assignments,
+                               faculty_access_list=faculty_access_list,
                                pending_ret_count=pending_ret_count,
                                evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [])
     finally:
         cursor.close()
         conn.close()
+
+
+@ret_chair_bp.route('/save_faculty_access', methods=['POST'])
+@role_required('RET_CHAIR')
+def save_faculty_access():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            flash("No active academic term found.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
+        term_id = active_term['term_id']
+        enabled_emp_ids = request.form.getlist('enabled_faculty_ids')
+        enabled_emp_ids = [int(x) for x in enabled_emp_ids if x.isdigit()]
+
+        success, message = save_faculty_ret_access(conn, cursor, term_id, enabled_emp_ids)
+        if success:
+            flash(message, "success")
+        else:
+            flash(message, "danger")
+    except Exception as e:
+        flash(f"Error saving RET faculty access: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
 
 
 @ret_chair_bp.route('/faculty_evidence_details/<int:emp_id>')

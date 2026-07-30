@@ -26,11 +26,13 @@ def faculty_dashboard():
     has_submitted = False
     is_locked = False
     chair_review = None
+    is_ret_eligible = False
 
     if active_term:
         term_id = active_term['term_id']
+        is_ret_eligible = is_faculty_ret_eligible(cursor, emp_id, term_id)
         assigned_targets = get_faculty_assigned_targets(cursor, emp_id, term_id)
-        if academic_rank:
+        if academic_rank and is_ret_eligible:
             ret_menu = get_faculty_ret_menu(cursor, academic_rank, term_id)
 
         # Check if the faculty member has submitted
@@ -84,10 +86,12 @@ def faculty_dashboard():
                            specialization=specialization,
                            has_submitted=has_submitted,
                            is_locked=is_locked,
+                           is_ret_eligible=is_ret_eligible,
                            chair_review=chair_review,
                            ret_review=ret_review,
                            ipcr_status=ipcr_status,
                            evidence_readiness=evidence_readiness)
+
 
 
 @faculty_bp.route('/submit_evidence', methods=['POST'])

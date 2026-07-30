@@ -98,6 +98,19 @@ def get_overall_ipcr_status(cursor, emp_id, term_id):
 
     # 6. Check RET review status
     cursor.execute("""
+        SELECT is_enabled FROM tbl_ret_faculty_access
+        WHERE emp_id = %s AND term_id = %s
+    """, (emp_id, term_id))
+    ret_access_row = cursor.fetchone()
+    is_ret_eligible = bool(ret_access_row and ret_access_row[0] == 1)
+
+    if not is_ret_eligible:
+        # Non-RET eligible faculty bypasses RET review stage completely
+        if chair_row and chair_row[0] == 'Rejected':
+            return 'draft'
+        return 'waiting_for_program_chair_review'
+
+    cursor.execute("""
         SELECT overall_status FROM tbl_ipcr_ret_review
         WHERE emp_id = %s AND term_id = %s
     """, (emp_id, term_id))
@@ -121,6 +134,7 @@ def get_overall_ipcr_status(cursor, emp_id, term_id):
         return 'waiting_for_ret_chair_review'
 
     return 'draft'
+
 
 
 def get_db_connection():

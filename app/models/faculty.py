@@ -123,6 +123,20 @@ def save_faculty_ret_selections(conn, cursor, emp_id, term_id, selected_indicato
     return True, "RET selections processed."
 
 
+def is_faculty_ret_eligible(cursor, emp_id, term_id):
+    """
+    Returns True if the faculty member is checked/enabled for RET target access in tbl_ret_faculty_access for term_id.
+    """
+    if not term_id:
+        return False
+    cursor.execute(
+        "SELECT is_enabled FROM tbl_ret_faculty_access WHERE emp_id = %s AND term_id = %s",
+        (emp_id, term_id)
+    )
+    row = cursor.fetchone()
+    return bool(row and row[0] == 1)
+
+
 def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
     """
     selected_research_targets parameter format:
@@ -146,7 +160,15 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
             """, (emp_id, active_term_id))
             is_resubmission = cursor.fetchone() is not None
 
-        target_status = 'Waiting for Approval' if is_resubmission else 'Pending Review'
+        ret_eligible = is_faculty_ret_eligible(cursor, emp_id, active_term_id)
+        ret_editable = False
+        if not ret_eligible:
+            # Non-RET faculty bypass RET review stage completely -> target_status is immediately 'Waiting for Approval' (for Program Chair)
+            target_status = 'Waiting for Approval'
+        else:
+            target_status = 'Waiting for Approval' if is_resubmission else 'Pending Review'
+            ret_editable = True
+
 
         # 1. Sync any reviewed quantities from the chair's decision back into tbl_draft_targets FIRST
         # to preserve any adjustments made by the Program Chair on standard workloads.
@@ -189,7 +211,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                     VALUES (%s, %s, %s, %s)
                 """, (emp_id, ind_id, qty, target_status))
 
-        # 4. If this is a re-submission, reset the status of existing standard workloads (not research/extension) to target_status
+        # 4. If this is a re-submission or non-RET submission, update status of existing standard workloads to target_status
         cursor.execute("""
             UPDATE tbl_draft_targets dt
             JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
@@ -199,27 +221,8 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
               AND tc.category_name NOT IN ('A. Research', 'B. Extension Services / Training / Advisory')
         """, (target_status, emp_id))
 
-        # 4b. Check if Research & Extension targets are editable by the faculty member.
-        # They are only editable on first submission. Once reviewed (Approved or Rejected/Returned) by the RET Chair,
-        # they are locked/disabled in the UI, and we must preserve the existing selections.
-        ret_editable = True
-        if active_term_id:
-            cursor.execute(
-                """
-                SELECT overall_status FROM tbl_ipcr_ret_review 
-                WHERE emp_id = %s AND term_id = %s
-                """,
-                (emp_id, active_term_id)
-            )
-            ret_row = cursor.fetchone()
-            if ret_row:
-                ret_status = ret_row[0]
-                if ret_status in ('Approved', 'Rejected'):
-                    ret_editable = False
-
-        if ret_editable:
-            # 5. Delete existing Research and Extension targets for this employee from tbl_draft_targets
-            # to ensure that any deselected targets are not carried over.
+        if not ret_eligible:
+            # Non-RET faculty: delete any existing Research and Extension targets
             cursor.execute("""
                 DELETE dt FROM tbl_draft_targets dt
                 JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
@@ -227,32 +230,63 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                 WHERE dt.emp_id = %s
                   AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
             """, (emp_id,))
-
-            # 6. Process and write the new faculty self-selected Research/Extension targets into tbl_draft_targets
-            for target in selected_research_targets:
-                res_ind_id = target['indicator_id']
-                
-                # Fetch target quantity configured by RET Chair
-                cursor.execute("""
-                    SELECT rri.target_quantity 
-                    FROM tbl_ret_rule_indicators rri
-                    JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
-                    JOIN tbl_employee_profiles ep ON ep.academic_rank = r.academic_rank
-                    WHERE ep.emp_id = %s AND rri.indicator_id = %s
-                    LIMIT 1
-                """, (emp_id, res_ind_id))
-                row = cursor.fetchone()
-                res_qty = row[0] if (row and row[0] is not None) else 1
-
-                cursor.execute("""
-                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                    VALUES (%s, %s, %s, %s)
-                """, (emp_id, res_ind_id, res_qty, target_status))
         else:
-            # If not editable but returned/rejected by RET Chair, we must still update their review_status in tbl_draft_targets
-            # to target_status so they are marked as submitted and pending review again.
-            # Otherwise (if already Approved), keep them as Approved.
-            if ret_status == 'Rejected':
+            # RET-eligible faculty: check if Research & Extension targets are editable
+            ret_editable = True
+            if active_term_id:
+                cursor.execute(
+                    """
+                    SELECT overall_status FROM tbl_ipcr_ret_review 
+                    WHERE emp_id = %s AND term_id = %s
+                    """,
+                    (emp_id, active_term_id)
+                )
+                ret_row = cursor.fetchone()
+                if ret_row:
+                    ret_status = ret_row[0]
+                    if ret_status in ('Approved', 'Rejected'):
+                        ret_editable = False
+
+            if ret_editable:
+                # Delete existing Research and Extension targets to rewrite selections
+                cursor.execute("""
+                    DELETE dt FROM tbl_draft_targets dt
+                    JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+                    JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                    WHERE dt.emp_id = %s
+                      AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
+                """, (emp_id,))
+
+                # Process and write selected Research/Extension targets
+                for target in selected_research_targets:
+                    res_ind_id = target['indicator_id']
+                    
+                    cursor.execute("""
+                        SELECT rri.target_quantity 
+                        FROM tbl_ret_rule_indicators rri
+                        JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
+                        JOIN tbl_employee_profiles ep ON ep.academic_rank = r.academic_rank
+                        WHERE ep.emp_id = %s AND rri.indicator_id = %s
+                        LIMIT 1
+                    """, (emp_id, res_ind_id))
+                    row = cursor.fetchone()
+                    res_qty = row[0] if (row and row[0] is not None) else 1
+
+                    cursor.execute("""
+                        INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
+                        VALUES (%s, %s, %s, %s)
+                    """, (emp_id, res_ind_id, res_qty, target_status))
+            else:
+                if ret_status == 'Rejected':
+                    cursor.execute("""
+                        UPDATE tbl_draft_targets dt
+                        JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+                        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                        SET dt.review_status = %s
+                        WHERE dt.emp_id = %s
+                          AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
+                    """, (target_status, emp_id))
+
                 cursor.execute("""
                     UPDATE tbl_draft_targets dt
                     JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id

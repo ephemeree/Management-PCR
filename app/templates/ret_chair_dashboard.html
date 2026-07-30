@@ -32,6 +32,11 @@
     <i class="bi bi-person-check-fill"></i>
     <span class="nav-text">Commitments</span>
 </button>
+<button class="nav-item" data-section="nav-faculty-access" onclick="showSection('nav-faculty-access')">
+    <i class="bi bi-person-gear"></i>
+    <span class="nav-text">Faculty RET Access</span>
+</button>
+
 
 <div class="nav-label">Verification</div>
 <button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
@@ -112,8 +117,122 @@
 </div>
 {% else %}
 
+<!-- Faculty RET Access Section -->
+<div id="nav-faculty-access" class="dashboard-section">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Faculty RET Target Access Management</h2>
+            <p>Designate regular faculty members across all programs who are authorized to select Research &amp; Extension targets for this term.</p>
+        </div>
+        <span class="badge bg-primary px-3 py-2 fs-6 shadow-sm"><i class="bi bi-person-gear me-1"></i> RET Target Access</span>
+    </div>
+
+    <form action="{{ url_for('ret_chair.save_faculty_access') }}" method="POST">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-search text-muted"></i>
+                    <input type="text" id="retFacultySearch" class="form-control form-control-sm" placeholder="Search faculty by name or program..." style="width: 280px;" onkeyup="filterRetFacultyTable()">
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleAllRetFaculty(true)">
+                        <i class="bi bi-check-all me-1"></i>Select All
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllRetFaculty(false)">
+                        <i class="bi bi-x-lg me-1"></i>Deselect All
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="retFacultyTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 70px;" class="text-center">Access</th>
+                                <th>Faculty Member</th>
+                                <th>Program / Specialization</th>
+                                <th>Academic Rank</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if faculty_access_list %}
+                            {% for f in faculty_access_list %}
+                            <tr class="ret-faculty-row">
+                                <td class="text-center">
+                                    <div class="form-check form-switch d-inline-block">
+                                        <input class="form-check-input ret-faculty-checkbox" type="checkbox" name="enabled_faculty_ids" value="{{ f.emp_id }}" id="fac_ret_{{ f.emp_id }}" {% if f.is_enabled %}checked{% endif %}>
+                                    </div>
+                                </td>
+                                <td>
+                                    <label for="fac_ret_{{ f.emp_id }}" class="fw-bold text-dark text-decoration-none mb-0 cursor-pointer">
+                                        {{ f.faculty_name }}
+                                    </label>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ f.specialization or 'General' }}</span>
+                                </td>
+                                <td>{{ f.academic_rank or 'Regular Faculty' }}</td>
+                                <td>
+                                    {% if f.is_enabled %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 ret-status-badge">
+                                        <i class="bi bi-check-circle-fill me-1"></i>RET Eligible
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 ret-status-badge">
+                                        <i class="bi bi-dash-circle me-1"></i>Standard Workload Only
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    <i class="bi bi-people fs-3 d-block mb-2"></i>
+                                    No regular faculty profiles found.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card-footer bg-light py-3 text-end border-top">
+                <button type="submit" class="btn btn-success px-4 fw-bold shadow-sm">
+                    <i class="bi bi-floppy-fill me-1"></i>Save RET Access Settings
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function filterRetFacultyTable() {
+    const input = document.getElementById('retFacultySearch').value.toLowerCase();
+    const rows = document.querySelectorAll('#retFacultyTable .ret-faculty-row');
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(input) ? '' : 'none';
+    });
+}
+
+function toggleAllRetFaculty(checked) {
+    const checkboxes = document.querySelectorAll('.ret-faculty-checkbox');
+    checkboxes.forEach(cb => {
+        if (cb.closest('tr').style.display !== 'none') {
+            cb.checked = checked;
+        }
+    });
+}
+</script>
+
 <!-- Phase 1: Cascaded Targets -->
 <div id="nav-phase1" class="dashboard-section">
+
     <div class="page-header d-flex justify-content-between align-items-center">
         <div>
             <h2>Phase 1: Targets Cascaded from Dean</h2>

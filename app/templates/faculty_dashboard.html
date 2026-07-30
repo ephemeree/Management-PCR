@@ -97,7 +97,7 @@
             <i class="bi bi-arrow-counterclockwise me-2"></i>Returned
         </span>
         {% elif has_submitted %}
-        {% if ret_review and ret_review.overall_status == 'Approved' %}
+        {% if not is_ret_eligible or (ret_review and ret_review.overall_status == 'Approved') %}
         <span class="badge bg-info text-dark px-3 py-2 fs-6 shadow-sm">
             <i class="bi bi-hourglass-split me-2"></i>Waiting for Approval
         </span>
@@ -106,6 +106,7 @@
             <i class="bi bi-hourglass-split me-2"></i>Waiting for RET Review &amp; Approval
         </span>
         {% endif %}
+
         {% else %}
         <span class="badge bg-secondary px-3 py-2 fs-6 shadow-sm">
             <i class="bi bi-pencil-square me-2"></i>Draft Mode
@@ -223,7 +224,7 @@
 
         <div class="row g-4">
             <!-- Left Column: Core Assigned Targets -->
-            <div class="col-lg-7">
+            <div class="col-lg-{% if is_ret_eligible %}7{% else %}12{% endif %}">
                 <!-- Instructions Card -->
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3">
@@ -334,6 +335,7 @@
                 </div>
             </div>
 
+            {% if is_ret_eligible %}
             <!-- Right Column: RET Selection Menu -->
             <div class="col-lg-5">
                 <!-- Research Card -->
@@ -452,12 +454,12 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
 
         <div class="mt-4 text-end">
             {% if not has_submitted %}
-            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="submitBtn" {% if
-                ret_menu.research_required> 0 or ret_menu.extension_required > 0 %}disabled{% endif %}>
+            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="submitBtn" {% if is_ret_eligible and (ret_menu.research_required > 0 or ret_menu.extension_required > 0) %}disabled{% endif %}>
                 {% if (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and
                 ret_review.overall_status == 'Rejected') %}
                 <i class="bi bi-send-check-fill me-2"></i>Submit IPCR for Approval
@@ -466,10 +468,11 @@
                 {% endif %}
             </button>
             <p class="small text-muted mt-2 mb-0" id="submitHelpText">
-                {% if ret_menu.research_required > 0 or ret_menu.extension_required > 0 %}
+                {% if is_ret_eligible and (ret_menu.research_required > 0 or ret_menu.extension_required > 0) %}
                 You must complete your Research and Extension selections before submitting.
                 {% endif %}
             </p>
+
             {% else %}
             {% if is_locked or ipcr_status == 'completed' %}
             <div class="alert alert-dark d-inline-block border-0 shadow-sm rounded-pill px-4">
@@ -680,20 +683,27 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const isRetEligible = {{ 'true' if is_ret_eligible else 'false' }};
         const researchCheckboxes = document.querySelectorAll('.research-checkbox');
         const extensionCheckboxes = document.querySelectorAll('.extension-checkbox');
         const submitBtn = document.getElementById('submitBtn');
         const rCountDisplay = document.getElementById('researchCountDisplay');
         const eCountDisplay = document.getElementById('extensionCountDisplay');
         const helpText = document.getElementById('submitHelpText');
-        const rRequiredCount = {{ ret_menu.research_required }};
-        const eRequiredCount = {{ ret_menu.extension_required }};
-    const hasSubmitted = {{ 'true' if has_submitted else 'false' }};
-    const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
+        const rRequiredCount = {{ ret_menu.research_required if is_ret_eligible else 0 }};
+        const eRequiredCount = {{ ret_menu.extension_required if is_ret_eligible else 0 }};
+        const hasSubmitted = {{ 'true' if has_submitted else 'false' }};
+        const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
 
-    function updateSelectionCount() {
-        let rSelected = Array.from(researchCheckboxes).filter(cb => cb.checked).length;
-        let eSelected = Array.from(extensionCheckboxes).filter(cb => cb.checked).length;
+        function updateSelectionCount() {
+            if (!isRetEligible) {
+                if (submitBtn) submitBtn.disabled = false;
+                if (helpText) helpText.style.display = 'none';
+                return;
+            }
+            let rSelected = Array.from(researchCheckboxes).filter(cb => cb.checked).length;
+            let eSelected = Array.from(extensionCheckboxes).filter(cb => cb.checked).length;
+
 
         if (rCountDisplay) rCountDisplay.innerText = `${rSelected} / ${rRequiredCount}`;
         if (eCountDisplay) eCountDisplay.innerText = `${eSelected} / ${eRequiredCount}`;
