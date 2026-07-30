@@ -229,9 +229,12 @@ def export_dpcr():
     import os
     import io
     from flask import send_file, flash, redirect, url_for, session
-    from openpyxl import load_workbook
-    from openpyxl.styles import Font, Alignment, Border, Side
-    from copy import copy
+    try:
+        import xlsxwriter
+    except ImportError:
+        import subprocess, sys
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "xlsxwriter"])
+        import xlsxwriter
     
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -245,16 +248,20 @@ def export_dpcr():
             return redirect(url_for('dean.dean_dashboard'))
             
         term_id = active_term['term_id']
-        
-        template_dir = os.path.join(os.getcwd(), 'app', 'static', 'templates')
-        template_path = os.path.join(template_dir, 'dpcr_template.xlsx')
-        
-        if not os.path.exists(template_path):
-            flash('DPCR Template file not found. Please upload your template to app/static/templates/dpcr_template.xlsx first.', 'danger')
-            return redirect(url_for('dean.dean_dashboard'))
-            
-        wb = load_workbook(template_path)
-        ws = wb.active
+
+        # Fetch Dean's name and college info
+        dean_id = session.get('user_id')
+        cursor.execute("SELECT first_name, last_name, college FROM tbl_employee_profiles WHERE emp_id = %s", (dean_id,))
+        dean_profile = cursor.fetchone()
+        if isinstance(dean_profile, dict):
+            dean_name = f"{dean_profile.get('first_name', '')} {dean_profile.get('last_name', '')}".strip()
+            college_name = dean_profile.get('college', 'College of Information and Communications Technology')
+        elif dean_profile:
+            dean_name = f"{dean_profile[0]} {dean_profile[1]}".strip()
+            college_name = dean_profile[2] or 'College of Information and Communications Technology'
+        else:
+            dean_name = "College Dean"
+            college_name = "College of Information and Communications Technology"
 
         def get_category_key(cat_name):
             cat_lower = cat_name.lower()
@@ -271,7 +278,7 @@ def export_dpcr():
             FROM tbl_master_indicators mi
             JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
             LEFT JOIN tbl_cascaded_quotas cq ON mi.indicator_id = cq.indicator_id AND cq.term_id = mi.term_id
-            WHERE mi.term_id = %s
+            WHERE mi.term_id = %s AND (mi.is_custom = 0 OR mi.is_custom IS NULL)
             ORDER BY tc.category_id, mi.indicator_id
         """, (term_id,))
         
@@ -306,185 +313,257 @@ def export_dpcr():
             key = get_category_key(ind['category_name'])
             indicators_by_category[key].append(ind)
 
-        col_map = {'DST Program': 9, 'WST Program': 10, 'NST Program': 11, 'BSDS Program': 12, 'RET / Extension': 13}
-        template_blocks = {
-            'instruction': [(17, 19), (20, 21), (22, 24), (25, 27), (28, 29), (30, 32), (33, 34), (35, 37)],
-            'research': [(39, 40), (41, 43), (44, 47), (48, 50), (51, 53)],
-            'extension': [(55, 58), (59, 62), (63, 66), (67, 69), (70, 71), (72, 74)],
-            'support': [(76, 79), (80, 83), (84, 87), (88, 91), (92, 95), (96, 99), (100, 103)]
-        }
-
         if indicators_by_category.get('custom'):
             indicators_by_category['support'].extend(indicators_by_category['custom'])
             indicators_by_category['custom'] = []
 
-        thin_side = Side(style='thin')
-        thin_border = Border(top=thin_side, bottom=thin_side, left=thin_side, right=thin_side)
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('DPCR')
 
-        def safe_write_cell(ws, row, col, value):
-            from openpyxl.cell import MergedCell, Cell
-            cell = ws.cell(row=row, column=col)
-            if isinstance(cell, MergedCell):
-                new_cell = Cell(ws, row=row, column=col)
-                new_cell.font = copy(cell.font)
-                new_cell.border = copy(cell.border)
-                new_cell.fill = copy(cell.fill)
-                new_cell.number_format = cell.number_format
-                new_cell.protection = copy(cell.protection)
-                new_cell.alignment = copy(cell.alignment)
-                new_cell.value = value
-                ws._cells[(row, col)] = new_cell
-                return new_cell
+        # Row Heights
+        worksheet.set_row(0, 25)
+        worksheet.set_row(1, 16)
+        worksheet.set_row(2, 16)
+        worksheet.set_row(3, 16)
+        worksheet.set_row(4, 16)
+        worksheet.set_row(5, 16)
+        worksheet.set_row(6, 22)
+        worksheet.set_row(7, 22)
+
+        # Formats
+        fmt_title = workbook.add_format({'bold': True, 'font_name': 'Times New Roman', 'font_size': 13, 'align': 'center', 'valign': 'vcenter'})
+        fmt_subtitle = workbook.add_format({'font_name': 'Times New Roman', 'font_size': 10, 'align': 'left', 'valign': 'vcenter', 'text_wrap': True})
+        fmt_bold_sm = workbook.add_format({'bold': True, 'font_name': 'Times New Roman', 'font_size': 10, 'align': 'left', 'valign': 'vcenter'})
+        fmt_center_sm = workbook.add_format({'font_name': 'Times New Roman', 'font_size': 9, 'align': 'center', 'valign': 'vcenter'})
+        fmt_bold_center_sm = workbook.add_format({'bold': True, 'font_name': 'Times New Roman', 'font_size': 9, 'align': 'center', 'valign': 'vcenter'})
+        fmt_right_sm = workbook.add_format({'bold': True, 'font_name': 'Times New Roman', 'font_size': 10, 'align': 'right', 'valign': 'vcenter'})
+        fmt_hdr_bg = workbook.add_format({'bold': True, 'font_name': 'Times New Roman', 'font_size': 9, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'text_wrap': True})
+        fmt_cat_hdr = workbook.add_format({'bold': True, 'font_name': 'Times New Roman', 'font_size': 10, 'align': 'left', 'valign': 'vcenter', 'border': 1})
+        fmt_subcat_hdr = workbook.add_format({'bold': True, 'font_name': 'Times New Roman', 'font_size': 9, 'align': 'left', 'valign': 'vcenter', 'border': 1})
+        fmt_cell = workbook.add_format({'font_name': 'Times New Roman', 'font_size': 9, 'align': 'left', 'valign': 'vcenter', 'border': 1, 'text_wrap': True})
+        fmt_cell_center = workbook.add_format({'font_name': 'Times New Roman', 'font_size': 9, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'text_wrap': True})
+        fmt_cell_bold_center = workbook.add_format({'bold': True, 'font_name': 'Times New Roman', 'font_size': 9, 'align': 'center', 'valign': 'vcenter', 'border': 1})
+        fmt_box = workbook.add_format({'font_name': 'Times New Roman', 'font_size': 8, 'border': 1, 'valign': 'top', 'text_wrap': True})
+        fmt_italic_sm = workbook.add_format({'italic': True, 'font_name': 'Times New Roman', 'font_size': 9})
+
+        # Columns configuration (24 columns: 0..23)
+        col_widths = {
+            0: 6, 1: 6, 2: 6, 3: 12,
+            4: 12, 5: 12, 6: 12,
+            7: 10,
+            8: 6, 9: 6, 10: 6, 11: 6, 12: 6,
+            13: 15, 14: 15,
+            15: 4, 16: 4, 17: 4, 18: 4,
+            19: 5, 20: 5, 21: 5, 22: 5, 23: 5
+        }
+        for c, w in col_widths.items():
+            worksheet.set_column(c, c, w)
+
+        # Helper to apply full border grid on merged ranges
+        def safe_merge_range(ws, r1, c1, r2, c2, data, format_obj):
+            if r1 == r2 and c1 == c2:
+                ws.write(r1, c1, data, format_obj)
             else:
-                cell.value = value
-                return cell
+                for r in range(r1, r2 + 1):
+                    for c in range(c1, c2 + 1):
+                        ws.write_blank(r, c, '', format_obj)
+                ws.merge_range(r1, c1, r2, c2, data, format_obj)
 
-        def safe_merge(start_row, start_col, end_row, end_col):
-            if start_row == end_row and start_col == end_col: return
-            already_merged = False
-            for r in ws.merged_cells.ranges:
-                if r.min_row == start_row and r.min_col == start_col and r.max_row == end_row and r.max_col == end_col:
-                    already_merged = True; break
-            if not already_merged:
-                try: ws.merge_cells(start_row=start_row, start_column=start_col, end_row=end_row, end_column=end_col)
-                except: pass
+        # Title Block
+        safe_merge_range(worksheet, 0, 0, 0, 23, "DEPARTMENT PERFORMANCE COMMITMENT AND REVIEW (DPCR)", fmt_title)
+        
+        c_full = college_name
+        if c_full.upper() == 'CICT':
+            c_full = "College of Information and Communications Technology"
+        elif not c_full.lower().startswith('college'):
+            c_full = f"College of {c_full}"
 
-        def unmerge_intersecting_ranges(b_start, b_end):
-            ranges_to_remove = [r for r in list(ws.merged_cells.ranges) if r.min_row <= b_end and r.max_row >= b_start]
-            for r in ranges_to_remove:
-                try: ws.unmerge_cells(start_row=r.min_row, start_column=r.min_col, end_row=r.max_row, end_column=r.max_col)
-                except: pass
+        term_desc = f"{active_term['semester'].upper()} {active_term['academic_year']}"
+        sub_text = f"I, {dean_name}, Dean of the {c_full} of Nueva Ecija University of Science and Technology, commit to deliver and agree to be rated in the targets in accordance with the attainment of the following indicated measures for this period {term_desc}."
+        safe_merge_range(worksheet, 1, 0, 2, 23, sub_text, fmt_subtitle)
 
-        def clear_and_unmerge_quota_cols(b_start, b_end):
-            unmerge_intersecting_ranges(b_start, b_end)
-            for r in range(b_start, b_end + 1):
-                for c in range(9, 14): safe_write_cell(ws, r, c, None)
+        # Row 3: Approved by: (Left A4) & Underline for Dean (Right R4:X4)
+        worksheet.write(3, 0, "Approved by:", fmt_bold_sm)
+        safe_merge_range(worksheet, 3, 17, 3, 23, "________________________________________", fmt_center_sm)
 
-        def style_quota_cells(b_start, b_end, min_c, max_c):
-            for r in range(b_start, b_end + 1):
-                for c in range(min_c, max_c + 1): ws.cell(row=r, column=c).border = thin_border
+        # Row 4: RHODORA R. JUGO (O5:Q5) & Dean (R5:X5)
+        safe_merge_range(worksheet, 4, 14, 4, 16, "RHODORA R. JUGO, Ed.D.", fmt_bold_center_sm)
+        safe_merge_range(worksheet, 4, 17, 4, 23, "Dean", fmt_center_sm)
 
-        def find_section_boundaries(ws):
-            headers = {'instruction': None, 'research': None, 'extension': None, 'support': None}
-            boundaries = []
-            for r in range(1, ws.max_row + 1):
-                val = ws.cell(row=r, column=1).value
-                if val and isinstance(val, str):
-                    val_lower = val.lower().strip()
-                    if ("a. instruction" in val_lower or "instruction" in val_lower) and not headers['instruction']:
-                        headers['instruction'] = r
-                    elif "a. research" in val_lower and not headers['research']:
-                        headers['research'] = r
-                    elif "b. extension" in val_lower and not headers['extension']:
-                        headers['extension'] = r
-                    elif ("support functions" in val_lower or "iii. support" in val_lower) and not headers['support']:
-                        headers['support'] = r
-                    
-                    if (val_lower.startswith("i.") or val_lower.startswith("ii.") or val_lower.startswith("iii.") or
-                        val_lower.startswith("total overall") or val_lower.startswith("comments and") or
-                        "strategic priorities" in val_lower or "core functions" in val_lower or
-                        "a. instruction" in val_lower or "a. research" in val_lower or
-                        "b. extension" in val_lower or "support functions" in val_lower):
-                        boundaries.append(r)
-            return headers, sorted(list(set(boundaries)))
+        # Row 5: Head of Agency (O6:Q6) & Date: ___ (R6:X6)
+        safe_merge_range(worksheet, 5, 14, 5, 16, "Head of Agency", fmt_center_sm)
+        worksheet.write(5, 17, "Date:", fmt_right_sm)
+        safe_merge_range(worksheet, 5, 18, 5, 23, "________________________", fmt_center_sm)
 
-        def get_live_category_blocks(ws, cat_key):
-            headers, boundaries = find_section_boundaries(ws)
-            h_row = headers.get(cat_key)
-            if not h_row:
-                return []
-            next_boundary = ws.max_row + 1
-            for b in boundaries:
-                if b > h_row:
-                    next_boundary = b
-                    break
-            blocks = []
-            curr_r = h_row + 1
-            while curr_r < next_boundary and curr_r <= ws.max_row:
-                b_start = curr_r
-                b_end = curr_r
-                for m_range in ws.merged_cells.ranges:
-                    if m_range.min_col <= 14 <= m_range.max_col and m_range.min_row <= curr_r <= m_range.max_row:
-                        b_start = m_range.min_row
-                        b_end = m_range.max_row
-                        break
-                b_start = max(b_start, h_row + 1)
-                b_end = min(b_end, next_boundary - 1)
-                if b_start <= b_end:
-                    blocks.append((b_start, b_end))
-                    curr_r = b_end + 1
-                else:
-                    curr_r += 1
-            return blocks
+        # Table Main Header (Row 6 & 7)
+        safe_merge_range(worksheet, 6, 0, 7, 3, "MFO/PAP", fmt_hdr_bg)
+        safe_merge_range(worksheet, 6, 4, 7, 6, "Success Indicator\n(Target + Measure)", fmt_hdr_bg)
+        safe_merge_range(worksheet, 6, 7, 7, 7, "Allocated\nBudget", fmt_hdr_bg)
+        safe_merge_range(worksheet, 6, 8, 6, 12, "Divisison/Individual accountable", fmt_hdr_bg)
+        
+        # Subheaders for roles
+        worksheet.write(7, 8, "DST", fmt_hdr_bg)
+        worksheet.write(7, 9, "WST", fmt_hdr_bg)
+        worksheet.write(7, 10, "NST", fmt_hdr_bg)
+        worksheet.write(7, 11, "BSDS", fmt_hdr_bg)
+        worksheet.write(7, 12, "RET", fmt_hdr_bg)
 
-        # Process categories TOP-TO-BOTTOM with live row boundary detection
-        for cat in ['instruction', 'research', 'extension', 'support']:
-            indicators = indicators_by_category[cat]
-            blocks = get_live_category_blocks(ws, cat)
-            n_ind, n_blocks = len(indicators), len(blocks)
+        safe_merge_range(worksheet, 6, 13, 7, 14, "Actual Accomplishments", fmt_hdr_bg)
+        safe_merge_range(worksheet, 6, 15, 6, 18, "Rating", fmt_hdr_bg)
+        worksheet.write(7, 15, "Q1", fmt_hdr_bg)
+        worksheet.write(7, 16, "E2", fmt_hdr_bg)
+        worksheet.write(7, 17, "T3", fmt_hdr_bg)
+        worksheet.write(7, 18, "A4", fmt_hdr_bg)
+        safe_merge_range(worksheet, 6, 19, 7, 23, "Remarks", fmt_hdr_bg)
 
-            if n_ind < n_blocks:
-                # Delete extra unused blocks from bottom to top within this category
-                for b_idx in range(n_blocks - 1, n_ind - 1, -1):
-                    b_start, b_end = blocks[b_idx]
-                    unmerge_intersecting_ranges(b_start, b_end)
-                    ws.delete_rows(b_start, b_end - b_start + 1)
-                    blocks.pop(b_idx)
+        curr_r = 8
 
-            elif n_ind > n_blocks and n_blocks > 0:
-                # Insert additional blocks by copying the last block of the category
-                for i in range(n_blocks, n_ind):
-                    last_start, last_end = blocks[-1]
-                    block_height = last_end - last_start + 1
-                    insert_at = last_end + 1
-                    ws.insert_rows(insert_at, block_height)
-                    for offset in range(block_height):
-                        ws.row_dimensions[insert_at + offset].height = ws.row_dimensions[last_start + offset].height
-                    for offset in range(block_height):
-                        src_r, dest_r = last_start + offset, insert_at + offset
-                        for c in range(1, ws.max_column + 1):
-                            src_c = ws.cell(row=src_r, column=c)
-                            safe_write_cell(ws, dest_r, c, src_c.value)
-                            dest_c = ws.cell(row=dest_r, column=c)
-                            dest_c.font = copy(src_c.font)
-                            dest_c.border = copy(src_c.border)
-                            dest_c.fill = copy(src_c.fill)
-                            dest_c.number_format = src_c.number_format
-                            dest_c.alignment = copy(src_c.alignment)
-                    for r in list(ws.merged_cells.ranges):
-                        if r.min_row >= last_start and r.max_row <= last_end:
-                            row_offset = insert_at - last_start
-                            safe_merge(r.min_row + row_offset, r.min_col, r.max_row + row_offset, r.max_col)
-                    blocks.append((insert_at, insert_at + block_height - 1))
+        def generate_accomplishment_text(desc):
+            if not desc:
+                return ""
+            import re
+            text = desc
+            verb_map = {
+                "prepare": "Prepared", "submit": "Submitted", "monitor": "Monitored",
+                "review": "Reviewed", "produce": "Produced", "conduct": "Conducted",
+                "publish": "Published", "assign": "Assigned", "designate": "Designated",
+                "send": "Sent", "distribute": "Distributed", "retrieve": "Retrieved",
+                "complete": "Completed", "observe": "Observed"
+            }
+            words = text.split(None, 1)
+            if words:
+                first_word_lower = words[0].lower()
+                if first_word_lower in verb_map:
+                    text = verb_map[first_word_lower] + (" " + words[1] if len(words) > 1 else "")
 
-            # Write indicators to the live blocks of this category
-            for i, ind in enumerate(indicators):
-                if i >= len(blocks): break
-                b_start, b_end = blocks[i]
-                desc_cell = safe_write_cell(ws, b_start, 5, ind['indicator_description'])
-                desc_cell.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
+            text = re.sub(r'\b(in|within)\s+\d+\s+months?\b', r'\1 _____ month/s', text, flags=re.IGNORECASE)
+            text = re.sub(r'\b(in|within)\s+\d+\s+working days\b', r'\1 _____ working days', text, flags=re.IGNORECASE)
+            text = re.sub(r'\b\d+(?:\.\d+)?%?\b', '_____', text)
+            return text
+
+        # Section configurations
+        sections = [
+            ('instruction', 'I. Strategic Priorities (50%)', 'A. Instruction', 'Advanced/Higher Education Services'),
+            ('research', 'II. Core Functions (40%)', 'A. Research', ''),
+            ('extension', 'II. Core Functions (40%)', 'B. Extension Services / Training Services / Technical Advisory', ''),
+            ('support', 'III. Support Functions (10%)', '', '')
+        ]
+
+        col_map = {'DST Program': 8, 'WST Program': 9, 'NST Program': 10, 'BSDS Program': 11, 'RET / Extension': 12}
+        last_sec_title = None
+
+        for cat_key, sec_title, cat_title, subcat_title in sections:
+            indicators = indicators_by_category.get(cat_key, [])
+            if not indicators:
+                continue
+
+            # Write section header if not yet written
+            if sec_title != last_sec_title:
+                safe_merge_range(worksheet, curr_r, 0, curr_r, 23, sec_title, fmt_cat_hdr)
+                curr_r += 1
+                last_sec_title = sec_title
+
+            if cat_title:
+                safe_merge_range(worksheet, curr_r, 0, curr_r, 23, cat_title, fmt_subcat_hdr)
+                curr_r += 1
+
+            for ind_idx, ind in enumerate(indicators):
+                desc = ind['indicator_description']
                 quotas = ind.get('quotas', {})
                 is_cw = ('College-Wide' in quotas and quotas['College-Wide'] > 0)
-                clear_and_unmerge_quota_cols(b_start, b_end)
+                block_h = 3 # 4 rows per indicator block (curr_r .. curr_r + 3)
+
+                # MFO/PAP cols (0-3): Write subcat_title ONLY on the very first indicator of Instruction!
+                mfo_text = subcat_title if (cat_key == 'instruction' and ind_idx == 0) else ""
+                safe_merge_range(worksheet, curr_r, 0, curr_r + block_h, 3, mfo_text, fmt_cell)
+
+                # Indicator cols (4-6), Budget (7)
+                safe_merge_range(worksheet, curr_r, 4, curr_r + block_h, 6, desc, fmt_cell)
+                safe_merge_range(worksheet, curr_r, 7, curr_r + block_h, 7, "", fmt_cell_center)
+
                 if is_cw:
-                    safe_merge(b_start, 9, b_end, 13)
                     val = quotas['College-Wide']
-                    display_val = f"{int(val * 100)}%" if ('%' in ind['indicator_description'] and isinstance(val, (int, float)) and val <= 5) else val
-                    cell_cw = safe_write_cell(ws, b_start, 9, display_val)
-                    cell_cw.alignment = Alignment(horizontal="center", vertical="center")
-                    style_quota_cells(b_start, b_end, 9, 13)
+                    display_val = f"{int(val * 100)}%" if ('%' in desc and isinstance(val, (int, float)) and val <= 5) else val
+                    safe_merge_range(worksheet, curr_r, 8, curr_r + block_h, 12, display_val, fmt_cell_bold_center)
                 else:
                     for role, c_idx in col_map.items():
-                        if b_start < b_end: safe_merge(b_start, c_idx, b_end, c_idx)
-                        cell = safe_write_cell(ws, b_start, c_idx, quotas.get(role, 0))
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
-                        style_quota_cells(b_start, b_end, c_idx, c_idx)
+                        q_val = quotas.get(role, 0)
+                        safe_merge_range(worksheet, curr_r, c_idx, curr_r + block_h, c_idx, q_val if q_val else 0, fmt_cell_center)
 
-        file_stream = io.BytesIO()
-        wb.save(file_stream)
-        file_stream.seek(0)
+                # Generate accomplishment text with numbers replaced with _____
+                acc_text = generate_accomplishment_text(desc)
+                safe_merge_range(worksheet, curr_r, 13, curr_r + block_h, 14, acc_text, fmt_cell)
+
+                # Rating Q1-A4 (15-18) and Remarks (19-23)
+                for r_col in range(15, 19):
+                    safe_merge_range(worksheet, curr_r, r_col, curr_r + block_h, r_col, "", fmt_cell_center)
+                safe_merge_range(worksheet, curr_r, 19, curr_r + block_h, 23, "", fmt_cell)
+
+                curr_r += block_h + 1
+
+        # Rating Summary Rows
+        safe_merge_range(worksheet, curr_r, 0, curr_r, 14, "Total Overall Rating", fmt_bold_sm)
+        for c in range(15, 19): worksheet.write(curr_r, c, "", fmt_cell_center)
+        safe_merge_range(worksheet, curr_r, 19, curr_r, 23, "", fmt_cell)
+        curr_r += 1
+
+        safe_merge_range(worksheet, curr_r, 0, curr_r, 14, "Final Average Rating", fmt_bold_sm)
+        for c in range(15, 19): worksheet.write(curr_r, c, "", fmt_cell_center)
+        safe_merge_range(worksheet, curr_r, 19, curr_r, 23, "", fmt_cell)
+        curr_r += 1
+
+        safe_merge_range(worksheet, curr_r, 0, curr_r, 14, "Adjectival Rating", fmt_bold_sm)
+        for c in range(15, 19): worksheet.write(curr_r, c, "", fmt_cell_center)
+        safe_merge_range(worksheet, curr_r, 19, curr_r, 23, "", fmt_cell)
+        curr_r += 1
+
+        # Comments & Category Rating Table Box (Rows curr_r .. curr_r+6)
+        safe_merge_range(worksheet, curr_r, 0, curr_r+6, 13, 
+            "Comments and Recommendations for Development Purposes\n(to be accomplished by the immediate supervisor)", fmt_box)
+
+        # Right side Summary Table
+        safe_merge_range(worksheet, curr_r, 14, curr_r, 16, "Category", fmt_hdr_bg)
+        safe_merge_range(worksheet, curr_r, 17, curr_r, 18, "Weight (%)", fmt_hdr_bg)
+        safe_merge_range(worksheet, curr_r, 19, curr_r, 23, "Rating", fmt_hdr_bg)
+
+        # Subheaders Average & Weighted
+        safe_merge_range(worksheet, curr_r+1, 19, curr_r+1, 20, "Average", fmt_hdr_bg)
+        safe_merge_range(worksheet, curr_r+1, 21, curr_r+1, 23, "Weighted", fmt_hdr_bg)
+
+        cat_rows = [
+            ("I. Strategic Priorities", "50%"),
+            ("II. Core Functions", "40%"),
+            ("III. Support Functions", "10%"),
+            ("Total Overall Rating", ""),
+            ("Final Weighted Rating", ""),
+            ("Adjectival Rating", "")
+        ]
+
+        for idx, (c_name, w_val) in enumerate(cat_rows):
+            r_idx = curr_r + 2 + idx
+            safe_merge_range(worksheet, r_idx, 14, r_idx, 16, c_name, fmt_cell)
+            safe_merge_range(worksheet, r_idx, 17, r_idx, 18, w_val, fmt_cell_center)
+            safe_merge_range(worksheet, r_idx, 19, r_idx, 20, "", fmt_cell_center)
+            safe_merge_range(worksheet, r_idx, 21, r_idx, 23, "", fmt_cell_center)
+
+        curr_r += 8
+
+        # Legend Row
+        safe_merge_range(worksheet, curr_r, 0, curr_r, 23, "Legend: 1 - Quantity 2 - Efficiency 3 - Timeliness 4 - Average", fmt_italic_sm)
+        curr_r += 1
+
+        # 4-Box Signature Block
+        safe_merge_range(worksheet, curr_r, 0, curr_r+3, 5, f"Discussed with:\n\n\n_________________________\n{dean_name}\nDean/Director\nDate: ________", fmt_box)
+        safe_merge_range(worksheet, curr_r, 6, curr_r+3, 11, "Assessed by:\n\n\n_________________________\nKENNETH L. ARMAS, PhD\nDirector, Planning and Development Office\nDate: ________", fmt_box)
+        safe_merge_range(worksheet, curr_r, 12, curr_r+3, 17, "\n\n\n_________________________\nEngr. FELICIANA P. JACOBA, EdD\nVice President for Academic Affairs\nDate: ________", fmt_box)
+        safe_merge_range(worksheet, curr_r, 18, curr_r+3, 23, "Final Rating by:\n\n\n_________________________\nRHODORA R. JUGO, Ed.D.\nHead of Agency\nDate: ________", fmt_box)
+
+        workbook.close()
+        output.seek(0)
+
         filename = f"DPCR_{active_term['academic_year'].replace('/', '_')}_{active_term['semester'].replace(' ', '_')}.xlsx"
-        return send_file(file_stream, as_attachment=True, download_name=filename, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        return send_file(output, as_attachment=True, download_name=filename, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
         import traceback
         traceback.print_exc()
