@@ -6,96 +6,280 @@
     <title>D-IPCR - {% block title %}{% endblock %}</title>
     <!-- Bootstrap 5 CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body {
-            background-color: #F8FAFC; /* Soft UI background */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            height: 100vh;
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #1e293b;
+        }
+        .auth-split-wrapper {
+            min-height: 100vh;
+            display: flex;
+            width: 100%;
+        }
+        /* Left Hero Panel */
+        .auth-hero-panel {
+            background-color: #063175; /* Deep Navy Blue matching reference image */
+            color: #ffffff;
+            flex: 0 0 45%;
+            max-width: 45%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 3.5rem 4rem;
+            position: relative;
+        }
+        .hero-brand {
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 0.75rem;
         }
-        .auth-container {
-            width: 100%;
-            max-width: 420px;
-            padding: 15px;
+        .hero-logo-icon {
+            font-size: 2.4rem;
+            line-height: 1;
+            font-weight: 800;
+            color: #ffffff;
         }
-        .card {
-            border: none;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            border-radius: 15px;
-        }
-        .brand-header {
-            color: #0B3C86;
+        .hero-brand-title {
+            font-size: 1.6rem;
             font-weight: 800;
             letter-spacing: -0.5px;
+            margin: 0;
+            line-height: 1.1;
+            color: #ffffff;
         }
+        .hero-brand-subtitle {
+            font-size: 0.78rem;
+            opacity: 0.8;
+            margin: 0;
+            color: #ffffff;
+        }
+        .hero-headline {
+            font-size: 2.15rem;
+            font-weight: 600;
+            line-height: 1.35;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+            max-width: 480px;
+        }
+
+        /* Right Form Panel */
+        .auth-form-panel {
+            flex: 0 0 55%;
+            max-width: 55%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 2.5rem 3.5rem;
+            background-color: #ffffff;
+            overflow-y: auto;
+        }
+        .auth-form-container {
+            width: 100%;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+
+        /* Responsive Breakpoint for Mobile/Tablet */
+        @media (max-width: 991.98px) {
+            .auth-split-wrapper {
+                flex-direction: column;
+            }
+            .auth-hero-panel {
+                flex: 0 0 auto;
+                max-width: 100%;
+                padding: 2.5rem 2rem;
+            }
+            .hero-headline {
+                font-size: 1.5rem;
+                margin-top: 1.5rem;
+            }
+            .auth-form-panel {
+                flex: 1 0 auto;
+                max-width: 100%;
+                padding: 2rem 1.5rem;
+            }
+        }
+
         .btn-dipcr {
-            background-color: #0B3C86;
+            background-color: #063175;
             color: white;
             padding: 12px;
-            border-radius: 8px;
+            border-radius: 10px;
             font-weight: 600;
             transition: all 0.3s ease;
             border: none;
         }
         .btn-dipcr:hover {
-            background-color: #082d66;
+            background-color: #042254;
             color: #ffffff;
-            box-shadow: 0 4px 12px rgba(11, 60, 134, 0.2);
+            box-shadow: 0 4px 12px rgba(6, 49, 117, 0.25);
         }
         .form-control {
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.95rem;
         }
         .form-control:focus {
-            border-color: #0B3C86;
-            box-shadow: 0 0 0 0.25 anonymous rgba(11, 60, 134, 0.1);
-        }
-        .text-dipcr {
-            color: #0B3C86;
+            border-color: #063175;
+            box-shadow: 0 0 0 0.2rem rgba(6, 49, 117, 0.15);
         }
         a {
-            color: #0B3C86;
+            color: #063175;
             text-decoration: none;
             font-weight: 600;
         }
         a:hover {
             text-decoration: underline;
         }
+        .password-field-wrapper {
+            position: relative;
+        }
+        .password-field-wrapper .form-control {
+            padding-right: 42px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        .toggle-password-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+            transition: color 0.2s ease;
+        }
+        .toggle-password-btn:hover {
+            color: #063175;
+        }
+        .toggle-password-btn:focus {
+            box-shadow: none;
+            outline: none;
+        }
+        .password-policy-box {
+            margin-top: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+        .policy-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 0.5rem;
+        }
+        .policy-item {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.35rem;
+        }
+        .policy-item.valid {
+            color: #1e293b;
+        }
+        .policy-item.valid i {
+            color: #16a34a;
+        }
+        .policy-item.invalid {
+            color: #64748b;
+        }
+        .policy-item.invalid i {
+            color: #cbd5e1;
+        }
     </style>
 </head>
 <body>
 
-    <div class="auth-container">
-        <div class="card p-4">
-            <div class="text-center mb-4">
-                <h2 class="brand-header mb-1">D-IPCR</h2>
-                <p class="text-muted small">Digital IPCR System</p>
+    <div class="auth-split-wrapper">
+        <!-- Left Hero Panel -->
+        <div class="auth-hero-panel">
+            <div class="hero-brand">
+                <div class="hero-logo-icon"><i class="bi bi-shield-check"></i></div>
+                <div>
+                    <h1 class="hero-brand-title">D-IPCR</h1>
+                    <p class="hero-brand-subtitle">Digital IPCR System</p>
+                </div>
             </div>
 
-            <!-- Centralized Flash Message Handling -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="alert alert-{{ category }} alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="font-size: 0.9em;">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
+            <div class="my-auto py-4">
+                <h2 class="hero-headline">
+                    Efficiently manage your individual performance commitments with D-IPCR. Secure, transparent, and easy to use.
+                </h2>
+            </div>
 
-            {% block auth_content %}{% endblock %}
+            <div style="opacity: 0.5; font-size: 0.75rem;">
+                D-IPCR Institutional Security
+            </div>
         </div>
-        
-        <div class="text-center mt-4">
-            <p class="text-muted small">&copy; 2026 D-IPCR Performance Management. <br> Institutional Security Level: <strong>HIGH</strong></p>
+
+        <!-- Right Form Panel -->
+        <div class="auth-form-panel">
+            <div class="my-auto py-3">
+                <div class="auth-form-container">
+                    <!-- Centralized Flash Message Handling -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                      {% if messages %}
+                        {% for category, message in messages %}
+                          <div class="alert alert-{{ category }} alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="font-size: 0.9em;">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                          </div>
+                        {% endfor %}
+                      {% endif %}
+                    {% endwith %}
+
+                    {% block auth_content %}{% endblock %}
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center pt-3" style="border-top: 1px solid #f1f5f9;">
+                <p class="text-muted small mb-0" style="font-size: 0.76rem;">&copy; 2026 D-IPCR Performance Management. Institutional Security Level: <strong>HIGH</strong></p>
+            </div>
         </div>
     </div>
 
     <!-- Bootstrap 5 Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.toggle-password-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    const icon = this.querySelector('i');
+                    if (input) {
+                        if (input.type === 'password') {
+                            input.type = 'text';
+                            if (icon) {
+                                icon.classList.remove('bi-eye');
+                                icon.classList.add('bi-eye-slash');
+                            }
+                        } else {
+                            input.type = 'password';
+                            if (icon) {
+                                icon.classList.remove('bi-eye-slash');
+                                icon.classList.add('bi-eye');
+                            }
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

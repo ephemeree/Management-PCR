@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, session, url_for, flash
-from app.auth import hash_pass, verify_pass
+from app.auth import hash_pass, verify_pass, validate_password_policy
 from app.models import get_db_connection, get_user_by_email, register_user
 from app.decorators import role_required
 import mysql.connector, time
@@ -95,6 +95,11 @@ def register():
 
         if not employee_id_number or not email or not password:
             flash("All fields are required.", "danger")
+            return redirect(url_for('auth.register'))
+
+        is_valid, msg = validate_password_policy(password)
+        if not is_valid:
+            flash(msg, "danger")
             return redirect(url_for('auth.register'))
 
         hashed_pw = hash_pass(password)

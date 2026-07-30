@@ -40,29 +40,28 @@
 <script>window.dashboardRole = 'admin';</script>
 
 <div id="nav-overview" class="dashboard-section active">
-    <div class="page-header">
-        <h2>System Administrator & HR Portal</h2>
-        <p>Engine Room: System governance and database integrity.</p>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem; letter-spacing: -0.5px;">Overview</h2>
+        </div>
     </div>
 
-    <div class="row mb-4">
+    <div class="row g-4 mb-4">
         <div class="col-md-6">
-            <div class="card shadow-sm border-0 border-start border-info border-4">
-                <div class="card-body">
-                    <h6 class="text-muted fw-bold mb-1">Roster Adoption Rate</h6>
-                    <h3 class="text-dark mb-0">{{ kpis.adoption_rate }}%
-                        <span class="fs-6 text-muted ps-1">{{ kpis.claimed_accounts }} / {{ kpis.total_roster }}
-                            Accounts
-                            Claimed</span>
+            <div class="card card-elevated p-4">
+                <div class="card-body p-0">
+                    <h6 class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">ROSTER ADOPTION RATE</h6>
+                    <h3 class="text-dark fw-bold mb-0" style="font-size: 2rem;">{{ kpis.adoption_rate }}%
+                        <span class="fs-6 text-muted ps-2 fw-normal">{{ kpis.claimed_accounts }} / {{ kpis.total_roster }} Accounts Claimed</span>
                     </h3>
                 </div>
             </div>
         </div>
         <div class="col-md-6">
-            <div class="card shadow-sm border-0 border-start border-warning border-4">
-                <div class="card-body">
-                    <h6 class="text-muted fw-bold mb-1">Term Deadline</h6>
-                    <h3 class="text-dark mb-0">{{ kpis.term_status }}</h3>
+            <div class="card card-elevated p-4">
+                <div class="card-body p-0">
+                    <h6 class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">TERM DEADLINE</h6>
+                    <h3 class="text-dark fw-bold mb-0" style="font-size: 2rem;">{{ kpis.term_status }}</h3>
                 </div>
             </div>
         </div>
@@ -83,99 +82,97 @@
 
 <!-- HR ROSTER SECTION -->
 <div id="nav-roster" class="dashboard-section">
-    <div class="page-header">
-        <h2>HR Roster Management</h2>
-        <p>Manage faculty profiles, assignments, and statuses.</p>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem; letter-spacing: -0.5px;">HR Roster Management</h2>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-dark-navy btn-sm rounded-pill px-3 py-2 fw-semibold" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
+                <i class="bi bi-upload me-1"></i> Upload CSV Roster
+            </button>
+            <button class="btn btn-dark-navy btn-sm rounded-pill px-3 py-2 fw-semibold" data-bs-toggle="modal" data-bs-target="#facultyModal" onclick="resetForm()">
+                <i class="bi bi-person-plus me-1"></i> Add New Faculty
+            </button>
+        </div>
     </div>
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold text-dark mb-0">HR Roster Management</h5>
-            <div>
-                <button class="btn btn-outline-success btn-sm me-2" data-bs-toggle="modal"
-                    data-bs-target="#csvUploadModal">
-                    <i class="bi bi-upload"></i> Upload CSV Roster
-                </button>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#facultyModal"
-                    onclick="resetForm()">
-                    <i class="bi bi-person-plus"></i> Add New Faculty
-                </button>
+
+    <div class="card card-elevated p-4 mb-4">
+        <div class="row g-3 mb-4 justify-content-between align-items-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="search-pill-wrapper">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" id="rosterSearch" class="form-control rounded-pill" placeholder="Search...">
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-3 text-end">
+                <select id="rosterStatusFilter" class="form-select rounded-pill px-3">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive / Others</option>
+                </select>
             </div>
         </div>
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-8">
-                    <input type="text" id="rosterSearch" class="form-control"
-                        placeholder="Search by ID, Name, Program, or Designation...">
-                </div>
-                <div class="col-md-4">
-                    <select id="rosterStatusFilter" class="form-select">
-                        <option value="">All Statuses</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive / Others</option>
-                    </select>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle" id="rosterTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Employee ID</th>
-                            <th>Full Name</th>
-                            <th>Program</th>
-                            <th>Specialization</th>
-                            <th>Rank</th>
-                            <th>Designation</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in profiles %}
-                        <tr>
-                            <td>{{ p.employee_id_number }}</td>
-                            <td>{{ p.last_name }}, {{ p.first_name }}</td>
-                            <td>{{ p.college }} / {{ p.assigned_program }}</td>
-                            <td>{{ p.specialization or 'None' }}</td>
-                            <td>{{ p.academic_rank }}</td>
-                            <td>{{ p.designation or 'None' }}</td>
-                            <td>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="rosterTable">
+                <thead>
+                    <tr>
+                        <th class="ps-3">EMPLOYEE ID</th>
+                        <th>FULL NAME</th>
+                        <th>PROGRAM</th>
+                        <th>SPECIALIZATION</th>
+                        <th>RANK</th>
+                        <th>DESIGNATION</th>
+                        <th>STATUS</th>
+                        <th class="text-center">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in profiles %}
+                    <tr>
+                        <td class="fw-bold text-dark ps-3">{{ p.employee_id_number }}</td>
+                        <td class="fw-semibold text-dark">{{ p.last_name }}, {{ p.first_name }}</td>
+                        <td>{{ p.college }} / {{ p.assigned_program }}</td>
+                        <td>{{ p.specialization or 'None' }}</td>
+                        <td>{{ p.academic_rank }}</td>
+                        <td>{{ p.designation or 'None' }}</td>
+                        <td>
+                            {% if p.leave_status == 'Active' %}
+                            <span class="badge badge-status-active rounded-pill px-3 py-1">Active</span>
+                            {% else %}
+                            <span class="badge badge-status-inactive rounded-pill px-3 py-1">{{ p.leave_status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-1"
+                                onclick='editFaculty({{ p | tojson | safe }})'>Edit</button>
+                            <form method="POST" action="{{ url_for('admin.toggle_status') }}" class="d-inline">
+                                <input type="hidden" name="employee_id_number" value="{{ p.employee_id_number }}">
                                 {% if p.leave_status == 'Active' %}
-                                <span class="badge bg-success">Active</span>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Deactivate</button>
                                 {% else %}
-                                <span class="badge bg-secondary">{{ p.leave_status }}</span>
+                                <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3">Activate</button>
                                 {% endif %}
-                            </td>
-                            <td>
-                                <button class="btn btn-outline-primary btn-sm me-1"
-                                    onclick='editFaculty({{ p | tojson | safe }})'>Edit</button>
-                                <form method="POST" action="{{ url_for('admin.toggle_status') }}" class="d-inline">
-                                    <input type="hidden" name="employee_id_number" value="{{ p.employee_id_number }}">
-                                    {% if p.leave_status == 'Active' %}
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">Deactivate</button>
-                                    {% else %}
-                                    <button type="submit" class="btn btn-outline-success btn-sm">Activate</button>
-                                    {% endif %}
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-4">No HR Roster data available.
-                                Update via CSV to populate.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">No HR Roster data available. Update via CSV to populate.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <!-- TERM CONFIGURATION SECTION -->
 <div id="nav-term" class="dashboard-section">
-    <div class="page-header">
-        <h2>Term Configuration</h2>
-        <p>Open new academic terms and view term history.</p>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem; letter-spacing: -0.5px;">Term Configuration</h2>
+        </div>
     </div>
     <div class="row">
         <div class="col-md-5">
@@ -255,9 +252,10 @@
 
 <!-- MASTER INDICATORS SECTION -->
 <div id="nav-indicators" class="dashboard-section">
-    <div class="page-header">
-        <h2>Master Indicators</h2>
-        <p>Manage the global bank of performance targets for the active term.</p>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem; letter-spacing: -0.5px;">Master Indicators</h2>
+        </div>
     </div>
     <div class="row">
         <!-- LEFT: Add Form -->
@@ -347,16 +345,16 @@
             {% if 'Research' in ind.category_name or 'Extension' in ind.category_name or 'EXTENSIONS' in ind.category_name %}
             {% set ns.found = true %}
             <tr>
-                <td style="width: 5%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
-                <td style="width: 25%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
-                <td style="width: 50%;" class="small">{{ ind.indicator_description }}</td>
-                <td style="width: 10%; text-align: center;"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
-                <td style="width: 10%; text-align: center;">
+                <td style="width: 6%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
+                <td style="width: 20%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
+                <td style="width: 44%;" class="small">{{ ind.indicator_description }}</td>
+                <td style="width: 15%; text-align: center;"><span class="badge bg-info text-dark text-wrap">{{ ind.efficiency_type }}</span></td>
+                <td style="width: 15%; text-align: center; min-width: 120px;">
                     {% if ind.is_cascaded %}
                     <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
                     {% else %}
-                    <div class="d-inline-flex gap-1 justify-content-center">
-                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                    <div class="d-inline-flex gap-1 justify-content-center flex-nowrap">
+                        <button class="btn btn-outline-primary btn-sm rounded-pill px-2 py-1" data-bs-toggle="modal"
                             data-bs-target="#editIndicatorModal" data-ind-id="{{ ind.indicator_id }}"
                             data-ind-category="{{ ind.category_name | e }}"
                             data-ind-desc="{{ ind.indicator_description | e }}"
@@ -364,7 +362,7 @@
                         <form method="POST" action="{{ url_for('admin.admin_delete_indicator') }}" class="d-inline"
                             onsubmit="return confirm('Delete this indicator? This cannot be undone.')">
                             <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1">Delete</button>
                         </form>
                     </div>
                     {% endif %}
@@ -375,16 +373,16 @@
             {% if ind.category_name == category_filter %}
             {% set ns.found = true %}
             <tr>
-                <td style="width: 5%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
-                <td style="width: 25%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
-                <td style="width: 50%;" class="small">{{ ind.indicator_description }}</td>
-                <td style="width: 10%; text-align: center;"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
-                <td style="width: 10%; text-align: center;">
+                <td style="width: 6%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
+                <td style="width: 20%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
+                <td style="width: 44%;" class="small">{{ ind.indicator_description }}</td>
+                <td style="width: 15%; text-align: center;"><span class="badge bg-info text-dark text-wrap">{{ ind.efficiency_type }}</span></td>
+                <td style="width: 15%; text-align: center; min-width: 120px;">
                     {% if ind.is_cascaded %}
                     <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
                     {% else %}
-                    <div class="d-inline-flex gap-1 justify-content-center">
-                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                    <div class="d-inline-flex gap-1 justify-content-center flex-nowrap">
+                        <button class="btn btn-outline-primary btn-sm rounded-pill px-2 py-1" data-bs-toggle="modal"
                             data-bs-target="#editIndicatorModal" data-ind-id="{{ ind.indicator_id }}"
                             data-ind-category="{{ ind.category_name | e }}"
                             data-ind-desc="{{ ind.indicator_description | e }}"
@@ -392,7 +390,7 @@
                         <form method="POST" action="{{ url_for('admin.admin_delete_indicator') }}" class="d-inline"
                             onsubmit="return confirm('Delete this indicator? This cannot be undone.')">
                             <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1">Delete</button>
                         </form>
                     </div>
                     {% endif %}
@@ -422,22 +420,15 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
-                            <colgroup>
-                                <col style="width: 5%;">
-                                <col style="width: 25%;">
-                                <col style="width: 50%;">
-                                <col style="width: 10%;">
-                                <col style="width: 10%;">
-                            </colgroup>
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table class="table table-hover align-middle mb-0" style="table-layout: auto; width: 100%; min-width: 650px;">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 5%;" class="ps-3">#</th>
-                                    <th style="width: 25%;">Category</th>
-                                    <th style="width: 50%;">Description</th>
-                                    <th style="width: 10%; text-align: center;">Type</th>
-                                    <th style="width: 10%; text-align: center;">Actions</th>
+                                    <th style="width: 6%;" class="ps-3">#</th>
+                                    <th style="width: 20%;">Category</th>
+                                    <th style="width: 44%;">Description</th>
+                                    <th style="width: 15%; text-align: center;">Type</th>
+                                    <th style="width: 15%; text-align: center; min-width: 120px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -460,22 +451,15 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
-                            <colgroup>
-                                <col style="width: 5%;">
-                                <col style="width: 25%;">
-                                <col style="width: 50%;">
-                                <col style="width: 10%;">
-                                <col style="width: 10%;">
-                            </colgroup>
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table class="table table-hover align-middle mb-0" style="table-layout: auto; width: 100%; min-width: 650px;">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 5%;" class="ps-3">#</th>
-                                    <th style="width: 25%;">Category</th>
-                                    <th style="width: 50%;">Description</th>
-                                    <th style="width: 10%; text-align: center;">Type</th>
-                                    <th style="width: 10%; text-align: center;">Actions</th>
+                                    <th style="width: 6%;" class="ps-3">#</th>
+                                    <th style="width: 20%;">Category</th>
+                                    <th style="width: 44%;">Description</th>
+                                    <th style="width: 15%; text-align: center;">Type</th>
+                                    <th style="width: 15%; text-align: center; min-width: 120px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -498,22 +482,15 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
-                            <colgroup>
-                                <col style="width: 5%;">
-                                <col style="width: 25%;">
-                                <col style="width: 50%;">
-                                <col style="width: 10%;">
-                                <col style="width: 10%;">
-                            </colgroup>
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table class="table table-hover align-middle mb-0" style="table-layout: auto; width: 100%; min-width: 650px;">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 5%;" class="ps-3">#</th>
-                                    <th style="width: 25%;">Category</th>
-                                    <th style="width: 50%;">Description</th>
-                                    <th style="width: 10%; text-align: center;">Type</th>
-                                    <th style="width: 10%; text-align: center;">Actions</th>
+                                    <th style="width: 6%;" class="ps-3">#</th>
+                                    <th style="width: 20%;">Category</th>
+                                    <th style="width: 44%;">Description</th>
+                                    <th style="width: 15%; text-align: center;">Type</th>
+                                    <th style="width: 15%; text-align: center; min-width: 120px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
