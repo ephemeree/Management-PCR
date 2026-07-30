@@ -60,12 +60,32 @@ from app.routes import register_blueprints
 register_blueprints(app)
 
 
-@app.route('/evidence_uploads/<path:filename>')
-def serve_evidence(filename):
+@app.route('/evidence_uploads/<int:evidence_id>')
+def serve_evidence(evidence_id):
     from flask import session, redirect, url_for, send_from_directory, abort
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    from app.models.connection import get_db_connection
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT er.file_path, ct.emp_id
+        FROM tbl_evidence_repo er
+        JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+        WHERE er.evidence_id = %s
+    """, (evidence_id,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if not row:
+        abort(404)
+    file_path, owner_emp_id = row
+    current_user_id = session['user_id']
+    current_role = session.get('role')
+    if current_role == 'FACULTY' and current_user_id != owner_emp_id:
+        abort(403)
+    import os
+    return send_from_directory(app.config['UPLOAD_FOLDER'], os.path.basename(file_path))
 
 @app.after_request
 def add_header(response):

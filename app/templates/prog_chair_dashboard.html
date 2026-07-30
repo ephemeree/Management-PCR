@@ -1461,9 +1461,8 @@ function openEvidenceViewer(evidenceList) {
     } else {
         let html = '';
         evidenceList.forEach((ev) => {
-            const filePath = ev.file_path.startsWith('uploads/evidence/') ? ev.file_path.substring(17) : ev.file_path;
-            const fileUrl = `/evidence_uploads/${filePath}`;
-            const fileName = filePath;
+            const fileUrl = `/evidence_uploads/${ev.evidence_id}`;
+            const fileName = ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, '');
             const isImage = ev.file_path.match(/\.(jpg|jpeg|png|gif|webp)$/i);
             const previewHtml = isImage
                 ? `<img src="${fileUrl}" alt="${fileName}" style="width: 100%; max-height: 400px; object-fit: contain; border-radius: 8px;">`
