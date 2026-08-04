@@ -267,13 +267,14 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
         cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
         cat_row = cursor.fetchone()
         cat_id = cat_row[0] if cat_row else 1
-        cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = '21 hours of Teaching Load' AND term_id = %s", (term_id,))
+        cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = '21 hours of Teaching Load' AND term_id = %s", (active_term_id,))
         tl_row = cursor.fetchone()
         if tl_row:
             tl_ind_id = tl_row[0]
         else:
-            cursor.execute("INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom) VALUES (%s, '21 hours of Teaching Load', 'Output-Based', %s, 0)", (cat_id, term_id))
+            cursor.execute("INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom) VALUES (%s, '21 hours of Teaching Load', 'Output-Based', %s, 0)", (cat_id, active_term_id))
             tl_ind_id = cursor.lastrowid
+
 
         cursor.execute("SELECT draft_id FROM tbl_draft_targets WHERE emp_id = %s AND indicator_id = %s", (emp_id, tl_ind_id))
         tl_draft = cursor.fetchone()
