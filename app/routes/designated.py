@@ -87,11 +87,27 @@ def designated_dashboard():
                 t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             evidence_readiness = check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets)
         elif can_edit:
-            # Load standard selectable indicators
-            standard_targets = get_designated_selectable_indicators(cursor, term_id)
+            # Load standard selectable indicators and exclude 21 hours regular teaching load targets
+            raw_standard_targets = get_designated_selectable_indicators(cursor, term_id)
+            standard_targets = [
+                t for t in raw_standard_targets 
+                if '21 hours' not in t['indicator_description'] and '21 hrs' not in t['indicator_description']
+            ]
             
+            # Fetch cascaded instruction allocations from Program Chair
+            cursor.execute("""
+                SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline
+                FROM tbl_draft_allocation da
+                JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.category_name = 'A. Instructions'
+            """, (emp_id, term_id))
+            alloc_rows = cursor.fetchall()
+            alloc_map = {r[0]: {'assigned_quantity': r[1], 'custom_description': r[2], 'target_deadline': r[3]} for r in alloc_rows}
+
             draft_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
+                       dt.target_description, dt.target_deadline,
                        mi.indicator_description, tc.category_name, mi.is_custom,
                        dri.item_remarks as dean_remarks, dri.original_quantity, dri.reviewed_quantity
                 FROM tbl_draft_targets dt
@@ -111,28 +127,109 @@ def designated_dashboard():
             dpcr_targets = []
             for t in standard_targets:
                 ind_id = t['indicator_id']
-                if ind_id in draft_map:
+                is_tl = 'Teaching Load' in t['indicator_description']
+                
+                if is_tl:
+                    t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else 10
+                    t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or '10 hours of Teaching Load'
+                    t['target_deadline'] = (draft_map[ind_id]['target_deadline'] if ind_id in draft_map else None) or '1 Semester'
+                    t['status'] = draft_map[ind_id]['status'] if ind_id in draft_map else 'Draft'
+                    t['is_selected'] = True
+                    t['is_mandatory'] = True
+                    t['is_core'] = True
+                    t['is_locked'] = True
+                elif ind_id in alloc_map and (alloc_map[ind_id].get('assigned_quantity') or 0) > 0:
+                    # Cascaded Instruction Target from Program Chair -> Core Functions & Locked
+                    t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else alloc_map[ind_id]['assigned_quantity']
+                    t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or alloc_map[ind_id]['custom_description'] or t['indicator_description']
+                    t['target_deadline'] = (draft_map[ind_id]['target_deadline'] if ind_id in draft_map else None) or alloc_map[ind_id]['target_deadline'] or ''
+                    t['status'] = draft_map[ind_id]['status'] if ind_id in draft_map else 'Draft'
+                    t['is_selected'] = True
+                    t['is_cascaded'] = True
+                    t['is_core'] = True
+                    t['is_locked'] = True
+                elif ind_id in draft_map:
                     t['total_target_value'] = draft_map[ind_id]['total_target_value']
+                    t['target_description'] = draft_map[ind_id]['target_description'] or t['indicator_description']
+                    t['target_deadline'] = draft_map[ind_id]['target_deadline'] or ''
                     t['status'] = draft_map[ind_id]['status']
                     t['dean_remarks'] = draft_map[ind_id]['dean_remarks']
                     t['original_quantity'] = draft_map[ind_id]['original_quantity']
                     t['reviewed_quantity'] = draft_map[ind_id]['reviewed_quantity']
                     t['is_selected'] = True
+                    t['is_core'] = False
+                    t['is_locked'] = False
                 else:
                     t['total_target_value'] = 0
+                    t['target_description'] = t['indicator_description']
+                    t['target_deadline'] = ''
                     t['status'] = 'Draft'
                     t['is_selected'] = False
+                    t['is_core'] = False
+                    t['is_locked'] = False
                 dpcr_targets.append(t)
                 
             # Add custom targets from drafts
             for d in draft_targets:
                 if d['is_custom']:
                     d['is_selected'] = True
+                    d['is_core'] = False
+                    d['is_locked'] = False
                     dpcr_targets.append(d)
+
+            # Ensure mandatory default Teaching Load target (10 hours) is present if not already added
+            has_teaching_load = any(
+                t.get('category_name') == 'A. Instructions' and 'Teaching Load' in str(t.get('indicator_description', ''))
+                for t in dpcr_targets
+            )
+            if not has_teaching_load:
+                cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
+                cat_row = cursor.fetchone()
+                cat_id = cat_row[0] if cat_row else 1
+                cursor.execute("""
+                    SELECT indicator_id FROM tbl_master_indicators
+                    WHERE indicator_description = '10 hours of Teaching Load' AND term_id = %s
+                """, (term_id,))
+                ind_row = cursor.fetchone()
+                if ind_row:
+                    tl_ind_id = ind_row[0]
+                else:
+                    cursor.execute("""
+                        INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom)
+                        VALUES (%s, '10 hours of Teaching Load', 'Output-Based', %s, 0)
+                    """, (cat_id, term_id))
+                    tl_ind_id = cursor.lastrowid
+
+                mandatory_target = {
+                    'target_id': f'tl_{tl_ind_id}',
+                    'indicator_id': tl_ind_id,
+                    'total_target_value': 10,
+                    'status': 'Draft',
+                    'indicator_description': '10 hours of Teaching Load',
+                    'target_description': '10 hours of Teaching Load',
+                    'target_deadline': '1 Semester',
+                    'category_name': 'A. Instructions',
+                    'is_custom': False,
+                    'is_selected': True,
+                    'is_mandatory': True,
+                    'is_core': True,
+                    'is_locked': True
+                }
+                dpcr_targets.insert(0, mandatory_target)
         else:
-            # If they cannot edit, we just load their submitted drafts (as before)
+            # Fetch cascaded instruction allocations to flag them as core
+            cursor.execute("""
+                SELECT da.indicator_id FROM tbl_draft_allocation da
+                JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.category_name = 'A. Instructions'
+            """, (emp_id, term_id))
+            alloc_ids = {r[0] for r in cursor.fetchall()}
+
+            # If they cannot edit, we just load their submitted drafts
             dpcr_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
+                       dt.target_description, dt.target_deadline,
                        mi.indicator_description, tc.category_name, mi.is_custom,
                        dri.item_remarks as dean_remarks, dri.original_quantity, dri.reviewed_quantity
                 FROM tbl_draft_targets dt
@@ -146,6 +243,9 @@ def designated_dashboard():
                 t['is_selected'] = True
                 if t['category_name'] == 'Custom Target Items':
                     t['category_name'] = 'Support Functions'
+                if 'Teaching Load' in t['indicator_description'] or t['indicator_id'] in alloc_ids:
+                    t['is_core'] = True
+                    t['is_locked'] = True
 
     cursor.close()
     conn.close()
@@ -209,23 +309,30 @@ def submit_designated_ipcr_route():
     selected_targets = []
     for ind_id in selected_ids:
         qty_val = request.form.get(f'target_qty_{ind_id}', '0')
+        desc_val = request.form.get(f'target_desc_{ind_id}', '')
+        dead_val = request.form.get(f'target_dead_{ind_id}', '')
         selected_targets.append({
             'indicator_id': int(ind_id),
-            'proposed_quantity': int(qty_val) if qty_val.isdigit() else 1
+            'proposed_quantity': int(qty_val) if qty_val.isdigit() else 1,
+            'target_description': desc_val.strip(),
+            'target_deadline': dead_val.strip()
         })
         
     # Parse custom targets added on the frontend
     custom_descriptions = request.form.getlist('custom_descriptions[]')
     custom_quantities = request.form.getlist('custom_quantities[]')
     custom_categories = request.form.getlist('custom_categories[]')
+    custom_deadlines = request.form.getlist('custom_deadlines[]')
     
     custom_targets = []
-    for desc, qty, cat in zip(custom_descriptions, custom_quantities, custom_categories):
+    for idx, (desc, qty, cat) in enumerate(zip(custom_descriptions, custom_quantities, custom_categories)):
         if desc.strip():
+            dead = custom_deadlines[idx].strip() if idx < len(custom_deadlines) else ''
             custom_targets.append({
                 'description': desc.strip(),
                 'proposed_quantity': int(qty) if str(qty).isdigit() else 1,
-                'category_name': cat.strip()
+                'category_name': cat.strip(),
+                'target_deadline': dead
             })
 
     conn = get_db_connection()

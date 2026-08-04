@@ -23,17 +23,19 @@ def get_chair_indicators(cursor, term_id, specialization):
 def get_specialization_faculty(cursor, specialization):
     from app.models.connection import timed_query
     query = """
-        SELECT emp_id, first_name, last_name, academic_rank, leave_status
+        SELECT emp_id, first_name, last_name, academic_rank, leave_status, designation
         FROM tbl_employee_profiles
-        WHERE specialization = %s AND leave_status = 'Active' AND designation = 'Regular Faculty'
+        WHERE (specialization = %s OR assigned_program = %s)
+          AND leave_status = 'Active'
+          AND designation IN ('Regular Faculty', 'Designated Faculty')
     """
-    return timed_query(cursor, query, (specialization,), label="get_specialization_faculty")
+    return timed_query(cursor, query, (specialization, specialization), label="get_specialization_faculty")
 
 
 def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
     """
-    Get assigned quantities for MULTIPLE indicators in ONE query.
-    Returns dict: {indicator_id: assigned_quantity}
+    Get assigned quantities, custom descriptions, and deadlines for MULTIPLE indicators in ONE query.
+    Returns dict: {indicator_id: {'assigned_quantity': qty, 'custom_description': desc, 'target_deadline': deadline}}
     Replaces N+1 get_assigned_quantity() calls.
     """
     if not faculty_ids or not indicator_ids:
@@ -42,18 +44,22 @@ def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
     fac_placeholders = ','.join(['%s'] * len(faculty_ids))
     ind_placeholders = ','.join(['%s'] * len(indicator_ids))
     query = f"""
-        SELECT da.indicator_id, da.assigned_quantity
+        SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
         WHERE mi.term_id = %s 
           AND da.indicator_id IN ({ind_placeholders})
           AND da.emp_id IN ({fac_placeholders})
-        GROUP BY da.indicator_id, da.assigned_quantity
+        GROUP BY da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline
     """
     rows = timed_query(cursor, query, [term_id] + indicator_ids + faculty_ids, label="get_assigned_quantity_batch")
     result = {}
     for row in rows:
-        result[row['indicator_id']] = row['assigned_quantity']
+        result[row['indicator_id']] = {
+            'assigned_quantity': row['assigned_quantity'],
+            'custom_description': row.get('custom_description'),
+            'target_deadline': row.get('target_deadline')
+        }
     return result
 
 
@@ -78,8 +84,36 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
         if not faculty_ids:
             return False, "No active faculty found for this specialization."
 
-        for indicator_id, assigned_quantity in allocations:
-            for emp_id in faculty_ids:
+        for item in allocations:
+            if len(item) == 4:
+                indicator_id, assigned_quantity, custom_description, target_deadline = item
+            else:
+                indicator_id, assigned_quantity = item[0], item[1]
+                custom_description, target_deadline = None, None
+
+            # Determine category of the indicator
+            cursor.execute("""
+                SELECT tc.category_name
+                FROM tbl_master_indicators mi
+                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                WHERE mi.indicator_id = %s
+            """, (indicator_id,))
+            cat_row = cursor.fetchone()
+            cat_name = cat_row[0] if cat_row else ''
+
+            if 'Instruction' in cat_name:
+                # Instruction targets are cascaded to both Regular and Designated Faculty
+                target_emp_ids = faculty_ids
+            else:
+                # Support targets are cascaded to Regular Faculty ONLY
+                format_strings = ','.join(['%s'] * len(faculty_ids))
+                cursor.execute(f"""
+                    SELECT emp_id FROM tbl_employee_profiles
+                    WHERE emp_id IN ({format_strings}) AND designation = 'Regular Faculty'
+                """, faculty_ids)
+                target_emp_ids = [r[0] for r in cursor.fetchall()]
+
+            for emp_id in target_emp_ids:
                 # Check if an allocation record already exists in the draft staging table
                 check_query = """
                     SELECT allocation_id 
@@ -90,20 +124,43 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
                 existing = cursor.fetchall()
 
                 if existing:
-                    update_query = "UPDATE tbl_draft_allocation SET assigned_quantity = %s WHERE allocation_id = %s"
-                    cursor.execute(update_query, (assigned_quantity, existing[0][0]))
+                    update_query = """
+                        UPDATE tbl_draft_allocation 
+                        SET assigned_quantity = %s, custom_description = %s, target_deadline = %s 
+                        WHERE allocation_id = %s
+                    """
+                    cursor.execute(update_query, (assigned_quantity, custom_description, target_deadline, existing[0][0]))
                 else:
                     insert_query = """
-                        INSERT INTO tbl_draft_allocation (emp_id, indicator_id, assigned_quantity)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO tbl_draft_allocation (emp_id, indicator_id, assigned_quantity, custom_description, target_deadline)
+                        VALUES (%s, %s, %s, %s, %s)
                     """
-                    cursor.execute(insert_query, (emp_id, indicator_id, assigned_quantity))
+                    cursor.execute(insert_query, (emp_id, indicator_id, assigned_quantity, custom_description, target_deadline))
 
         conn.commit()
         return True, "Targets distributed successfully to all faculty draft worklists."
     except Exception as e:
         conn.rollback()
         return False, str(e)
+
+
+def check_chair_targets_saved(cursor, term_id, specialization):
+    """
+    Returns True if target allocations have already been saved in tbl_draft_allocation
+    for faculty members under `specialization` for `term_id`.
+    """
+    if not term_id or not specialization:
+        return False
+    query = """
+        SELECT COUNT(*) 
+        FROM tbl_draft_allocation da
+        JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+        JOIN tbl_employee_profiles ep ON da.emp_id = ep.emp_id
+        WHERE mi.term_id = %s AND ep.specialization = %s
+    """
+    cursor.execute(query, (term_id, specialization))
+    res = cursor.fetchone()
+    return res[0] > 0 if res else False
 
 
 # ─────────────────────────────────────────────
@@ -339,7 +396,8 @@ def get_review_items(cursor, review_id):
             ri.original_quantity,
             ri.reviewed_quantity,
             ri.item_remarks,
-            mi.indicator_description,
+            COALESCE(dt.target_description, mi.indicator_description) AS indicator_description,
+            dt.target_deadline,
             tc.category_name,
             dt.review_status AS draft_status
         FROM tbl_ipcr_chair_review_items ri
@@ -478,7 +536,7 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
 
         cursor.execute(
             """
-            SELECT dt.indicator_id, COALESCE(ri.reviewed_quantity, dt.proposed_quantity)
+            SELECT dt.indicator_id, COALESCE(ri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline
             FROM tbl_draft_targets dt
             JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
             LEFT JOIN tbl_ipcr_chair_review cr ON cr.emp_id = dt.emp_id AND cr.term_id = mi.term_id
@@ -501,14 +559,14 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
             (emp_id, term_id)
         )
 
-        for indicator_id, qty in drafts:
+        for indicator_id, qty, target_desc, target_dead in drafts:
             if qty > 0:
                 cursor.execute(
                     """
-                    INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status)
-                    VALUES (%s, %s, %s, 'Approved')
+                    INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, target_description, target_deadline)
+                    VALUES (%s, %s, %s, 'Approved', %s, %s)
                     """,
-                    (emp_id, indicator_id, qty)
+                    (emp_id, indicator_id, qty, target_desc, target_dead)
                 )
 
         cursor.execute(

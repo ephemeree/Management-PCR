@@ -29,7 +29,9 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
                        dt.proposed_quantity
                    ) as assigned_quantity,
                    dt.review_status as status,
-                   mi.indicator_description, tc.category_name,
+                   COALESCE(dt.target_description, da.custom_description, mi.indicator_description) as indicator_description,
+                   COALESCE(dt.target_deadline, da.target_deadline) as target_deadline,
+                   tc.category_name,
                    ri.item_remarks as chair_item_remarks,
                    ri.reviewed_quantity as chair_reviewed_quantity,
                    rri.item_remarks as ret_item_remarks,
@@ -37,6 +39,7 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
             FROM tbl_draft_targets dt
             JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
             LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            LEFT JOIN tbl_draft_allocation da ON da.emp_id = dt.emp_id AND da.indicator_id = dt.indicator_id
             LEFT JOIN tbl_ipcr_chair_review cr
                 ON cr.emp_id = dt.emp_id AND cr.term_id = mi.term_id
             LEFT JOIN tbl_ipcr_chair_review_items ri
@@ -51,7 +54,9 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
     else:
         query = """
             SELECT MIN(da.allocation_id) as target_id, da.indicator_id, MAX(da.assigned_quantity) as assigned_quantity, 'Draft' as status,
-                   mi.indicator_description, tc.category_name,
+                   COALESCE(MAX(da.custom_description), mi.indicator_description) as indicator_description,
+                   MAX(da.target_deadline) as target_deadline,
+                   tc.category_name,
                    NULL as chair_item_remarks, NULL as chair_reviewed_quantity
             FROM tbl_draft_allocation da
             JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
@@ -62,7 +67,54 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
             GROUP BY da.indicator_id, mi.indicator_description, tc.category_name
             ORDER BY tc.category_name, da.indicator_id
         """
-    return timed_query(cursor, query, (emp_id, term_id), label="get_faculty_assigned_targets_load")
+    targets = timed_query(cursor, query, (emp_id, term_id), label="get_faculty_assigned_targets_load")
+    # Filter out designated 10 hours teaching load target for Regular Faculty
+    targets = [t for t in targets if '10 hours' not in str(t.get('indicator_description', '')) and '10 hrs' not in str(t.get('indicator_description', ''))]
+
+    # Ensure mandatory default Teaching Load target (21 hours) is present
+    has_teaching_load = any(
+        t.get('category_name') == 'A. Instructions' and 'Teaching Load' in str(t.get('indicator_description', ''))
+        for t in targets
+    )
+    if not has_teaching_load:
+        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
+        cat_row = cursor.fetchone()
+        cat_id = cat_row[0] if cat_row else 1
+        cursor.execute("""
+            SELECT indicator_id FROM tbl_master_indicators
+            WHERE indicator_description = '21 hours of Teaching Load' AND term_id = %s
+        """, (term_id,))
+        ind_row = cursor.fetchone()
+        if ind_row:
+            tl_ind_id = ind_row[0]
+        else:
+            cursor.execute("""
+                INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom)
+                VALUES (%s, '21 hours of Teaching Load', 'Output-Based', %s, 0)
+            """, (cat_id, term_id))
+            tl_ind_id = cursor.lastrowid
+
+        mandatory_target = {
+            'target_id': f'tl_{tl_ind_id}',
+            'indicator_id': tl_ind_id,
+            'assigned_quantity': 21,
+            'status': 'Draft',
+            'indicator_description': '21 hours of Teaching Load',
+            'target_deadline': '1 Semester',
+            'category_name': 'A. Instructions',
+            'chair_item_remarks': None,
+            'chair_reviewed_quantity': None,
+            'is_mandatory': True
+        }
+        targets.insert(0, mandatory_target)
+    else:
+        for t in targets:
+            if t.get('category_name') == 'A. Instructions' and 'Teaching Load' in str(t.get('indicator_description', '')):
+                t['is_mandatory'] = True
+                if not t.get('assigned_quantity'):
+                    t['assigned_quantity'] = 21
+
+    return targets
 
 
 def get_faculty_chair_review_status(cursor, emp_id, term_id):
@@ -183,7 +235,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
 
         # 2. Gather all assigned regular workloads distributed by the Program Chair for this specialization (if any)
         cursor.execute("""
-            SELECT da.indicator_id, MAX(da.assigned_quantity)
+            SELECT da.indicator_id, MAX(da.assigned_quantity), MAX(da.custom_description), MAX(da.target_deadline)
             FROM tbl_draft_allocation da
             JOIN tbl_employee_profiles ep ON da.emp_id = ep.emp_id
             WHERE ep.specialization = (SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s)
@@ -192,7 +244,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
         chair_allocations = cursor.fetchall()
 
         # 3. Process and migrate standard workloads into tbl_draft_targets
-        for ind_id, qty in chair_allocations:
+        for ind_id, qty, cust_desc, t_dead in chair_allocations:
             cursor.execute("""
                 SELECT draft_id FROM tbl_draft_targets 
                 WHERE emp_id = %s AND indicator_id = %s
@@ -202,14 +254,34 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
             if existing_draft:
                 cursor.execute("""
                     UPDATE tbl_draft_targets 
-                    SET proposed_quantity = %s, review_status = %s 
+                    SET proposed_quantity = %s, review_status = %s, target_description = %s, target_deadline = %s 
                     WHERE draft_id = %s
-                """, (qty, target_status, existing_draft[0]))
+                """, (qty, target_status, cust_desc, t_dead, existing_draft[0]))
             else:
                 cursor.execute("""
-                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                    VALUES (%s, %s, %s, %s)
-                """, (emp_id, ind_id, qty, target_status))
+                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (emp_id, ind_id, qty, target_status, cust_desc, t_dead))
+
+        # Ensure mandatory default Teaching Load target (21 hours) is saved
+        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
+        cat_row = cursor.fetchone()
+        cat_id = cat_row[0] if cat_row else 1
+        cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = '21 hours of Teaching Load' AND term_id = %s", (term_id,))
+        tl_row = cursor.fetchone()
+        if tl_row:
+            tl_ind_id = tl_row[0]
+        else:
+            cursor.execute("INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom) VALUES (%s, '21 hours of Teaching Load', 'Output-Based', %s, 0)", (cat_id, term_id))
+            tl_ind_id = cursor.lastrowid
+
+        cursor.execute("SELECT draft_id FROM tbl_draft_targets WHERE emp_id = %s AND indicator_id = %s", (emp_id, tl_ind_id))
+        tl_draft = cursor.fetchone()
+        if not tl_draft:
+            cursor.execute("""
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
+                VALUES (%s, %s, 21, %s, '21 hours of Teaching Load', '1 Semester')
+            """, (emp_id, tl_ind_id, target_status))
 
         # 4. If this is a re-submission or non-RET submission, update status of existing standard workloads to target_status
         cursor.execute("""
@@ -381,7 +453,9 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
     from app.models.connection import timed_query
     query = """
         SELECT ct.target_id, ct.indicator_id, ct.assigned_quantity, ct.actual_quantity, ct.status,
-               mi.indicator_description, tc.category_name
+               COALESCE(ct.target_description, mi.indicator_description) as indicator_description,
+               ct.target_deadline,
+               tc.category_name
         FROM tbl_committed_targets ct
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id

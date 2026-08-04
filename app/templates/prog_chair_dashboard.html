@@ -116,7 +116,14 @@
             <h2>Phase 1: Standard Target Allocation</h2>
             <p>Assign the baseline operational targets to all faculty members under your department.</p>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
+            {% if not targets_saved %}
+            <button type="button" class="btn btn-outline-primary shadow-sm fw-bold" id="btnAutoDivideAll" title="Auto divide all department quotas by number of faculty (rounded up)">
+                <i class="bi bi-calculator me-1"></i>Auto Divide All Targets
+            </button>
+            {% else %}
+            <span class="badge bg-secondary fs-6 px-3 py-2"><i class="bi bi-lock-fill me-1"></i> Targets Finalized</span>
+            {% endif %}
             <span class="badge bg-primary me-2"><i class="bi bi-funnel"></i> Instructions &amp; Support Functions</span>
             <span class="badge bg-info text-dark"><i class="bi bi-info-circle me-1"></i> Distribute the Dean's
                 Quota</span>
@@ -124,7 +131,17 @@
     </div>
 
     {% if active_term %}
-    <form action="{{ url_for('prog_chair.assign_chair_target') }}" method="POST" class="m-0">
+    {% if targets_saved %}
+    <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center" style="border-radius: 10px;">
+        <i class="bi bi-shield-lock-fill fs-4 me-3 text-info"></i>
+        <div>
+            <h6 class="fw-bold mb-0">Baseline Target Allocations Finalized</h6>
+            <small>Target allocations for <strong>{{ specialization }}</strong> have been saved and finalized for this term. Inputs cannot be modified.</small>
+        </div>
+    </div>
+    {% endif %}
+
+    <form id="targetAllocationForm" action="{{ url_for('prog_chair.assign_chair_target') }}" method="POST" class="m-0">
         <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
 
         <!-- Instructions Card -->
@@ -132,19 +149,28 @@
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
                 style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
                 <h5 class="fw-bold text-primary mb-0"><i class="bi bi-star-fill me-2"></i>Strategic Priorities</h5>
-                <span class="badge bg-success fs-6 fw-semibold px-3 py-2">
-                    Number of Faculty: {{ faculty_count }}
-                </span> 
+                <div class="d-flex align-items-center gap-2">
+                    {% if not targets_saved %}
+                    <button type="button" class="btn btn-sm btn-outline-primary shadow-sm fw-semibold btn-auto-divide-card" data-card="instructions" title="Auto divide Strategic Priorities quotas by faculty count">
+                        <i class="bi bi-calculator me-1"></i>Auto Divide Section
+                    </button>
+                    {% endif %}
+                    <span class="badge bg-success fs-6 fw-semibold px-3 py-2">
+                        Number of Faculty: {{ all_faculty_count|default(faculty_count) }}
+                    </span> 
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle shadow-sm mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th width="50%" class="ps-4">Master Indicator</th>
-                                <th class="text-center">Dept Quota (From Dean)</th>
-                                <th class="text-center" width="200">Assigned Per Faculty</th>
-                                <th class="text-center">Total Distributed</th>
+                                <th width="28%" class="ps-4">Master Indicator (DPCR Target)</th>
+                                <th class="text-center" width="10%">Dept Quota</th>
+                                <th class="text-center" width="12%">Assigned Per Faculty</th>
+                                <th class="text-center" width="12%">Deadline</th>
+                                <th width="28%">IPCR Target Description (Faculty Version)</th>
+                                <th class="text-center" width="10%">Total Distributed</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -153,22 +179,38 @@
                             {% if ind.category_name == 'A. Instructions' %}
                             {% set ns_inst.found = true %}
                             <tr>
-                                <td class="fw-bold ps-4">{{ ind.indicator_description }}</td>
-                                <td class="text-center fw-bold text-primary">{{ ind.dept_quota }}</td>
+                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description }}</td>
+                                <td class="text-center fw-bold text-primary dept-quota-cell">{{ ind.dept_quota }}</td>
                                 <td>
                                     <input type="hidden" name="indicator_ids" value="{{ ind.indicator_id }}">
                                     <input type="number" name="assigned_quantities"
-                                        class="form-control form-control-sm shadow-sm text-center"
-                                        value="{{ ind.assigned_per_faculty }}" min="0">
+                                        class="form-control form-control-sm shadow-sm text-center assigned-qty-input"
+                                        value="{{ ind.assigned_per_faculty }}" min="0"
+                                        data-dept-quota="{{ ind.dept_quota }}"
+                                        data-category="instructions"
+                                        data-faculty-count="{{ all_faculty_count|default(faculty_count) }}"
+                                        {% if targets_saved %}disabled{% endif %}>
                                 </td>
-                                <td class="text-center text-success fw-bold">{{ ind.total_distributed }} / {{
-                                    ind.dept_quota }}</td>
+                                <td>
+                                    <input type="number" name="target_deadlines"
+                                        class="form-control form-control-sm shadow-sm text-center target-deadline-input"
+                                        placeholder="e.g. 6" min="1"
+                                        value="{{ ind.target_deadline if ind.target_deadline else '' }}"
+                                        {% if targets_saved %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <textarea name="custom_descriptions"
+                                        class="form-control form-control-sm shadow-sm custom-desc-input"
+                                        rows="2" placeholder="IPCR Target Description..."
+                                        {% if targets_saved %}disabled{% endif %}>{{ ind.custom_description if ind.custom_description else '' }}</textarea>
+                                </td>
+                                <td class="text-center text-success fw-bold total-distributed-cell" data-dept-quota="{{ ind.dept_quota }}">{{ ind.total_distributed }} / {{ ind.dept_quota }}</td>
                             </tr>
                             {% endif %}
                             {% endfor %}
                             {% if not ns_inst.found %}
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">No Instruction targets assigned to
+                                <td colspan="6" class="text-center text-muted py-4">No Instruction targets assigned to
                                     your specialization for this term.</td>
                             </tr>
                             {% endif %}
@@ -183,19 +225,28 @@
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
                 style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
                 <h5 class="fw-bold text-warning mb-0"><i class="bi bi-tools me-2"></i>Support Functions</h5>
-                <span class="badge bg-success fs-6 fw-semibold px-3 py-2">
-                    Number of Faculty: {{ faculty_count }}
-                </span>
+                <div class="d-flex align-items-center gap-2">
+                    {% if not targets_saved %}
+                    <button type="button" class="btn btn-sm btn-outline-warning text-dark shadow-sm fw-semibold btn-auto-divide-card" data-card="support" title="Auto divide Support Functions quotas by regular faculty count">
+                        <i class="bi bi-calculator me-1"></i>Auto Divide Section
+                    </button>
+                    {% endif %}
+                    <span class="badge bg-success fs-6 fw-semibold px-3 py-2" title="Support targets are assigned exclusively to Regular Faculty">
+                        Number of Regular Faculty: {{ regular_faculty_count|default(faculty_count) }}
+                    </span>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle shadow-sm mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th width="50%" class="ps-4">Master Indicator</th>
-                                <th class="text-center">Dept Quota (From Dean)</th>
-                                <th class="text-center" width="200">Assigned Per Faculty</th>
-                                <th class="text-center">Total Distributed</th>
+                                <th width="28%" class="ps-4">Master Indicator (DPCR Target)</th>
+                                <th class="text-center" width="10%">Dept Quota</th>
+                                <th class="text-center" width="12%">Assigned Per Faculty</th>
+                                <th class="text-center" width="12%">Deadline</th>
+                                <th width="28%">IPCR Target Description (Faculty Version)</th>
+                                <th class="text-center" width="10%">Total Distributed</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -204,22 +255,38 @@
                             {% if ind.category_name == 'Support Functions' %}
                             {% set ns_supp.found = true %}
                             <tr>
-                                <td class="fw-bold ps-4">{{ ind.indicator_description }}</td>
-                                <td class="text-center fw-bold text-primary">{{ ind.dept_quota }}</td>
+                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description }}</td>
+                                <td class="text-center fw-bold text-primary dept-quota-cell">{{ ind.dept_quota }}</td>
                                 <td>
                                     <input type="hidden" name="indicator_ids" value="{{ ind.indicator_id }}">
                                     <input type="number" name="assigned_quantities"
-                                        class="form-control form-control-sm shadow-sm text-center"
-                                        value="{{ ind.assigned_per_faculty }}" min="0">
+                                        class="form-control form-control-sm shadow-sm text-center assigned-qty-input"
+                                        value="{{ ind.assigned_per_faculty }}" min="0"
+                                        data-dept-quota="{{ ind.dept_quota }}"
+                                        data-category="support"
+                                        data-faculty-count="{{ regular_faculty_count|default(faculty_count) }}"
+                                        {% if targets_saved %}disabled{% endif %}>
                                 </td>
-                                <td class="text-center text-success fw-bold">{{ ind.total_distributed }} / {{
-                                    ind.dept_quota }}</td>
+                                <td>
+                                    <input type="number" name="target_deadlines"
+                                        class="form-control form-control-sm shadow-sm text-center target-deadline-input"
+                                        placeholder="e.g. 6" min="1"
+                                        value="{{ ind.target_deadline if ind.target_deadline else '' }}"
+                                        {% if targets_saved %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <textarea name="custom_descriptions"
+                                        class="form-control form-control-sm shadow-sm custom-desc-input"
+                                        rows="2" placeholder="IPCR Target Description..."
+                                        {% if targets_saved %}disabled{% endif %}>{{ ind.custom_description if ind.custom_description else '' }}</textarea>
+                                </td>
+                                <td class="text-center text-success fw-bold total-distributed-cell" data-dept-quota="{{ ind.dept_quota }}">{{ ind.total_distributed }} / {{ ind.dept_quota }}</td>
                             </tr>
                             {% endif %}
                             {% endfor %}
                             {% if not ns_supp.found %}
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">No Support Function targets assigned
+                                <td colspan="6" class="text-center text-muted py-4">No Support Function targets assigned
                                     to your specialization for this term.</td>
                             </tr>
                             {% endif %}
@@ -231,9 +298,15 @@
 
         <!-- Single Save Button at the bottom -->
         <div class="d-flex justify-content-end mb-4 px-2">
-            <button type="submit" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill">
+            {% if not targets_saved %}
+            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" data-bs-toggle="modal" data-bs-target="#confirmSaveTargetsModal">
                 <i class="bi bi-save me-2"></i>Save Targets
             </button>
+            {% else %}
+            <button type="button" class="btn btn-secondary btn-lg px-5 shadow fw-bold rounded-pill" disabled>
+                <i class="bi bi-lock-fill me-2"></i>Targets Finalized &amp; Saved
+            </button>
+            {% endif %}
         </div>
     </form>
     {% else %}
@@ -644,6 +717,37 @@
     </div>
 </div>
 
+<!-- CONFIRMATION MODAL FOR SAVING TARGETS -->
+<div class="modal fade" id="confirmSaveTargetsModal" tabindex="-1" aria-labelledby="confirmSaveTargetsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+                <h5 class="modal-title text-white fw-bold" id="confirmSaveTargetsModalLabel">
+                    <i class="bi bi-shield-lock-fill me-2"></i>Finalize Target Allocation
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3">
+                    <span class="badge bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
+                        <i class="bi bi-exclamation-triangle-fill fs-1 text-warning"></i>
+                    </span>
+                </div>
+                <h5 class="fw-bold mb-2">Are you sure you want to save target allocations?</h5>
+                <p class="text-muted small mb-0">
+                    Once saved, this baseline target allocation for all faculty under <strong>{{ specialization }}</strong> will be <strong>finalized and cannot be modified</strong>.
+                </p>
+            </div>
+            <div class="modal-footer border-0 bg-light justify-content-center gap-2 py-3">
+                <button type="button" class="btn btn-secondary px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary px-4 fw-bold shadow rounded-pill" id="btnConfirmSaveTargets">
+                    <i class="bi bi-check-circle-fill me-1"></i>Yes, Save &amp; Finalize
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Hidden form for decide_ipcr POST -->
 <form id="decisionForm" action="{{ url_for('prog_chair.decide_ipcr') }}" method="POST" style="display:none;">
     <input type="hidden" name="review_id" id="decisionReviewId">
@@ -658,6 +762,72 @@
 <!-- ═══════════════════════════════════════════ -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+
+        // ── Phase 1: Auto Divide / Auto Distribute & Save Logic ────
+        const facultyCount = {{ faculty_count|default(0) }};
+
+        function recalculateDistributed(inputEl) {
+            const deptQuota = parseFloat(inputEl.dataset.deptQuota) || 0;
+            const assignedVal = parseInt(inputEl.value, 10) || 0;
+            const fCount = parseInt(inputEl.dataset.facultyCount, 10) || facultyCount;
+            const totalDistributed = assignedVal * fCount;
+
+            const tr = inputEl.closest('tr');
+            if (tr) {
+                const distCell = tr.querySelector('.total-distributed-cell');
+                if (distCell) {
+                    distCell.textContent = `${totalDistributed} / ${deptQuota}`;
+                }
+            }
+        }
+
+        function autoDivideInput(inputEl) {
+            const deptQuota = parseFloat(inputEl.dataset.deptQuota) || 0;
+            const fCount = parseInt(inputEl.dataset.facultyCount, 10) || facultyCount;
+            const dividedVal = fCount > 0 ? Math.ceil(deptQuota / fCount) : 0;
+            inputEl.value = dividedVal;
+            recalculateDistributed(inputEl);
+        }
+
+        // Live input recalculation
+        document.querySelectorAll('.assigned-qty-input').forEach(function (inputEl) {
+            inputEl.addEventListener('input', function () {
+                recalculateDistributed(this);
+            });
+        });
+
+        // Card-level Auto Divide buttons
+        document.querySelectorAll('.btn-auto-divide-card').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const category = this.dataset.card;
+                const inputs = document.querySelectorAll(`.assigned-qty-input[data-category="${category}"]`);
+                inputs.forEach(function (inputEl) {
+                    autoDivideInput(inputEl);
+                });
+            });
+        });
+
+        // Global Auto Divide All button
+        const btnAutoDivideAll = document.getElementById('btnAutoDivideAll');
+        if (btnAutoDivideAll) {
+            btnAutoDivideAll.addEventListener('click', function () {
+                const inputs = document.querySelectorAll('.assigned-qty-input');
+                inputs.forEach(function (inputEl) {
+                    autoDivideInput(inputEl);
+                });
+            });
+        }
+
+        // Confirmation Modal Save Action
+        const btnConfirmSaveTargets = document.getElementById('btnConfirmSaveTargets');
+        if (btnConfirmSaveTargets) {
+            btnConfirmSaveTargets.addEventListener('click', function () {
+                const form = document.getElementById('targetAllocationForm');
+                if (form) {
+                    form.submit();
+                }
+            });
+        }
 
         function getHeaderCategoryName(catName) {
             if (!catName) return '';
@@ -787,7 +957,10 @@
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                     <td><span class="badge bg-light text-dark border small">${badgeCat}</span></td>
-                    <td class="small fw-semibold">${item.indicator_description}</td>
+                    <td class="small fw-semibold">
+                        ${item.indicator_description}
+                        ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size: 0.7rem;"><i class="bi bi-clock me-1"></i>Deadline: ${item.target_deadline}</span>` : ''}
+                    </td>
                     <td class="text-center text-muted">${item.original_quantity}</td>
                     <td class="text-center fw-bold text-success">${item.reviewed_quantity}</td>
                     <td class="text-muted small">${item.item_remarks || '<span class="text-muted opacity-50">None</span>'}</td>
@@ -908,7 +1081,10 @@
                     tr.innerHTML = `
                     <td><span class="badge bg-light text-dark border small">${badgeCat}</span></td>
                     <td>
-                        <div class="small fw-semibold">${item.indicator_description}</div>
+                        <div class="small fw-semibold">
+                            ${item.indicator_description}
+                            ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;"><i class="bi bi-clock me-1"></i>Deadline: ${item.target_deadline}</span>` : ''}
+                        </div>
                         ${retTag}
                     </td>
                     <td class="text-center text-muted">${item.original_quantity}</td>

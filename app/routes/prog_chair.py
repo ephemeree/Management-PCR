@@ -38,23 +38,47 @@ def prog_chair_dashboard():
         pending_drafts_count = 0
         locked_drafts = []
 
+        targets_saved = False
         if active_term and specialization:
             term_id = active_term['term_id']
 
             # Phase 1: Target allocation indicators
             indicators = get_chair_indicators(cursor, term_id, specialization)
             faculty_list = get_specialization_faculty(cursor, specialization)
-            faculty_count = len(faculty_list)
+            all_faculty_count = len(faculty_list)
+            regular_faculty_list = [f for f in faculty_list if f.get('designation') == 'Regular Faculty']
+            regular_faculty_count = len(regular_faculty_list)
+            faculty_count = all_faculty_count
             faculty_ids = [f['emp_id'] for f in faculty_list]
+
+            # Check if target allocations are already saved for this term & specialization
+            targets_saved = check_chair_targets_saved(cursor, term_id, specialization)
 
             # Batch: get ALL assigned quantities in ONE query (replaces N+1 loop)
             indicator_ids = [ind['indicator_id'] for ind in indicators]
             assigned_quantities = get_assigned_quantity_batch(cursor, active_term['term_id'], indicator_ids, faculty_ids)
 
             for ind in indicators:
-                assigned_qty = assigned_quantities.get(ind['indicator_id'], 0)
+                alloc_info = assigned_quantities.get(ind['indicator_id'], {})
+                if isinstance(alloc_info, dict):
+                    assigned_qty = alloc_info.get('assigned_quantity', 0)
+                    cust_desc = alloc_info.get('custom_description') or ''
+                    t_dead = alloc_info.get('target_deadline') or ''
+                else:
+                    assigned_qty = alloc_info or 0
+                    cust_desc = ''
+                    t_dead = ''
+
                 ind['assigned_per_faculty'] = assigned_qty
-                ind['total_distributed'] = assigned_qty * faculty_count
+                ind['custom_description'] = cust_desc
+                ind['target_deadline'] = t_dead
+
+                if ind.get('category_name') == 'A. Instructions':
+                    ind['applicable_faculty_count'] = all_faculty_count
+                    ind['total_distributed'] = assigned_qty * all_faculty_count
+                else:
+                    ind['applicable_faculty_count'] = regular_faculty_count
+                    ind['total_distributed'] = assigned_qty * regular_faculty_count
 
             # Phase 2: Commitments — live draft IPCR submissions scoped by specialization
             pending_drafts = get_pending_draft_ipcrs(cursor, specialization, term_id)
@@ -71,7 +95,10 @@ def prog_chair_dashboard():
             active_term=active_term,
             specialization=specialization,
             indicators=indicators,
-            faculty_count=faculty_count,
+            faculty_count=all_faculty_count,
+            all_faculty_count=all_faculty_count,
+            regular_faculty_count=regular_faculty_count,
+            targets_saved=targets_saved,
             pending_drafts=pending_drafts,
             pending_drafts_count=pending_drafts_count,
             locked_drafts=locked_drafts,
@@ -141,6 +168,8 @@ def assign_chair_target():
     term_id = request.form.get('term_id')
     indicator_ids = request.form.getlist('indicator_ids')
     assigned_quantities = request.form.getlist('assigned_quantities')
+    custom_descriptions = request.form.getlist('custom_descriptions')
+    target_deadlines = request.form.getlist('target_deadlines')
 
     if not specialization or not term_id or not indicator_ids or not assigned_quantities:
         flash("Missing required data for assignment.", "danger")
@@ -154,13 +183,20 @@ def assign_chair_target():
     cursor = conn.cursor()
 
     try:
+        # Constraint check: prevent re-saving if targets are already finalized
+        if check_chair_targets_saved(cursor, int(term_id), specialization):
+            flash("Target allocations for this term have already been finalized and cannot be modified.", "warning")
+            return redirect(url_for('prog_chair.prog_chair_dashboard'))
+
         faculty_list = get_specialization_faculty(cursor, specialization)
         faculty_ids = [f['emp_id'] for f in faculty_list]
 
         allocations = []
-        for ind_id, qty in zip(indicator_ids, assigned_quantities):
+        for idx, (ind_id, qty) in enumerate(zip(indicator_ids, assigned_quantities)):
             try:
-                allocations.append((int(ind_id), int(qty)))
+                c_desc = custom_descriptions[idx].strip() if idx < len(custom_descriptions) and custom_descriptions[idx] else None
+                t_dead = target_deadlines[idx].strip() if idx < len(target_deadlines) and target_deadlines[idx] else None
+                allocations.append((int(ind_id), int(qty), c_desc, t_dead))
             except ValueError:
                 continue
 
@@ -271,7 +307,8 @@ def review_ipcr(emp_id):
                     ct.target_id AS item_id,
                     0 AS draft_id,
                     ct.indicator_id,
-                    mi.indicator_description,
+                    COALESCE(ct.target_description, mi.indicator_description) AS indicator_description,
+                    ct.target_deadline,
                     tc.category_name,
                     COALESCE(
                         CASE WHEN tc.category_name IN ('A. Instructions', 'Support Functions') THEN ri.original_quantity ELSE NULL END,
@@ -297,11 +334,12 @@ def review_ipcr(emp_id):
                     'draft_id': row[1],
                     'indicator_id': row[2],
                     'indicator_description': row[3],
-                    'category_name': row[4],
-                    'original_quantity': max(0, row[5]) if row[5] is not None else 0,
-                    'reviewed_quantity': row[6],
-                    'item_remarks': row[7],
-                    'draft_status': row[8],
+                    'target_deadline': row[4] or '',
+                    'category_name': row[5],
+                    'original_quantity': max(0, row[6]) if row[6] is not None else 0,
+                    'reviewed_quantity': row[7],
+                    'item_remarks': row[8],
+                    'draft_status': row[9],
                 })
         elif overall_status == 'Approved':
             cursor.execute("""
@@ -309,7 +347,8 @@ def review_ipcr(emp_id):
                     dt.draft_id AS item_id,
                     dt.draft_id,
                     dt.indicator_id,
-                    mi.indicator_description,
+                    COALESCE(dt.target_description, mi.indicator_description) AS indicator_description,
+                    dt.target_deadline,
                     tc.category_name,
                     COALESCE(
                         CASE WHEN tc.category_name IN ('A. Instructions', 'Support Functions') THEN ri.original_quantity ELSE NULL END,
@@ -343,11 +382,12 @@ def review_ipcr(emp_id):
                     'draft_id': row[1],
                     'indicator_id': row[2],
                     'indicator_description': row[3],
-                    'category_name': row[4],
-                    'original_quantity': max(0, row[5]) if row[5] is not None else 0,
-                    'reviewed_quantity': row[6],
-                    'item_remarks': row[7],
-                    'draft_status': row[8],
+                    'target_deadline': row[4] or '',
+                    'category_name': row[5],
+                    'original_quantity': max(0, row[6]) if row[6] is not None else 0,
+                    'reviewed_quantity': row[7],
+                    'item_remarks': row[8],
+                    'draft_status': row[9],
                 })
         else:
             for item in items:
@@ -356,6 +396,7 @@ def review_ipcr(emp_id):
                     'draft_id': item['draft_id'],
                     'indicator_id': item['indicator_id'],
                     'indicator_description': item['indicator_description'],
+                    'target_deadline': item.get('target_deadline') or '',
                     'category_name': item['category_name'],
                     'original_quantity': max(0, item['original_quantity']) if item['original_quantity'] is not None else 0,
                     'reviewed_quantity': item['reviewed_quantity'],

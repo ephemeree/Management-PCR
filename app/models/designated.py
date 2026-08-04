@@ -9,6 +9,7 @@ def get_designated_selectable_indicators(cursor, term_id):
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s 
           AND mi.is_custom = 0
+          AND mi.indicator_description NOT LIKE '%%Teaching Load%%'
           AND tc.category_name IN ('A. Instructions', 'Support Functions')
         ORDER BY tc.category_name, mi.indicator_id
     """
@@ -21,8 +22,8 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
     upstream before compiling all submissions securely inside tbl_draft_targets.
     Also resets any prior Dean review so the Dean can review again.
     
-    selected_targets: [{'indicator_id': int, 'proposed_quantity': int}]
-    custom_targets: [{'description': str, 'proposed_quantity': int}]
+    selected_targets: [{'indicator_id': int, 'proposed_quantity': int, 'target_description': str, 'target_deadline': str}]
+    custom_targets: [{'description': str, 'proposed_quantity': int, 'category_name': str, 'target_deadline': str}]
     """
     try:
         # 0. Clear any prior Dean review so Dean can re-review fresh
@@ -41,15 +42,38 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
 
         # 2. Process Standard Baseline Selected Targets
         for target in selected_targets:
+            desc = target.get('target_description') or None
+            dead = target.get('target_deadline') or None
             cursor.execute("""
-                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                VALUES (%s, %s, %s, 'Pending Review')
-            """, (emp_id, target['indicator_id'], target['proposed_quantity']))
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s)
+            """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead))
+
+        # Ensure mandatory default Teaching Load target (10 hours) is saved
+        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
+        cat_row = cursor.fetchone()
+        cat_id = cat_row[0] if cat_row else 1
+        cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = '10 hours of Teaching Load' AND term_id = %s", (term_id,))
+        tl_row = cursor.fetchone()
+        if tl_row:
+            tl_ind_id = tl_row[0]
+        else:
+            cursor.execute("INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom) VALUES (%s, '10 hours of Teaching Load', 'Output-Based', %s, 0)", (cat_id, term_id))
+            tl_ind_id = cursor.lastrowid
+
+        cursor.execute("SELECT draft_id FROM tbl_draft_targets WHERE emp_id = %s AND indicator_id = %s", (emp_id, tl_ind_id))
+        tl_draft = cursor.fetchone()
+        if not tl_draft:
+            cursor.execute("""
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
+                VALUES (%s, %s, 10, 'Pending Review', '10 hours of Teaching Load', '1 Semester')
+            """, (emp_id, tl_ind_id))
 
         # 3. Process Custom Ad-Hoc Target Items
         for custom in custom_targets:
             text_clean = custom['description'].strip()
             qty = custom['proposed_quantity']
+            dead = custom.get('target_deadline') or None
             if not text_clean:
                 continue
 
@@ -64,7 +88,6 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
                 category_id = cursor.lastrowid
 
             # Step B: Upstream runtime injection into master indicators (Explicitly flagged as is_custom = 1)
-            # Reuses existing indicator if description, term_id, category_id, and is_custom match
             cursor.execute("""
                 SELECT indicator_id FROM tbl_master_indicators 
                 WHERE indicator_description = %s AND term_id = %s AND category_id = %s AND is_custom = 1
@@ -79,11 +102,11 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
                 """, (category_id, text_clean, term_id))
                 new_indicator_id = cursor.lastrowid
 
-            # Step C: Downstream projection into the unified draft staging table via the generated relational ID
+            # Step C: Downstream projection into the unified draft staging table
             cursor.execute("""
-                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                VALUES (%s, %s, %s, 'Pending Review')
-            """, (emp_id, new_indicator_id, qty))
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s)
+            """, (emp_id, new_indicator_id, qty, text_clean, dead))
 
         conn.commit()
         return True, "Designated IPCR successfully compiled and submitted to Draft Targets for verification review."
@@ -100,7 +123,8 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
     from app.models.connection import timed_query
     query = """
         SELECT ct.target_id, ct.indicator_id, ct.assigned_quantity, ct.actual_quantity, ct.status,
-               mi.indicator_description, tc.category_name, mi.is_custom
+               COALESCE(ct.target_description, mi.indicator_description) as indicator_description,
+               ct.target_description, ct.target_deadline, tc.category_name, mi.is_custom
         FROM tbl_committed_targets ct
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id

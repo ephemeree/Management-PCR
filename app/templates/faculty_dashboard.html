@@ -249,6 +249,9 @@
                                     <tr>
                                         <td class="ps-4 py-3">
                                             <span class="badge bg-light text-dark border mb-1">Instruction</span>
+                                            {% if 'Teaching Load' in target.indicator_description or target.is_mandatory %}
+                                            <span class="badge bg-primary text-white border mb-1 ms-1"><i class="bi bi-pin-angle-fill me-1"></i>Mandatory Default Target</span>
+                                            {% endif %}
                                             <p class="mb-0 small text-secondary">{{ target.indicator_description }}</p>
                                             {# Show chair item remark if IPCR was returned #}
                                             {% if chair_review and chair_review.overall_status == 'Rejected' and
@@ -549,8 +552,7 @@
                                         {% else %}
                                         <span class="badge bg-light text-dark border mb-1">{{ target.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}</span>
                                         {% endif %}
-                                        <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}
-                                        </p>
+                                        <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}</p>
                                     </td>
                                     <td class="text-center fw-bold fs-5 text-primary">
                                         {{ target.assigned_quantity }}
