@@ -182,7 +182,7 @@ def get_or_create_dean_review(conn, cursor, emp_id, term_id, dean_id):
 
 
 def get_dean_review_items(cursor, review_id):
-    """Get all review items with indicator + category details."""
+    """Get all review items with indicator + category details, target description, deadline, and core flags."""
     from app.models.connection import timed_query
     query = """
         SELECT
@@ -195,14 +195,29 @@ def get_dean_review_items(cursor, review_id):
             mi.indicator_description,
             tc.category_name,
             mi.efficiency_type,
-            mi.is_custom
+            mi.is_custom,
+            COALESCE(dt.target_description, da.custom_description, mi.indicator_description) as target_description,
+            COALESCE(dt.target_deadline, da.target_deadline, '1 Semester') as target_deadline,
+            CASE WHEN da.allocation_id IS NOT NULL THEN 1 ELSE 0 END as is_cascaded
         FROM tbl_ipcr_dean_review_items dri
+        JOIN tbl_ipcr_dean_review dr ON dri.review_id = dr.review_id
         JOIN tbl_master_indicators mi ON dri.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        LEFT JOIN tbl_draft_targets dt ON dri.draft_id = dt.draft_id
+        LEFT JOIN tbl_draft_allocation da ON da.emp_id = dr.emp_id AND da.indicator_id = dri.indicator_id
         WHERE dri.review_id = %s
         ORDER BY tc.category_name, mi.indicator_id
     """
-    return timed_query(cursor, query, (review_id,), label="get_dean_review_items")
+    items = timed_query(cursor, query, (review_id,), label="get_dean_review_items")
+    for item in items:
+        if item.get('category_name') == 'Custom Target Items':
+            item['category_name'] = 'Support Functions'
+        is_tl = 'Teaching Load' in (item.get('indicator_description') or '')
+        is_cascaded = bool(item.get('is_cascaded'))
+        item['is_core'] = is_tl or is_cascaded
+        item['is_cascaded'] = is_cascaded
+    return items
+
 
 
 def get_available_master_indicators(cursor, term_id):
@@ -313,9 +328,9 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
             if review_info:
                 emp_id, term_id = review_info[0], review_info[1]
                 
-                # Fetch approved items
+                # Fetch approved items with descriptions and deadlines
                 cursor.execute("""
-                    SELECT dt.indicator_id, COALESCE(dri.reviewed_quantity, dt.proposed_quantity)
+                    SELECT dt.indicator_id, COALESCE(dri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline
                     FROM tbl_draft_targets dt
                     JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
                     WHERE dri.review_id = %s
@@ -330,12 +345,13 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
                     )
                 """, (emp_id, term_id))
                 
-                # Insert into tbl_committed_targets
-                for indicator_id, qty in approved_items:
+                # Insert into tbl_committed_targets with target_description and target_deadline
+                for indicator_id, qty, target_desc, target_dead in approved_items:
                     cursor.execute("""
-                        INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, actual_quantity)
-                        VALUES (%s, %s, %s, 'Approved', 0)
-                    """, (emp_id, indicator_id, qty))
+                        INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, actual_quantity, target_description, target_deadline)
+                        VALUES (%s, %s, %s, 'Approved', 0, %s, %s)
+                    """, (emp_id, indicator_id, qty, target_desc, target_dead))
+
 
         conn.commit()
         return True, f"Draft IPCR {action.lower()} successfully."

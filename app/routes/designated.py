@@ -80,12 +80,28 @@ def designated_dashboard():
             has_submitted = True
             from app.models.designated import get_designated_committed_targets, check_designated_evidence_readiness
             from app.models.faculty import get_evidence_by_target
+
+            # Fetch cascaded instruction allocations to flag them as core
+            cursor.execute("""
+                SELECT da.indicator_id FROM tbl_draft_allocation da
+                JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.category_name = 'A. Instructions'
+            """, (emp_id, term_id))
+            alloc_ids = {r[0] for r in cursor.fetchall()}
+
             dpcr_targets = get_designated_committed_targets(cursor, emp_id, term_id)
             for t in dpcr_targets:
                 t['is_selected'] = True
                 t['total_target_value'] = t['assigned_quantity']
+                if t.get('category_name') == 'Custom Target Items':
+                    t['category_name'] = 'Support Functions'
+                if 'Teaching Load' in (t.get('indicator_description') or '') or t['indicator_id'] in alloc_ids:
+                    t['is_core'] = True
+                    t['is_locked'] = True
                 t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             evidence_readiness = check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets)
+
         elif can_edit:
             # Load standard selectable indicators and exclude 21 hours regular teaching load targets
             raw_standard_targets = get_designated_selectable_indicators(cursor, term_id)

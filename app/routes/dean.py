@@ -571,7 +571,12 @@ def review_draft_fetch(emp_id):
                 'reviewed_quantity': item['reviewed_quantity'],
                 'item_remarks': item['item_remarks'] or '',
                 'is_custom': item['is_custom'],
+                'target_description': item.get('target_description') or item['indicator_description'],
+                'target_deadline': item.get('target_deadline') or '1 Semester',
+                'is_core': item.get('is_core', False),
+                'is_cascaded': item.get('is_cascaded', False),
             })
+
 
         return jsonify({
             'review_id': review_id,

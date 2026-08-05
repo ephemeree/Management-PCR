@@ -431,80 +431,113 @@
             </div>
 
             <!-- Modal Body -->
-            <div class="modal-body p-0" id="modalBody" style="display:none;">
+            <div class="modal-body p-4" id="modalBody" style="display:none; background-color: #f8f9fa;">
 
-                <!-- Section: Faculty-chosen targets -->
-                <div class="px-4 pt-4 pb-2">
-                    <h6 class="fw-bold text-secondary text-uppercase mb-3">
-                        <i class="bi bi-list-check me-2"></i>Submitted Targets
-                        <small class="text-muted fw-normal ms-2">(Adjust quantities and add remarks per item)</small>
-                    </h6>
-                </div>
-                <div class="table-responsive px-4 pb-3">
-                    <table class="table table-bordered table-hover align-middle mb-0" id="reviewItemsTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th width="17%">Category</th>
-                                <th width="30%">Indicator</th>
-                                <th class="text-center" width="10%">Original Qty</th>
-                                <th class="text-center" width="11%">Reviewed Qty</th>
-                                <th width="32%">Remarks on this change</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reviewItemsBody">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Section: Unpicked indicators (faculty didn't select these) -->
-                <div class="px-4 pb-2">
-                    <h6 class="fw-bold text-secondary text-uppercase mb-3">
-                        <i class="bi bi-exclamation-circle me-2"></i>Unselected Indicators
-                        <small class="text-muted fw-normal ms-2">(Faculty did not pick these. You can assign quantities
-                            here.)</small>
-                    </h6>
-                </div>
-                <div class="table-responsive px-4 pb-3">
-                    <table class="table table-bordered table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th width="17%">Category</th>
-                                <th width="73%">Indicator</th>
-                                <th class="text-center" width="10%">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="unpickedItemsBody">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
+                <!-- Section 1: Core Functions Card -->
+                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header border-0 py-3 bg-light">
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-star-fill text-warning me-2"></i>1. Core Functions</h5>
+                        <p class="small mb-0 text-muted">Mandatory teaching load target (10 hrs) and cascaded instruction targets assigned by Program Chair (Locked)</p>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="reviewCoreItemsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Indicator / IPCR Target Description</th>
+                                        <th class="text-center" width="110">Orig Qty</th>
+                                        <th class="text-center" width="120">Reviewed Qty</th>
+                                        <th class="text-center" width="130">Deadline</th>
+                                        <th width="28%">Dean Remarks / Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reviewCoreItemsBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Section: College-Wide Targets -->
-                <div class="px-4 pb-2">
-                    <h6 class="fw-bold text-secondary text-uppercase mb-3">
-                        <i class="bi bi-globe me-2"></i>College-Wide Targets
-                        <small class="text-muted fw-normal ms-2">(Cascaded college-wide targets. You can assign them to
-                            this faculty here.)</small>
-                    </h6>
-                </div>
-                <div class="table-responsive px-4 pb-3">
-                    <table class="table table-bordered table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th width="17%">Category</th>
-                                <th width="63%">Indicator</th>
-                                <th class="text-center" width="10%">Quota</th>
-                                <th class="text-center" width="10%">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="collegeWideItemsBody">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
+                <!-- Section 2: Strategic Priorities & Support Functions Card -->
+                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header border-0 py-3 bg-light">
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
+                        <p class="small mb-0 text-muted">Uncascaded instructional options, support functions, and custom DPCR target items</p>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="reviewStrategicItemsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Indicator / IPCR Target Description</th>
+                                        <th class="text-center" width="110">Orig Qty</th>
+                                        <th class="text-center" width="120">Reviewed Qty</th>
+                                        <th class="text-center" width="130">Deadline</th>
+                                        <th width="28%">Dean Remarks / Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reviewStrategicItemsBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Save All button removed — auto-saves on decision -->
+                <!-- Section 3: Unselected Indicators Card -->
+                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header border-0 py-3 bg-light">
+                        <h6 class="fw-bold text-secondary text-uppercase mb-0">
+                            <i class="bi bi-exclamation-circle me-2"></i>Unselected Indicators
+                        </h6>
+                        <small class="text-muted">Indicators not picked by faculty. You can assign quantities here.</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="20%">Category</th>
+                                        <th width="65%">Indicator Description</th>
+                                        <th class="text-center" width="15%">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unpickedItemsBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: College-Wide Targets Card -->
+                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header border-0 py-3 bg-light">
+                        <h6 class="fw-bold text-secondary text-uppercase mb-0">
+                            <i class="bi bi-globe me-2"></i>College-Wide Targets
+                        </h6>
+                        <small class="text-muted">Cascaded college-wide targets. You can assign them to this faculty here.</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="20%">Category</th>
+                                        <th width="55%">Indicator Description</th>
+                                        <th class="text-center" width="12%">Quota</th>
+                                        <th class="text-center" width="13%">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="collegeWideItemsBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Modal Footer: Decision -->
@@ -957,7 +990,7 @@
         });
 
         // Event delegation for updating input values in memory
-        document.getElementById('reviewItemsBody')?.addEventListener('input', function (e) {
+        document.getElementById('modalBody')?.addEventListener('input', function (e) {
             const input = e.target;
             if (input.classList.contains('review-qty')) {
                 const itemIdAttr = input.getAttribute('data-item-id');
@@ -1060,70 +1093,117 @@
     }
 
     function populateReviewItems(items) {
-        const tbody = document.getElementById('reviewItemsBody');
-        tbody.innerHTML = '';
-        let currentCat = '';
+        const coreBody = document.getElementById('reviewCoreItemsBody');
+        const strategicBody = document.getElementById('reviewStrategicItemsBody');
+        coreBody.innerHTML = '';
+        strategicBody.innerHTML = '';
 
-        // Sort items by category rank
-        const catOrder = {
-            'A. Instructions': 1,
-            'Custom Target Items': 2,
-            'B. Research': 3,
-            'B. Extension Services / Training / Advisory': 4,
-            'Support Functions': 5
-        };
-        items.sort((a, b) => {
-            const rankA = catOrder[a.category_name] || 6;
-            const rankB = catOrder[b.category_name] || 6;
-            if (rankA !== rankB) return rankA - rankB;
-            return (a.item_id || 0) - (b.item_id || 0);
-        });
+        const isLocked = deanReviewData.overall_status === 'Approved' || deanReviewData.overall_status === 'Rejected';
 
-        items.forEach(item => {
-            if (item.category_name !== currentCat) {
-                currentCat = item.category_name;
-                tbody.innerHTML += `<tr class="table-secondary"><td colspan="5" class="fw-bold text-uppercase text-dark small py-2">${currentCat}</td></tr>`;
-            }
-            const isLocked = deanReviewData.overall_status === 'Approved' || deanReviewData.overall_status === 'Rejected';
+        const coreItems = items.filter(x => x.is_core === true);
+        const strategicItems = items.filter(x => x.is_core !== true);
 
-            // Original Qty display: if -1, show 0
-            const origQtyDisplay = item.original_quantity === -1
-                ? '0'
-                : item.original_quantity;
+        // Populate Core Functions
+        if (coreItems.length === 0) {
+            coreBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted small">No Core Function targets assigned.</td></tr>';
+        } else {
+            coreItems.forEach(item => {
+                const origQtyDisplay = item.original_quantity === -1 ? '0' : item.original_quantity;
+                let badgeHtml = '<span class="badge bg-primary text-white border mb-1"><i class="bi bi-pin-angle-fill me-1"></i>Core Function</span>';
+                if (item.is_cascaded) {
+                    badgeHtml += ' <span class="badge bg-info text-dark border mb-1 ms-1"><i class="bi bi-diagram-3 me-1"></i>Cascaded from Chair</span>';
+                }
+                const descText = item.target_description || item.indicator_description;
 
-            tbody.innerHTML += `
-            <tr class="${item.original_quantity === -1 ? 'table-info' : ''}">
-                <td class="small text-muted">${item.category_name || ''}</td>
-                <td>
-                    <div>${item.indicator_description}</div>
-                    ${item.is_custom == 1 ? '<span class="badge bg-warning text-dark ms-1">Custom</span>' : ''}
-                    ${item.original_quantity === -1 ? '<span class="badge bg-info text-dark mt-1" style="font-size: 0.75rem; width: fit-content; display: block;">Added by Dean</span>' : ''}
-                </td>
-                <td class="text-center">${origQtyDisplay}</td>
-                <td class="text-center">
-                    <input type="number" class="form-control form-control-sm text-center fw-bold review-qty"
-                           data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
-                           value="${item.reviewed_quantity}" min="0"
-                           ${isLocked ? 'disabled' : ''}>
-                </td>
-                <td>
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="text" class="form-control form-control-sm review-remark"
+                coreBody.innerHTML += `
+                <tr class="table-active-row" style="background-color: rgba(13, 110, 253, 0.04);">
+                    <td class="py-3 ps-4">
+                        ${badgeHtml}
+                        <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
+                        <p class="mb-0 small text-dark"><i class="bi bi-text-paragraph text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>
+                    </td>
+                    <td class="text-center">
+                        <span class="fw-bold fs-5 text-primary">${origQtyDisplay}</span>
+                    </td>
+                    <td class="text-center">
+                        <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
+                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
+                               value="${item.reviewed_quantity}" min="0"
+                               ${isLocked ? 'disabled' : ''}>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm review-remark shadow-sm"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
                                value="${item.item_remarks || ''}"
-                               placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
-                        ${item.original_quantity === -1 && !isLocked ? `
-                        <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-dean-added-btn" 
-                                data-indicator-id="${item.indicator_id}" title="Remove target">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
-                        ` : ''}
-                    </div>
-                </td>
-            </tr>
-        `;
-        });
+                               placeholder="Optional note..." ${isLocked ? 'disabled' : ''}>
+                    </td>
+                </tr>
+                `;
+            });
+        }
+
+        // Populate Strategic Priorities & Support Functions
+        if (strategicItems.length === 0) {
+            strategicBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted small">No Strategic Priorities or Support Function targets submitted.</td></tr>';
+        } else {
+            strategicItems.forEach(item => {
+                const origQtyDisplay = item.original_quantity === -1 ? '0' : item.original_quantity;
+                let badgeHtml = '';
+                if (item.is_custom == 1) {
+                    badgeHtml = '<span class="badge bg-warning text-dark border mb-1">Custom</span>';
+                } else if (item.category_name && item.category_name.includes('Instruction')) {
+                    badgeHtml = '<span class="badge bg-light text-dark border mb-1">Instruction</span>';
+                } else {
+                    badgeHtml = '<span class="badge bg-light text-dark border mb-1">Support</span>';
+                }
+                if (item.original_quantity === -1) {
+                    badgeHtml += ' <span class="badge bg-info text-dark mb-1 ms-1">Added by Dean</span>';
+                }
+
+                const descText = item.target_description || item.indicator_description;
+
+                strategicBody.innerHTML += `
+                <tr>
+                    <td class="py-3 ps-4">
+                        ${badgeHtml}
+                        <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
+                        ${descText !== item.indicator_description ? `<p class="mb-0 small text-dark"><i class="bi bi-text-paragraph text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>` : ''}
+                    </td>
+                    <td class="text-center">
+                        <span class="fw-bold fs-5 text-warning">${origQtyDisplay}</span>
+                    </td>
+                    <td class="text-center">
+                        <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
+                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
+                               value="${item.reviewed_quantity}" min="0"
+                               ${isLocked ? 'disabled' : ''}>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="text" class="form-control form-control-sm review-remark shadow-sm"
+                                   data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
+                                   value="${item.item_remarks || ''}"
+                                   placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
+                            ${item.original_quantity === -1 && !isLocked ? `
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-dean-added-btn" 
+                                    data-indicator-id="${item.indicator_id}" title="Remove target">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+                `;
+            });
+        }
     }
+
 
     function populateUnpickedItems(items) {
         const tbody = document.getElementById('unpickedItemsBody');

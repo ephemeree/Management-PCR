@@ -123,15 +123,19 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
     from app.models.connection import timed_query
     query = """
         SELECT ct.target_id, ct.indicator_id, ct.assigned_quantity, ct.actual_quantity, ct.status,
-               COALESCE(ct.target_description, mi.indicator_description) as indicator_description,
-               ct.target_description, ct.target_deadline, tc.category_name, mi.is_custom
+               COALESCE(ct.target_description, dt.target_description, mi.indicator_description) as indicator_description,
+               COALESCE(ct.target_description, dt.target_description) as target_description,
+               COALESCE(ct.target_deadline, dt.target_deadline, '1 Semester') as target_deadline,
+               tc.category_name, mi.is_custom
         FROM tbl_committed_targets ct
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        LEFT JOIN tbl_draft_targets dt ON dt.emp_id = ct.emp_id AND dt.indicator_id = ct.indicator_id
         WHERE ct.emp_id = %s AND mi.term_id = %s
         ORDER BY tc.category_name, mi.indicator_id
     """
     return timed_query(cursor, query, (emp_id, term_id), label="get_designated_committed_targets")
+
 
 
 def check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets):
