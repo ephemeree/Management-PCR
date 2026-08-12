@@ -96,16 +96,21 @@ def get_overall_ipcr_status(cursor, emp_id, term_id):
     if cursor.fetchone()[0] > 0:
         return 'draft'
 
-    # 6. Check RET review status
+    # 6. Check RET review status — Option B: the RET review stage is triggered by the
+    # presence of Research targets (self-selected or chair-assigned), not by a per-faculty
+    # enable flag. Extension is distributed and auto-flows, so it never triggers RET review.
     cursor.execute("""
-        SELECT is_enabled FROM tbl_ret_faculty_access
-        WHERE emp_id = %s AND term_id = %s
+        SELECT COUNT(*)
+        FROM tbl_draft_targets dt
+        JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        WHERE dt.emp_id = %s AND mi.term_id = %s
+          AND tc.slug = 'research' AND dt.proposed_quantity > 0
     """, (emp_id, term_id))
-    ret_access_row = cursor.fetchone()
-    is_ret_eligible = bool(ret_access_row and ret_access_row[0] == 1)
+    has_research_targets = cursor.fetchone()[0] > 0
 
-    if not is_ret_eligible:
-        # Non-RET eligible faculty bypasses RET review stage completely
+    if not has_research_targets:
+        # No Research targets -> bypass RET review, straight to Program Chair
         if chair_row and chair_row[0] == 'Rejected':
             return 'draft'
         return 'waiting_for_program_chair_review'

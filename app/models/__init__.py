@@ -1,6 +1,7 @@
 # Re-export all model functions for backward compatibility
 # Routes can still use `from app.models import *`
 from .connection import *
+from .criteria import *
 from .user import *
 from .term import *
 from .indicator import *

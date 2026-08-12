@@ -1,4 +1,7 @@
 # Trigger reload 19
+from app.models.criteria import SLUG_RESEARCH, SLUG_EXTENSION
+
+
 def get_faculty_assigned_targets(cursor, emp_id, term_id):
     from app.models.connection import timed_query
     
@@ -77,7 +80,7 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
         for t in targets
     )
     if not has_teaching_load:
-        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
+        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
         cat_row = cursor.fetchone()
         cat_id = cat_row[0] if cat_row else 1
         cursor.execute("""
@@ -142,7 +145,7 @@ def get_faculty_chair_review_status(cursor, emp_id, term_id):
 def get_faculty_ret_menu(cursor, academic_rank, term_id):
     from app.models.connection import timed_query
     query = """
-        SELECT r.required_selections, mi.indicator_id, mi.indicator_description, tc.category_name, rri.target_quantity
+        SELECT r.required_selections, mi.indicator_id, mi.indicator_description, tc.category_name, tc.slug, rri.target_quantity
         FROM tbl_ret_rules r
         JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
         JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
@@ -159,10 +162,10 @@ def get_faculty_ret_menu(cursor, academic_rank, term_id):
     }
 
     for r in results:
-        if r['category_name'] == 'A. Research':
+        if r['slug'] == SLUG_RESEARCH:
             ret_menu['research_required'] = int(r['required_selections'])
             ret_menu['research_indicators'].append(r)
-        elif r['category_name'] == 'B. Extension Services / Training / Advisory':
+        elif r['slug'] == SLUG_EXTENSION:
             ret_menu['extension_required'] = int(r['required_selections'])
             ret_menu['extension_indicators'].append(r)
 
@@ -177,16 +180,26 @@ def save_faculty_ret_selections(conn, cursor, emp_id, term_id, selected_indicato
 
 def is_faculty_ret_eligible(cursor, emp_id, term_id):
     """
-    Returns True if the faculty member is checked/enabled for RET target access in tbl_ret_faculty_access for term_id.
+    Option B: every regular faculty may take Research targets (optional self-select).
+    There is no per-faculty enable gate anymore — eligibility simply means the faculty's
+    rank has a Research menu configured for the term (otherwise there is nothing to show).
     """
     if not term_id:
         return False
-    cursor.execute(
-        "SELECT is_enabled FROM tbl_ret_faculty_access WHERE emp_id = %s AND term_id = %s",
-        (emp_id, term_id)
-    )
+    cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
     row = cursor.fetchone()
-    return bool(row and row[0] == 1)
+    academic_rank = row[0] if row else None
+    if not academic_rank:
+        return False
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM tbl_ret_rules r
+        JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
+        JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        WHERE r.academic_rank = %s AND mi.term_id = %s AND tc.slug = 'research'
+    """, (academic_rank, term_id))
+    return cursor.fetchone()[0] > 0
 
 
 def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
@@ -264,7 +277,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                 """, (emp_id, ind_id, qty, target_status, cust_desc, t_dead))
 
         # Ensure mandatory default Teaching Load target (21 hours) is saved
-        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
+        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
         cat_row = cursor.fetchone()
         cat_id = cat_row[0] if cat_row else 1
         cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = '21 hours of Teaching Load' AND term_id = %s", (active_term_id,))
@@ -291,17 +304,18 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
             JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
             SET dt.review_status = %s
             WHERE dt.emp_id = %s
-              AND tc.category_name NOT IN ('A. Research', 'B. Extension Services / Training / Advisory')
+              AND tc.review_lane <> 'RET'
         """, (target_status, emp_id))
 
         if not ret_eligible:
-            # Non-RET faculty: delete any existing Research and Extension targets
+            # No Research menu for this rank: clear any existing Research targets.
+            # Extension is distributed independently and is not touched here.
             cursor.execute("""
                 DELETE dt FROM tbl_draft_targets dt
                 JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                 WHERE dt.emp_id = %s
-                  AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
+                  AND tc.slug = 'research'
             """, (emp_id,))
         else:
             # RET-eligible faculty: check if Research & Extension targets are editable
@@ -321,21 +335,22 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                         ret_editable = False
 
             if ret_editable:
-                # Delete existing Research and Extension targets to rewrite selections
+                # Rewrite only Research selections. Extension is distributed separately
+                # and must survive this rewrite (scoped to slug='research').
                 cursor.execute("""
                     DELETE dt FROM tbl_draft_targets dt
                     JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
                     JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                     WHERE dt.emp_id = %s
-                      AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
+                      AND tc.slug = 'research'
                 """, (emp_id,))
 
-                # Process and write selected Research/Extension targets
+                # Process and write faculty-selected Research targets
                 for target in selected_research_targets:
                     res_ind_id = target['indicator_id']
-                    
+
                     cursor.execute("""
-                        SELECT rri.target_quantity 
+                        SELECT rri.target_quantity
                         FROM tbl_ret_rule_indicators rri
                         JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
                         JOIN tbl_employee_profiles ep ON ep.academic_rank = r.academic_rank
@@ -349,7 +364,35 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                         INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
                         VALUES (%s, %s, %s, %s)
                     """, (emp_id, res_ind_id, res_qty, target_status))
+
+                # Materialize the RET Chair's direct Research assignments (locked — always
+                # present regardless of self-selection). Chair-assigned quantities are
+                # authoritative if the same indicator was also self-selected.
+                cursor.execute("""
+                    SELECT indicator_id, target_quantity
+                    FROM tbl_ret_assignments
+                    WHERE emp_id = %s AND term_id = %s
+                """, (emp_id, active_term_id))
+                for assign_ind_id, assign_qty in cursor.fetchall():
+                    cursor.execute("""
+                        SELECT draft_id FROM tbl_draft_targets
+                        WHERE emp_id = %s AND indicator_id = %s
+                    """, (emp_id, assign_ind_id))
+                    existing = cursor.fetchone()
+                    if existing:
+                        cursor.execute("""
+                            UPDATE tbl_draft_targets
+                            SET proposed_quantity = %s, review_status = %s
+                            WHERE draft_id = %s
+                        """, (assign_qty, target_status, existing[0]))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
+                            VALUES (%s, %s, %s, %s)
+                        """, (emp_id, assign_ind_id, assign_qty, target_status))
             else:
+                # RET review already decided (Approved/Rejected): Research is locked from
+                # further self-editing; only refresh its status. Scoped to research.
                 if ret_status == 'Rejected':
                     cursor.execute("""
                         UPDATE tbl_draft_targets dt
@@ -357,7 +400,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                         SET dt.review_status = %s
                         WHERE dt.emp_id = %s
-                          AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
+                          AND tc.slug = 'research'
                     """, (target_status, emp_id))
 
                 cursor.execute("""
@@ -366,8 +409,33 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                     JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                     SET dt.review_status = %s
                     WHERE dt.emp_id = %s
-                      AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
+                      AND tc.slug = 'research'
                 """, (target_status, emp_id))
+
+        # 7b. Materialize distributed Extension targets — uniform to ALL regular faculty,
+        # locked (not self-selectable), independent of Research eligibility. Rewrite from
+        # the term's distribution so removed distributions disappear on resubmit. Extension
+        # auto-flows to the Program Chair (it never enters RET review).
+        cursor.execute("""
+            DELETE dt FROM tbl_draft_targets dt
+            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE dt.emp_id = %s AND tc.slug = 'extension'
+        """, (emp_id,))
+        if active_term_id:
+            cursor.execute("""
+                SELECT indicator_id, target_quantity
+                FROM tbl_ret_extension_distribution
+                WHERE term_id = %s
+            """, (active_term_id,))
+            for ext_ind_id, ext_qty in cursor.fetchall():
+                # Extension is chair-distributed and auto-flows (never enters RET review),
+                # so it is materialized already 'Approved' — this lets the Program Chair see
+                # it as RET-approved and covers faculty who have extension but no research.
+                cursor.execute("""
+                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
+                    VALUES (%s, %s, %s, 'Approved')
+                """, (emp_id, ext_ind_id, ext_qty))
 
         # 8. Update existing Program Chair review records for active term to 'Pending' and clear items/remarks
         if active_term_id and is_resubmission:
@@ -384,7 +452,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                     JOIN tbl_master_indicators mi ON ri.indicator_id = mi.indicator_id
                     JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                     WHERE ri.review_id = %s
-                      AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
+                      AND tc.review_lane = 'RET'
                 """, (review_id,))
 
                 # Sync/update the standard workload review items to match the new draft proposed quantities.
@@ -402,7 +470,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                         END,
                         ri.original_quantity = dt.proposed_quantity
                     WHERE ri.review_id = %s
-                      AND tc.category_name IN ('A. Instructions', 'Support Functions')
+                      AND tc.review_lane = 'CHAIR' AND tc.is_core = 1
                 """, (review_id,))
 
                 cursor.execute("""

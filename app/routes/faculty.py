@@ -27,13 +27,24 @@ def faculty_dashboard():
     is_locked = False
     chair_review = None
     is_ret_eligible = False
+    ret_assigned_ids = []
+    extension_targets = []
 
     if active_term:
         term_id = active_term['term_id']
         is_ret_eligible = is_faculty_ret_eligible(cursor, emp_id, term_id)
         assigned_targets = get_faculty_assigned_targets(cursor, emp_id, term_id)
+        # Extension is distributed to all regular faculty (read-only), regardless of research eligibility
+        from app.models.ret_chair import get_distributed_extension_targets
+        extension_targets = get_distributed_extension_targets(cursor, term_id)
         if academic_rank and is_ret_eligible:
             ret_menu = get_faculty_ret_menu(cursor, academic_rank, term_id)
+            # Research targets directly assigned by the RET Chair — locked on the faculty side
+            cursor.execute(
+                "SELECT indicator_id FROM tbl_ret_assignments WHERE emp_id = %s AND term_id = %s",
+                (emp_id, term_id)
+            )
+            ret_assigned_ids = [r[0] for r in cursor.fetchall()]
 
         # Check if the faculty member has submitted
         sub_result = timed_query(cursor, """
@@ -87,6 +98,8 @@ def faculty_dashboard():
                            has_submitted=has_submitted,
                            is_locked=is_locked,
                            is_ret_eligible=is_ret_eligible,
+                           ret_assigned_ids=ret_assigned_ids,
+                           extension_targets=extension_targets,
                            chair_review=chair_review,
                            ret_review=ret_review,
                            ipcr_status=ipcr_status,

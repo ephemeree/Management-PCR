@@ -32,12 +32,6 @@
     <i class="bi bi-person-check-fill"></i>
     <span class="nav-text">Commitments</span>
 </button>
-<button class="nav-item" data-section="nav-faculty-access" onclick="showSection('nav-faculty-access')">
-    <i class="bi bi-person-gear"></i>
-    <span class="nav-text">Faculty RET Access</span>
-</button>
-
-
 <div class="nav-label">Verification</div>
 <button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
     <i class="bi bi-file-earmark-check-fill"></i>
@@ -117,118 +111,88 @@
 </div>
 {% else %}
 
-<!-- Faculty RET Access Section -->
-<div id="nav-faculty-access" class="dashboard-section">
-    <div class="page-header d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2>Faculty RET Target Access Management</h2>
-            <p>Designate regular faculty members across all programs who are authorized to select Research &amp; Extension targets for this term.</p>
-        </div>
-        <span class="badge bg-primary px-3 py-2 fs-6 shadow-sm"><i class="bi bi-person-gear me-1"></i> RET Target Access</span>
-    </div>
-
-    <form action="{{ url_for('ret_chair.save_faculty_access') }}" method="POST">
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-search text-muted"></i>
-                    <input type="text" id="retFacultySearch" class="form-control form-control-sm" placeholder="Search faculty by name or program..." style="width: 280px;" onkeyup="filterRetFacultyTable()">
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleAllRetFaculty(true)">
-                        <i class="bi bi-check-all me-1"></i>Select All
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllRetFaculty(false)">
-                        <i class="bi bi-x-lg me-1"></i>Deselect All
-                    </button>
-                </div>
-
-            </div>
-
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="retFacultyTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 70px;" class="text-center">Access</th>
-                                <th>Faculty Member</th>
-                                <th>Program / Specialization</th>
-                                <th>Academic Rank</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if faculty_access_list %}
-                            {% for f in faculty_access_list %}
-                            <tr class="ret-faculty-row">
-                                <td class="text-center">
-                                    <div class="form-check form-switch d-inline-block">
-                                        <input class="form-check-input ret-faculty-checkbox" type="checkbox" name="enabled_faculty_ids" value="{{ f.emp_id }}" id="fac_ret_{{ f.emp_id }}" {% if f.is_enabled %}checked{% endif %}>
-                                    </div>
-                                </td>
-                                <td>
-                                    <label for="fac_ret_{{ f.emp_id }}" class="fw-bold text-dark text-decoration-none mb-0 cursor-pointer">
-                                        {{ f.faculty_name }}
-                                    </label>
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-dark border">{{ f.specialization or 'General' }}</span>
-                                </td>
-                                <td>{{ f.academic_rank or 'Regular Faculty' }}</td>
-                                <td>
-                                    {% if f.is_enabled %}
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 ret-status-badge">
-                                        <i class="bi bi-check-circle-fill me-1"></i>RET Eligible
-                                    </span>
-                                    {% else %}
-                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 ret-status-badge">
-                                        <i class="bi bi-dash-circle me-1"></i>Standard Workload Only
-                                    </span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                            {% else %}
-                            <tr>
-                                <td colspan="5" class="text-center py-4 text-muted">
-                                    <i class="bi bi-people fs-3 d-block mb-2"></i>
-                                    No regular faculty profiles found.
-                                </td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <div class="card-footer bg-light py-3 text-end border-top">
-                <button type="submit" class="btn btn-success px-4 fw-bold shadow-sm">
-                    <i class="bi bi-floppy-fill me-1"></i>Save RET Access Settings
-                </button>
-            </div>
-        </div>
-    </form>
-</div>
-
 <script>
-function filterRetFacultyTable() {
-    const input = document.getElementById('retFacultySearch').value.toLowerCase();
-    const rows = document.querySelectorAll('#retFacultyTable .ret-faculty-row');
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        row.style.display = text.includes(input) ? '' : 'none';
-    });
-}
+// --- RET research assignment editor ---
 
-function toggleAllRetFaculty(checked) {
-    const checkboxes = document.querySelectorAll('.ret-faculty-checkbox');
-    checkboxes.forEach(cb => {
-        if (cb.closest('tr').style.display !== 'none') {
-            cb.checked = checked;
+// Open the assignment editor modal and populate it with the faculty member's
+// rank-eligible RET menu, pre-checking any existing assignments.
+function openAssignmentEditor(empId) {
+    const modalEl = document.getElementById('assignmentEditorModal');
+    const body = document.getElementById('assignmentEditorBody');
+    document.getElementById('assignmentEditorEmpId').value = empId;
+    body.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Loading...</div>';
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    fetch("{{ url_for('ret_chair.assignment_editor', emp_id=0) }}".replace('/0', '/' + empId))
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            body.innerHTML = '<div class="alert alert-danger">' + (data.message || 'Failed to load.') + '</div>';
+            return;
         }
+        document.getElementById('assignmentEditorFaculty').textContent = data.faculty_name;
+        document.getElementById('assignmentEditorRank').textContent = data.academic_rank || '—';
+
+        const section = (title, items) => {
+            if (!items.length) {
+                return '<h6 class="fw-bold mt-3">' + title + '</h6>' +
+                       '<p class="text-muted small mb-0">No indicators in this faculty member\'s rank menu.</p>';
+            }
+            let html = '<h6 class="fw-bold mt-3">' + title + '</h6><div class="list-group mb-2">';
+            items.forEach(it => {
+                const qty = it.assigned_quantity != null ? it.assigned_quantity : it.default_quantity;
+                const checked = it.is_assigned ? 'checked' : '';
+                html +=
+                  '<label class="list-group-item d-flex align-items-center gap-2">' +
+                    '<input class="form-check-input m-0 assign-check" type="checkbox" name="assign_indicator_ids[]" value="' + it.indicator_id + '" ' + checked + '>' +
+                    '<span class="flex-grow-1">' + it.indicator_description + '</span>' +
+                    '<input type="number" min="1" class="form-control form-control-sm" style="width:90px;" ' +
+                           'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '">' +
+                  '</label>';
+            });
+            html += '</div>';
+            return html;
+        };
+
+        // Research only — Extension is distributed to all faculty, not assigned per-person.
+        body.innerHTML = section('Research', data.research);
+    })
+    .catch(err => {
+        body.innerHTML = '<div class="alert alert-danger">Error: ' + err + '</div>';
     });
 }
 </script>
+
+<!-- Assignment Editor Modal (Dual Assignment Workflow) -->
+<div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form action="{{ url_for('ret_chair.save_assignments') }}" method="POST">
+                <input type="hidden" name="emp_id" id="assignmentEditorEmpId">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-list-check me-2"></i>Assign Research Targets</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <div class="fw-bold" id="assignmentEditorFaculty">—</div>
+                            <div class="text-muted small">Rank: <span id="assignmentEditorRank">—</span></div>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary border">Director-assigned</span>
+                    </div>
+                    <p class="text-muted small">Check the Research targets to assign and set each quantity. Only indicators in this faculty member's rank menu are shown. (Extension is distributed to all faculty separately.)</p>
+                    <div id="assignmentEditorBody"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-floppy-fill me-1"></i>Save Assignments</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- Phase 1: Cascaded Targets -->
 <div id="nav-phase1" class="dashboard-section">
@@ -320,6 +284,129 @@ function toggleAllRetFaculty(checked) {
         {{ active_term.academic_year }} ({{ active_term.semester }})
     </div>
     {% endif %}
+
+    <!-- Direct Research Assignment (relocated from the old Faculty RET Access panel) -->
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #0d6efd !important;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold mb-0 text-primary">
+                    <i class="bi bi-person-lines-fill me-2"></i>Assign Research Targets to Faculty
+                </h5>
+                <small class="text-muted">Every regular faculty may self-select Research. Use this to directly assign
+                    Research targets and ensure coverage. Assignments are limited to each faculty member's rank menu.</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-search text-muted"></i>
+                <input type="text" id="assignFacultySearch" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterAssignFacultyTable()">
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="assignFacultyTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Faculty Member</th>
+                            <th>Program / Specialization</th>
+                            <th>Academic Rank</th>
+                            <th class="text-center" style="width: 160px;">Research Assigned</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if assignment_faculty %}
+                        {% for f in assignment_faculty %}
+                        <tr class="assign-faculty-row">
+                            <td class="fw-bold text-dark">{{ f.faculty_name }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ f.specialization or 'General' }}</span></td>
+                            <td>{{ f.academic_rank or 'Regular Faculty' }}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        onclick="openAssignmentEditor({{ f.emp_id }})">
+                                    <i class="bi bi-list-check me-1"></i>Assign
+                                    {% if f.assignment_count and f.assignment_count > 0 %}
+                                    <span class="badge bg-primary ms-1">{{ f.assignment_count }}</span>
+                                    {% endif %}
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">
+                                <i class="bi bi-people fs-3 d-block mb-2"></i>No regular faculty profiles found.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function filterAssignFacultyTable() {
+        const input = document.getElementById('assignFacultySearch').value.toLowerCase();
+        document.querySelectorAll('#assignFacultyTable .assign-faculty-row').forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+    </script>
+
+    <!-- Distribute Extension Targets to all regular faculty -->
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #fd7e14 !important;">
+        <form action="{{ url_for('ret_chair.save_extension_distribution') }}" method="POST">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="fw-bold mb-0 text-warning">
+                        <i class="bi bi-tools me-2"></i>Distribute Extension Targets to All Faculty
+                    </h5>
+                    <small class="text-muted">Extension targets are distributed equally to every regular faculty across
+                        all specializations. This is a one-time action and locks once distributed.</small>
+                </div>
+                {% if extension_locked %}
+                <span class="badge bg-secondary px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Distributed &amp; Locked</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if extension_locked %}
+                <div class="alert alert-secondary border-0 small py-2 mb-3">
+                    <i class="bi bi-info-circle me-1"></i>Extension has been distributed for this term and can no longer be changed.
+                </div>
+                {% endif %}
+                {% if extension_distribution %}
+                <div class="list-group mb-3">
+                    {% for ext in extension_distribution %}
+                    <label class="list-group-item d-flex align-items-center gap-2 {% if extension_locked and not ext.is_distributed %}opacity-50{% endif %}">
+                        <input class="form-check-input m-0" type="checkbox" name="ext_indicator_ids[]"
+                               value="{{ ext.indicator_id }}" {% if ext.is_distributed %}checked{% endif %}
+                               {% if extension_locked %}disabled{% endif %}>
+                        <span class="flex-grow-1">{{ ext.indicator_description }}
+                            {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
+                        </span>
+                        <span class="text-muted small">Qty / faculty</span>
+                        <input type="number" min="1" class="form-control form-control-sm" style="width: 90px;"
+                               name="ext_quantity_{{ ext.indicator_id }}"
+                               value="{{ ext.distributed_quantity if ext.distributed_quantity > 0 else 1 }}"
+                               {% if extension_locked %}disabled{% endif %}>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if not extension_locked %}
+                <div class="text-end">
+                    <button type="submit" class="btn btn-warning fw-bold"
+                            onclick="return confirm('Distribute these Extension targets to ALL regular faculty? This is a one-time action and cannot be changed afterward.');">
+                        <i class="bi bi-broadcast me-1"></i>Distribute to All Faculty
+                    </button>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>No Extension indicators configured for this term.
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
 
     <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #10B981 !important;">
         <div class="card-header bg-white border-0 py-3">
@@ -456,13 +543,12 @@ function toggleAllRetFaculty(checked) {
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold text-dark mb-0">Phase 2: RET Menu Configuration</h5>
+            <h5 class="fw-bold text-dark mb-0">Phase 2: Research Menu Configuration</h5>
             <span class="badge bg-primary"><i class="bi bi-gear-fill me-1"></i> Setup Rules</span>
         </div>
         <div class="card-body">
-            <p class="text-muted small mb-4">Map the registered research and extension targets to specific academic
-                ranks to
-                generate the faculty selection menus.</p>
+            <p class="text-muted small mb-4">Map the registered Research targets to specific academic ranks to generate
+                the faculty Research selection menus. (Extension is distributed to all faculty, not rank-based.)</p>
             <form action="{{ url_for('ret_chair.ret_chair_save_rule') }}" method="POST">
                 <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
 
@@ -486,19 +572,12 @@ function toggleAllRetFaculty(checked) {
                             <option value="Associate Professor V">Associate Professor V</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-8">
                         <label class="form-label fw-bold text-primary"><i class="bi bi-star-fill me-1"></i>Research
                             Required</label>
                         <input type="number" class="form-control shadow-sm" id="research_selections"
                             name="research_selections" value="0" min="0" max="10" required placeholder="Count">
                         <div class="form-text small">Number of research targets to pick.</div>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-warning"><i class="bi bi-tools me-1"></i>Extension
-                            Required</label>
-                        <input type="number" class="form-control shadow-sm" id="extension_selections"
-                            name="extension_selections" value="0" min="0" max="10" required placeholder="Count">
-                        <div class="form-text small">Number of extension targets to pick.</div>
                     </div>
                 </div>
 
@@ -506,7 +585,7 @@ function toggleAllRetFaculty(checked) {
                     <label class="form-label fw-bold">4. Map Allowed Indicators</label>
                     <div class="row">
                         <!-- Research Indicators -->
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-12 mb-3">
                             <div class="card shadow-sm border-0 h-100"
                                 style="border-top: 3px solid #0d6efd !important;">
                                 <div class="card-header bg-light py-2">
@@ -544,45 +623,6 @@ function toggleAllRetFaculty(checked) {
                                 </ul>
                             </div>
                         </div>
-                        <!-- Extension Indicators -->
-                        <div class="col-md-6 mb-3">
-                            <div class="card shadow-sm border-0 h-100"
-                                style="border-top: 3px solid #fd7e14 !important;">
-                                <div class="card-header bg-light py-2">
-                                    <h6 class="fw-bold text-warning mb-0 small">Extension Options</h6>
-                                </div>
-                                <ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
-                                    {% set ns_e = namespace(found=false) %}
-                                    {% for ind in ret_indicators %}
-                                    {% if ind.category_name == 'B. Extension Services / Training / Advisory' %}
-                                    {% set ns_e.found = true %}
-                                    <li
-                                        class="list-group-item d-flex justify-content-between align-items-center py-2 small">
-                                        <div class="d-flex align-items-start" style="flex: 1; padding-right: 15px;">
-                                            <input
-                                                class="form-check-input me-2 indicator-checkbox extension-indicator-checkbox"
-                                                type="checkbox" id="ind_{{ ind.indicator_id }}"
-                                                name="extension_indicator_ids[]" value="{{ ind.indicator_id }}">
-                                            <label class="form-check-label" for="ind_{{ ind.indicator_id }}">
-                                                {{ ind.indicator_description }}
-                                            </label>
-                                        </div>
-                                        <div style="width: 80px;">
-                                            <input type="number" class="form-control form-control-sm text-center"
-                                                id="qty_{{ ind.indicator_id }}"
-                                                name="extension_quantity_{{ ind.indicator_id }}" value="1" min="1"
-                                                disabled placeholder="Qty">
-                                        </div>
-                                    </li>
-                                    {% endif %}
-                                    {% endfor %}
-                                    {% if not ns_e.found %}
-                                    <li class="list-group-item py-2 text-muted small">No Extension indicators available.
-                                    </li>
-                                    {% endif %}
-                                </ul>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -613,8 +653,6 @@ function toggleAllRetFaculty(checked) {
                             <th>Academic Rank</th>
                             <th class="text-center text-primary">Research Required</th>
                             <th class="text-center">Research Options</th>
-                            <th class="text-center text-warning">Extension Required</th>
-                            <th class="text-center">Extension Options</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
@@ -629,17 +667,10 @@ function toggleAllRetFaculty(checked) {
                                     {{ rule.research_indicators|length }} Options
                                 </span>
                             </td>
-                            <td class="text-center fw-bold text-warning">{{ rule.extension_required }}</td>
-                            <td class="text-center">
-                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning"
-                                    title="{% for i in rule.extension_indicators %}{{ i.desc }}{% if not loop.last %}&#10;{% endif %}{% endfor %}">
-                                    {{ rule.extension_indicators|length }} Options
-                                </span>
-                            </td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary px-3"
-                                        onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, {{ rule.extension_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}}{% if not loop.last %}, {% endif %}{% endfor %}], [{% for i in rule.extension_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
+                                        onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
                                         <i class="bi bi-pencil me-1"></i>Edit
                                     </button>
                                     <form method="POST" action="{{ url_for('ret_chair.ret_chair_delete_rule') }}"
@@ -985,7 +1016,7 @@ function toggleAllRetFaculty(checked) {
         }
     });
 
-    function editRule(rank, researchCount, extensionCount, researchIds, extensionIds) {
+    function editRule(rank, researchCount, researchIds) {
         // Automatically switch to Phase 2 (Menu Config) section
         if (typeof showSection === 'function') {
             showSection('nav-phase2');
@@ -999,7 +1030,6 @@ function toggleAllRetFaculty(checked) {
         // Populate inputs
         document.getElementById('academic_rank').value = rank;
         document.getElementById('research_selections').value = researchCount;
-        document.getElementById('extension_selections').value = extensionCount;
 
         // Trigger the toggle to enable checkboxes
         const event = new Event('change');
@@ -1018,19 +1048,6 @@ function toggleAllRetFaculty(checked) {
 
         // Check the previously selected ones and set their quantities
         researchIds.forEach(item => {
-            const id = item.id;
-            const qty = item.qty;
-            const cb = document.getElementById('ind_' + id);
-            if (cb) {
-                cb.checked = true;
-                const qtyInput = document.getElementById('qty_' + id);
-                if (qtyInput) {
-                    qtyInput.value = qty;
-                    qtyInput.disabled = false;
-                }
-            }
-        });
-        extensionIds.forEach(item => {
             const id = item.id;
             const qty = item.qty;
             const cb = document.getElementById('ind_' + id);
@@ -1233,8 +1250,11 @@ function toggleAllRetFaculty(checked) {
             return a.indicator_id - b.indicator_id;
         });
 
-        if (activeItems.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No Research/Extension targets selected.</td></tr>';
+        // Distributed Extension targets — read-only (chair-distributed to all faculty)
+        const extensionItems = (retReviewData && retReviewData.extension) ? retReviewData.extension : [];
+
+        if (activeItems.length === 0 && extensionItems.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No Research or Extension targets.</td></tr>';
             return;
         }
 
@@ -1282,13 +1302,43 @@ function toggleAllRetFaculty(checked) {
                                placeholder="Optional note..."
                                data-indicator-id="${item.indicator_id}" style="flex:1;"
                                ${isDecided ? 'disabled' : ''}>
-                        <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-ret-item-btn" 
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-ret-item-btn"
                                 data-indicator-id="${item.indicator_id}" title="Remove selection"
                                 ${isDecided ? 'style="display:none;"' : ''}>
                             <i class="bi bi-trash-fill"></i>
                         </button>
                     </div>
                 </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Distributed Extension rows — read-only; the RET Chair distributed these, so no
+        // quantity/remarks editing and no delete action.
+        extensionItems.forEach(function (ext) {
+            const displayCat = cleanCategoryName(ext.category_name);
+            if (displayCat !== lastCategory) {
+                lastCategory = displayCat;
+                const headerTr = document.createElement('tr');
+                headerTr.className = 'table-secondary';
+                headerTr.innerHTML = `
+                    <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
+                        ${displayCat}
+                    </td>
+                `;
+                tbody.appendChild(headerTr);
+            }
+            const tr = document.createElement('tr');
+            tr.className = 'table-light';
+            tr.innerHTML = `
+                <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
+                <td>
+                    <div class="small fw-semibold">${ext.indicator_description}</div>
+                    <span class="badge bg-warning bg-opacity-10 text-warning mt-1" style="font-size: 0.75rem; width: fit-content; display: block;"><i class="bi bi-broadcast me-1"></i>Distributed to all faculty</span>
+                </td>
+                <td class="text-center text-muted">${ext.reviewed_quantity}</td>
+                <td class="text-center fw-bold">${ext.reviewed_quantity}</td>
+                <td class="text-center text-muted small"><i class="bi bi-lock-fill me-1"></i>Not editable</td>
             `;
             tbody.appendChild(tr);
         });

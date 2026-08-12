@@ -73,7 +73,7 @@ def prog_chair_dashboard():
                 ind['custom_description'] = cust_desc
                 ind['target_deadline'] = t_dead
 
-                if ind.get('category_name') == 'A. Instructions':
+                if ind.get('slug') == SLUG_INSTRUCTION:
                     ind['applicable_faculty_count'] = all_faculty_count
                     ind['total_distributed'] = assigned_qty * all_faculty_count
                 else:
@@ -311,8 +311,8 @@ def review_ipcr(emp_id):
                     ct.target_deadline,
                     tc.category_name,
                     COALESCE(
-                        CASE WHEN tc.category_name IN ('A. Instructions', 'Support Functions') THEN ri.original_quantity ELSE NULL END,
-                        CASE WHEN tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') THEN rri.original_quantity ELSE NULL END,
+                        CASE WHEN tc.review_lane = 'CHAIR' AND tc.is_core = 1 THEN ri.original_quantity ELSE NULL END,
+                        CASE WHEN tc.review_lane = 'RET' THEN rri.original_quantity ELSE NULL END,
                         ct.assigned_quantity
                     ) AS original_quantity,
                     ct.assigned_quantity AS reviewed_quantity,
@@ -351,13 +351,13 @@ def review_ipcr(emp_id):
                     dt.target_deadline,
                     tc.category_name,
                     COALESCE(
-                        CASE WHEN tc.category_name IN ('A. Instructions', 'Support Functions') THEN ri.original_quantity ELSE NULL END,
-                        CASE WHEN tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') THEN rri.original_quantity ELSE NULL END,
+                        CASE WHEN tc.review_lane = 'CHAIR' AND tc.is_core = 1 THEN ri.original_quantity ELSE NULL END,
+                        CASE WHEN tc.review_lane = 'RET' THEN rri.original_quantity ELSE NULL END,
                         dt.proposed_quantity
                     ) AS original_quantity,
                     COALESCE(
-                        CASE WHEN tc.category_name IN ('A. Instructions', 'Support Functions') THEN ri.reviewed_quantity ELSE NULL END,
-                        CASE WHEN tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') THEN rri.reviewed_quantity ELSE NULL END,
+                        CASE WHEN tc.review_lane = 'CHAIR' AND tc.is_core = 1 THEN ri.reviewed_quantity ELSE NULL END,
+                        CASE WHEN tc.review_lane = 'RET' THEN rri.reviewed_quantity ELSE NULL END,
                         dt.proposed_quantity
                     ) AS reviewed_quantity,
                     COALESCE(ri.item_remarks, rri.item_remarks, '') AS item_remarks,
@@ -371,8 +371,8 @@ def review_ipcr(emp_id):
                 LEFT JOIN tbl_ipcr_ret_review_items rri ON rri.review_id = rr.review_id AND rri.indicator_id = dt.indicator_id
                 WHERE dt.emp_id = %s AND mi.term_id = %s
                   AND (
-                      (tc.category_name IN ('A. Instructions', 'Support Functions') AND dt.proposed_quantity > 0)
-                      OR (tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') AND rri.reviewed_quantity > 0)
+                      ((tc.review_lane = 'CHAIR' AND tc.is_core = 1) AND dt.proposed_quantity > 0)
+                      OR (tc.review_lane = 'RET' AND rri.reviewed_quantity > 0)
                   )
             """, (emp_id, term_id))
             rows = cursor.fetchall()

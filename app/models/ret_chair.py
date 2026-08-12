@@ -131,12 +131,14 @@ def delete_ret_rule(conn, cursor, rule_id, category_type=None):
         return False
 
 
-def get_all_faculty_ret_access(cursor, term_id):
+def get_ret_assignment_faculty(cursor, term_id):
     """
-    Returns all regular faculty profiles across all programs with their RET target access state (is_enabled).
+    Returns all regular faculty (across specializations) with their current Research
+    assignment count, for the RET Chair's Target Assignment list. Option B: there is
+    no per-faculty access gate — every regular faculty may take Research targets.
     """
     query = """
-        SELECT 
+        SELECT
             ep.emp_id,
             CONCAT(ep.first_name, ' ', ep.last_name) AS faculty_name,
             ep.first_name,
@@ -144,9 +146,9 @@ def get_all_faculty_ret_access(cursor, term_id):
             ep.academic_rank,
             ep.specialization,
             ep.college,
-            COALESCE(fa.is_enabled, 0) AS is_enabled
+            (SELECT COUNT(*) FROM tbl_ret_assignments ra
+             WHERE ra.emp_id = ep.emp_id AND ra.term_id = %s) AS assignment_count
         FROM tbl_employee_profiles ep
-        LEFT JOIN tbl_ret_faculty_access fa ON ep.emp_id = fa.emp_id AND fa.term_id = %s
         WHERE ep.designation = 'Regular Faculty'
         ORDER BY ep.specialization, ep.last_name, ep.first_name
     """
@@ -155,24 +157,164 @@ def get_all_faculty_ret_access(cursor, term_id):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
-def save_faculty_ret_access(conn, cursor, term_id, enabled_emp_ids):
+def get_ret_extension_distribution(cursor, term_id):
     """
-    Saves the list of faculty member emp_ids enabled for RET target selection for the term.
+    Returns every Extension indicator for the term with the per-faculty quantity currently
+    distributed to all regular faculty (0 if not distributed) — for the RET Chair's
+    Extension distribution editor.
+    """
+    query = """
+        SELECT
+            mi.indicator_id,
+            mi.indicator_description,
+            COALESCE(red.target_quantity, 0) AS distributed_quantity,
+            CASE WHEN red.dist_id IS NOT NULL THEN 1 ELSE 0 END AS is_distributed,
+            (SELECT cq.total_target_value FROM tbl_cascaded_quotas cq
+             WHERE cq.indicator_id = mi.indicator_id AND cq.term_id = %s LIMIT 1) AS dean_quota
+        FROM tbl_master_indicators mi
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        LEFT JOIN tbl_ret_extension_distribution red
+               ON red.indicator_id = mi.indicator_id AND red.term_id = %s
+        WHERE mi.term_id = %s AND tc.slug = 'extension'
+        ORDER BY mi.indicator_id
+    """
+    cursor.execute(query, (term_id, term_id, term_id))
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def get_distributed_extension_targets(cursor, term_id):
+    """Extension targets distributed to all regular faculty — for the faculty read-only view."""
+    query = """
+        SELECT red.indicator_id, mi.indicator_description, red.target_quantity
+        FROM tbl_ret_extension_distribution red
+        JOIN tbl_master_indicators mi ON red.indicator_id = mi.indicator_id
+        WHERE red.term_id = %s
+        ORDER BY mi.indicator_id
+    """
+    cursor.execute(query, (term_id,))
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def is_extension_distributed(cursor, term_id):
+    """True once Extension has been distributed for the term (distribution is one-time / locked)."""
+    cursor.execute("SELECT COUNT(*) FROM tbl_ret_extension_distribution WHERE term_id = %s", (term_id,))
+    return cursor.fetchone()[0] > 0
+
+
+def save_ret_extension_distribution(conn, cursor, term_id, distributions, distributed_by):
+    """
+    Replaces the term's Extension distribution set. `distributions` is a list of
+    (indicator_id, per_faculty_quantity). Only Extension indicators for the term are
+    accepted. Extension is uniform across all regular faculty and is materialized per
+    faculty at submit. This is a one-time action per term: once distributed it is locked
+    and cannot be changed.
     """
     try:
-        # Delete existing access entries for this term
-        cursor.execute("DELETE FROM tbl_ret_faculty_access WHERE term_id = %s", (term_id,))
-        
-        # Insert enabled entries
-        for emp_id in enabled_emp_ids:
+        # One-time lock: refuse if Extension has already been distributed for this term.
+        if is_extension_distributed(cursor, term_id):
+            return False, "Extension targets have already been distributed for this term and are locked."
+
+        cursor.execute("""
+            SELECT mi.indicator_id
+            FROM tbl_master_indicators mi
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE mi.term_id = %s AND tc.slug = 'extension'
+        """, (term_id,))
+        allowed = {r[0] for r in cursor.fetchall()}
+
+        cursor.execute("DELETE FROM tbl_ret_extension_distribution WHERE term_id = %s", (term_id,))
+
+        saved = 0
+        skipped = 0
+        for indicator_id, qty in distributions:
+            if indicator_id not in allowed:
+                skipped += 1
+                continue
+            qty = qty if qty and int(qty) > 0 else 1
             cursor.execute("""
-                INSERT INTO tbl_ret_faculty_access (emp_id, term_id, is_enabled)
-                VALUES (%s, %s, 1)
-                ON DUPLICATE KEY UPDATE is_enabled = 1
-            """, (emp_id, term_id))
-            
+                INSERT INTO tbl_ret_extension_distribution (term_id, indicator_id, target_quantity, distributed_by)
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE target_quantity = VALUES(target_quantity), distributed_by = VALUES(distributed_by)
+            """, (term_id, indicator_id, int(qty), distributed_by))
+            saved += 1
+
         conn.commit()
-        return True, "RET target access settings updated successfully."
+        msg = f"Distributed {saved} Extension target(s) to all regular faculty."
+        if skipped:
+            msg += f" {skipped} skipped (not an Extension indicator for this term)."
+        return True, msg
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
+def get_ret_faculty_assignments(cursor, term_id, emp_id):
+    """
+    Returns the RET Chair's authored assignments for one faculty member in a term,
+    joined with indicator descriptions and category names.
+    """
+    query = """
+        SELECT ra.indicator_id, ra.target_quantity,
+               mi.indicator_description, tc.category_name, tc.slug
+        FROM tbl_ret_assignments ra
+        JOIN tbl_master_indicators mi ON ra.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        WHERE ra.term_id = %s AND ra.emp_id = %s
+        ORDER BY tc.display_order, mi.indicator_id
+    """
+    cursor.execute(query, (term_id, emp_id))
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def save_ret_assignments(conn, cursor, term_id, emp_id, assignments, assigned_by):
+    """
+    Replaces the RET Chair's assignments for a faculty member in a term.
+
+    `assignments` is a list of (indicator_id, target_quantity) tuples. Only
+    indicators that belong to the faculty member's rank menu (tbl_ret_rules) are
+    accepted — assignments are restricted to the rank-eligible pool.
+    """
+    try:
+        # Resolve the faculty member's rank to bound the allowed indicator pool
+        cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        rank_row = cursor.fetchone()
+        academic_rank = rank_row[0] if rank_row else None
+
+        allowed_ids = set()
+        if academic_rank:
+            from app.models.faculty import get_faculty_ret_menu
+            menu = get_faculty_ret_menu(cursor, academic_rank, term_id)
+            for ind in menu['research_indicators'] + menu['extension_indicators']:
+                allowed_ids.add(ind['indicator_id'])
+
+        # Replace the full set for this faculty/term
+        cursor.execute(
+            "DELETE FROM tbl_ret_assignments WHERE term_id = %s AND emp_id = %s",
+            (term_id, emp_id)
+        )
+
+        saved = 0
+        skipped = 0
+        for indicator_id, qty in assignments:
+            if indicator_id not in allowed_ids:
+                skipped += 1
+                continue
+            qty = qty if qty and int(qty) > 0 else 1
+            cursor.execute("""
+                INSERT INTO tbl_ret_assignments (term_id, emp_id, indicator_id, target_quantity, assigned_by)
+                VALUES (%s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE target_quantity = VALUES(target_quantity), assigned_by = VALUES(assigned_by)
+            """, (term_id, emp_id, indicator_id, int(qty), assigned_by))
+            saved += 1
+
+        conn.commit()
+        msg = f"Saved {saved} assigned target(s)."
+        if skipped:
+            msg += f" {skipped} skipped (outside the faculty member's rank menu)."
+        return True, msg
     except Exception as e:
         conn.rollback()
         return False, str(e)
@@ -197,7 +339,7 @@ def get_pending_ret_draft_ipcrs(cursor, term_id):
                 LEFT JOIN tbl_ipcr_ret_review rr2 ON rr2.emp_id = ep.emp_id AND rr2.term_id = mi2.term_id
                 LEFT JOIN tbl_ipcr_ret_review_items ri2 ON ri2.review_id = rr2.review_id AND ri2.draft_id = dt2.draft_id
                 WHERE dt2.emp_id = ep.emp_id AND mi2.term_id = %s
-                  AND (tc2.category_name LIKE '%%Research%%' OR tc2.category_name LIKE '%%Extension%%' OR tc2.category_name LIKE '%%Training%%' OR tc2.category_name LIKE '%%Advisory%%')
+                  AND tc2.slug = 'research'
                   AND COALESCE(ri2.reviewed_quantity, dt2.proposed_quantity) > 0
             ) AS target_count,
             COALESCE(rr.overall_status, 'Pending Review') AS review_status,
@@ -214,18 +356,14 @@ def get_pending_ret_draft_ipcrs(cursor, term_id):
             LEFT JOIN tbl_ipcr_ret_review rr3 ON rr3.emp_id = dt3.emp_id AND rr3.term_id = mi3.term_id
             LEFT JOIN tbl_ipcr_ret_review_items ri3 ON ri3.review_id = rr3.review_id AND ri3.draft_id = dt3.draft_id
             WHERE mi3.term_id = %s
-              AND (tc3.category_name LIKE '%%Research%%' OR tc3.category_name LIKE '%%Extension%%' OR tc3.category_name LIKE '%%Training%%' OR tc3.category_name LIKE '%%Advisory%%')
+              AND tc3.slug = 'research'
               AND COALESCE(ri3.reviewed_quantity, dt3.proposed_quantity) > 0
         ) dt_sub ON ep.emp_id = dt_sub.emp_id
         LEFT JOIN tbl_ipcr_ret_review rr ON rr.emp_id = ep.emp_id AND rr.term_id = %s
         WHERE ep.designation = 'Regular Faculty'
-          AND EXISTS (
-              SELECT 1 FROM tbl_ret_faculty_access fa 
-              WHERE fa.emp_id = ep.emp_id AND fa.term_id = %s AND fa.is_enabled = 1
-          )
         ORDER BY ep.last_name, ep.first_name
     """
-    cursor.execute(query, (term_id, term_id, term_id, term_id))
+    cursor.execute(query, (term_id, term_id, term_id))
     columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
@@ -288,8 +426,8 @@ def get_or_create_ret_review(conn, cursor, emp_id, term_id, ret_chair_emp_id):
             JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
             JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
             LEFT JOIN tbl_ipcr_ret_review_items ri ON ri.review_id = %s AND ri.draft_id = dt.draft_id
-            WHERE dt.emp_id = %s AND mi.term_id = %s 
-              AND (tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%' OR tc.category_name LIKE '%%Training%%' OR tc.category_name LIKE '%%Advisory%%')
+            WHERE dt.emp_id = %s AND mi.term_id = %s
+              AND tc.slug = 'research'
               AND ri.item_id IS NULL
             """,
             (review_id, review_id, emp_id, term_id)
@@ -315,7 +453,7 @@ def get_or_create_ret_review(conn, cursor, emp_id, term_id, ret_chair_emp_id):
         JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE dt.emp_id = %s AND mi.term_id = %s
-          AND (tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%' OR tc.category_name LIKE '%%Training%%' OR tc.category_name LIKE '%%Advisory%%')
+          AND tc.slug = 'research'
         """,
         (emp_id, term_id)
     )
@@ -419,7 +557,7 @@ def decide_ret_review(conn, cursor, review_id, action, overall_remarks):
                     JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                     SET dt.review_status = 'Returned'
                     WHERE dt.emp_id = %s AND mi.term_id = %s
-                      AND (tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%' OR tc.category_name LIKE '%%Training%%' OR tc.category_name LIKE '%%Advisory%%')
+                      AND tc.slug = 'research'
                     """,
                     (emp_id, term_id)
                 )

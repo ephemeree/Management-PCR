@@ -86,7 +86,7 @@ def designated_dashboard():
                 SELECT da.indicator_id FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.category_name = 'A. Instructions'
+                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
             """, (emp_id, term_id))
             alloc_ids = {r[0] for r in cursor.fetchall()}
 
@@ -116,7 +116,7 @@ def designated_dashboard():
                 FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.category_name = 'A. Instructions'
+                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
             """, (emp_id, term_id))
             alloc_rows = cursor.fetchall()
             alloc_map = {r[0]: {'assigned_quantity': r[1], 'custom_description': r[2], 'target_deadline': r[3]} for r in alloc_rows}
@@ -199,7 +199,7 @@ def designated_dashboard():
                 for t in dpcr_targets
             )
             if not has_teaching_load:
-                cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
+                cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
                 cat_row = cursor.fetchone()
                 cat_id = cat_row[0] if cat_row else 1
                 cursor.execute("""
@@ -238,7 +238,7 @@ def designated_dashboard():
                 SELECT da.indicator_id FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.category_name = 'A. Instructions'
+                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
             """, (emp_id, term_id))
             alloc_ids = {r[0] for r in cursor.fetchall()}
 

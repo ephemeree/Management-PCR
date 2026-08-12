@@ -18,7 +18,9 @@ def ret_chair_dashboard():
         ret_rules = []
         pending_ret_drafts = []
         ret_assignments = []
-        faculty_access_list = []
+        assignment_faculty = []
+        extension_distribution = []
+        extension_locked = False
         pending_ret_count = 0
 
         ranks_result = timed_query(cursor,
@@ -32,7 +34,9 @@ def ret_chair_dashboard():
             ret_rules = get_ret_rules(cursor, term_id)
             pending_ret_drafts = get_pending_ret_draft_ipcrs(cursor, term_id)
             ret_assignments = get_ret_target_assignments(cursor, term_id)
-            faculty_access_list = get_all_faculty_ret_access(cursor, term_id)
+            assignment_faculty = get_ret_assignment_faculty(cursor, term_id)
+            extension_distribution = get_ret_extension_distribution(cursor, term_id)
+            extension_locked = is_extension_distributed(cursor, term_id)
             # Enrich each draft with dynamically computed ipcr_status
             from app.models.connection import get_overall_ipcr_status
             for draft in pending_ret_drafts:
@@ -47,7 +51,9 @@ def ret_chair_dashboard():
                                academic_ranks=academic_ranks,
                                pending_ret_drafts=pending_ret_drafts,
                                ret_assignments=ret_assignments,
-                               faculty_access_list=faculty_access_list,
+                               assignment_faculty=assignment_faculty,
+                               extension_distribution=extension_distribution,
+                               extension_locked=extension_locked,
                                pending_ret_count=pending_ret_count,
                                evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [])
     finally:
@@ -55,9 +61,20 @@ def ret_chair_dashboard():
         conn.close()
 
 
-@ret_chair_bp.route('/save_faculty_access', methods=['POST'])
+@ret_chair_bp.route('/save_extension_distribution', methods=['POST'])
 @role_required('RET_CHAIR')
-def save_faculty_access():
+def save_extension_distribution():
+    """Distributes the selected Extension targets (per-faculty quantities) to ALL regular faculty."""
+    indicator_ids = request.form.getlist('ext_indicator_ids[]')
+    distributions = []
+    for ind_id in indicator_ids:
+        qty_val = request.form.get(f'ext_quantity_{ind_id}', 1)
+        try:
+            qty = int(qty_val)
+        except (ValueError, TypeError):
+            qty = 1
+        distributions.append((int(ind_id), qty))
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -67,23 +84,111 @@ def save_faculty_access():
             flash("No active academic term found.", "danger")
             return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
-        term_id = active_term['term_id']
-        enabled_emp_ids = request.form.getlist('enabled_faculty_ids')
-        enabled_emp_ids = [int(x) for x in enabled_emp_ids if x.isdigit()]
-
-        success, message = save_faculty_ret_access(conn, cursor, term_id, enabled_emp_ids)
-        if success:
-            flash(message, "success")
-        else:
-            flash(message, "danger")
+        success, msg = save_ret_extension_distribution(conn, cursor, active_term['term_id'],
+                                                       distributions, session.get('user_id'))
+        flash(msg, "success" if success else "danger")
     except Exception as e:
-        flash(f"Error saving RET faculty access: {str(e)}", "danger")
+        flash(f"Error distributing Extension targets: {str(e)}", "danger")
     finally:
         cursor.close()
         conn.close()
 
     return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
+
+@ret_chair_bp.route('/assignment_editor/<int:emp_id>')
+@role_required('RET_CHAIR')
+def assignment_editor(emp_id):
+    """AJAX — returns the rank-eligible RET menu + current assignments for a faculty member."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active term found.'}), 400
+        term_id = active_term['term_id']
+
+        cursor.execute(
+            "SELECT CONCAT(first_name, ' ', last_name), academic_rank FROM tbl_employee_profiles WHERE emp_id = %s",
+            (emp_id,)
+        )
+        fac_row = cursor.fetchone()
+        if not fac_row:
+            return jsonify({'success': False, 'message': 'Faculty member not found.'}), 404
+        faculty_name, academic_rank = fac_row[0], (fac_row[1] or '')
+
+        menu = get_faculty_ret_menu(cursor, academic_rank, term_id) if academic_rank else \
+            {'research_indicators': [], 'extension_indicators': []}
+
+        assigned = {a['indicator_id']: a['target_quantity']
+                    for a in get_ret_faculty_assignments(cursor, term_id, emp_id)}
+
+        def shape(items):
+            out = []
+            for ind in items:
+                out.append({
+                    'indicator_id': ind['indicator_id'],
+                    'indicator_description': ind['indicator_description'],
+                    'default_quantity': ind.get('target_quantity') or 1,
+                    'assigned_quantity': assigned.get(ind['indicator_id']),
+                    'is_assigned': ind['indicator_id'] in assigned,
+                })
+            return out
+
+        return jsonify({
+            'success': True,
+            'emp_id': emp_id,
+            'faculty_name': faculty_name,
+            'academic_rank': academic_rank,
+            'research': shape(menu['research_indicators']),
+            'extension': shape(menu['extension_indicators']),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@ret_chair_bp.route('/save_assignments', methods=['POST'])
+@role_required('RET_CHAIR')
+def save_assignments():
+    """Saves the RET Chair's authored target assignments for one faculty member."""
+    emp_id = request.form.get('emp_id')
+    if not emp_id:
+        flash("Missing faculty member.", "danger")
+        return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
+    indicator_ids = request.form.getlist('assign_indicator_ids[]')
+    assignments = []
+    for ind_id in indicator_ids:
+        qty_val = request.form.get(f'assign_quantity_{ind_id}', 1)
+        try:
+            qty = int(qty_val)
+        except (ValueError, TypeError):
+            qty = 1
+        assignments.append((int(ind_id), qty))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            flash("No active academic term found.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
+        success, msg = save_ret_assignments(conn, cursor, active_term['term_id'],
+                                            int(emp_id), assignments, session.get('user_id'))
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error saving assignments: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
 
 @ret_chair_bp.route('/faculty_evidence_details/<int:emp_id>')
@@ -139,16 +244,13 @@ def ret_chair_save_rule():
     academic_rank = request.form.get('academic_rank')
 
     research_selections = request.form.get('research_selections', 0)
-    extension_selections = request.form.get('extension_selections', 0)
-
     research_indicator_ids = request.form.getlist('research_indicator_ids[]')
-    extension_indicator_ids = request.form.getlist('extension_indicator_ids[]')
 
     if not term_id or not academic_rank:
         flash("Please fill all required fields.", "warning")
         return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
-    # Parse quantities for each checked indicator
+    # Parse quantities for each checked Research indicator (Extension is distributed, not rank-menu based)
     research_indicators = []
     for r_id in research_indicator_ids:
         qty_val = request.form.get(f'research_quantity_{r_id}', 1)
@@ -160,23 +262,12 @@ def ret_chair_save_rule():
             qty = 1
         research_indicators.append((int(r_id), qty))
 
-    extension_indicators = []
-    for e_id in extension_indicator_ids:
-        qty_val = request.form.get(f'extension_quantity_{e_id}', 1)
-        try:
-            qty = int(qty_val)
-            if qty < 1:
-                qty = 1
-        except ValueError:
-            qty = 1
-        extension_indicators.append((int(e_id), qty))
-
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         success, msg = save_ret_rule(conn, cursor, int(term_id), academic_rank,
-                                     int(research_selections), int(extension_selections),
-                                     research_indicators, extension_indicators)
+                                     int(research_selections), 0,
+                                     research_indicators, [])
         cursor.close()
         conn.close()
 
@@ -279,7 +370,8 @@ def review_ipcr(emp_id):
         academic_rank = fac_row[1] if fac_row else ''
         print(f"[DEBUG] Faculty: {faculty_name}, Rank: {academic_rank}")
 
-        # Fetch available indicators for this rank and active term
+        # Fetch available Research indicators for this rank (Extension is distributed, not
+        # rank-menu based, so it is excluded from the selectable/unpicked pool).
         t0 = time.time()
         cursor.execute("""
             SELECT mi.indicator_id, mi.indicator_description, tc.category_name, rri.target_quantity
@@ -287,7 +379,7 @@ def review_ipcr(emp_id):
             JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
             JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
             JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-            WHERE r.academic_rank = %s AND mi.term_id = %s
+            WHERE r.academic_rank = %s AND mi.term_id = %s AND tc.slug = 'research'
         """, (academic_rank, term_id))
         rules_indicators = cursor.fetchall()
         print(f"[DEBUG] Fetch rules indicators query took {time.time() - t0:.4f}s. Found {len(rules_indicators)} indicators.")
@@ -326,6 +418,15 @@ def review_ipcr(emp_id):
                 ind_copy['item_id'] = inactive_item_ids.get(ind['indicator_id'])
                 unpicked.append(ind_copy)
 
+        # Distributed Extension targets — shown read-only in the Submitted Targets table
+        # (chair-distributed to all faculty; not editable and not in the unpicked pool).
+        extension_items = [{
+            'indicator_id': e['indicator_id'],
+            'indicator_description': e['indicator_description'],
+            'category_name': 'Extension Services / Training / Advisory',
+            'reviewed_quantity': e['target_quantity'],
+        } for e in get_distributed_extension_targets(cursor, term_id)]
+
         print(f"[DEBUG] review_ipcr returning JSON payload successfully. Review ID={review_id}")
         return jsonify({
             'review_id': review_id,
@@ -335,6 +436,7 @@ def review_ipcr(emp_id):
             'overall_status': overall_status,
             'overall_remarks': overall_remarks or '',
             'items': serializable_items,
+            'extension': extension_items,
             'unpicked': unpicked
         })
 

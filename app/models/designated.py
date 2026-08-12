@@ -10,7 +10,7 @@ def get_designated_selectable_indicators(cursor, term_id):
         WHERE mi.term_id = %s 
           AND mi.is_custom = 0
           AND mi.indicator_description NOT LIKE '%%Teaching Load%%'
-          AND tc.category_name IN ('A. Instructions', 'Support Functions')
+          AND tc.review_lane = 'CHAIR' AND tc.is_core = 1
         ORDER BY tc.category_name, mi.indicator_id
     """
     return timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators")
@@ -50,7 +50,7 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
             """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead))
 
         # Ensure mandatory default Teaching Load target (10 hours) is saved
-        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = 'A. Instructions'")
+        cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
         cat_row = cursor.fetchone()
         cat_id = cat_row[0] if cat_row else 1
         cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = '10 hours of Teaching Load' AND term_id = %s", (term_id,))

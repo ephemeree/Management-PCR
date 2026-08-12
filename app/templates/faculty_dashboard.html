@@ -224,7 +224,7 @@
 
         <div class="row g-4">
             <!-- Left Column: Core Assigned Targets -->
-            <div class="col-lg-{% if is_ret_eligible %}7{% else %}12{% endif %}">
+            <div class="col-lg-{% if is_ret_eligible or extension_targets %}7{% else %}12{% endif %}">
                 <!-- Instructions Card -->
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3">
@@ -338,9 +338,10 @@
                 </div>
             </div>
 
-            {% if is_ret_eligible %}
+            {% if is_ret_eligible or extension_targets %}
             <!-- Right Column: RET Selection Menu -->
             <div class="col-lg-5">
+                {% if is_ret_eligible %}
                 <!-- Research Card -->
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3">
@@ -350,7 +351,7 @@
                     <div class="card-body bg-light">
                         <div
                             class="d-flex justify-content-between align-items-center mb-3 p-3 bg-white rounded shadow-sm border border-primary border-opacity-25">
-                            <span class="fw-semibold text-dark">Required Selections:</span>
+                            <span class="fw-semibold text-dark">Research <span class="text-muted fw-normal">(optional)</span> — up to:</span>
                             <span class="badge bg-primary fs-5 px-3 py-2 rounded-pill" id="researchCountDisplay">
                                 0 / {{ ret_menu.research_required }}
                             </span>
@@ -359,7 +360,11 @@
                         {% if ret_menu.research_indicators|length > 0 %}
                         <div class="ret-options-container" style="max-height: 250px; overflow-y: auto;">
                             {% for ind in ret_menu.research_indicators %}
-                            {% set ns = namespace(is_selected=false, quantity=ind.target_quantity) %}
+                            {% set ns = namespace(is_selected=false, quantity=ind.target_quantity, is_assigned=false) %}
+                            {% if ind.indicator_id in ret_assigned_ids %}
+                            {% set ns.is_selected = true %}
+                            {% set ns.is_assigned = true %}
+                            {% endif %}
                             {% for t in assigned_targets %}
                             {% if t.indicator_id == ind.indicator_id and t.assigned_quantity > 0 %}
                             {% set ns.is_selected = true %}
@@ -368,12 +373,12 @@
                             {% endfor %}
                             <label
                                 class="ret-card d-block p-3 mb-2 bg-white rounded shadow-sm border border-light transition-all hover-shadow"
-                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
+                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or ns.is_assigned or (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
                                 <div class="d-flex align-items-start gap-3">
                                     <div class="form-check mt-1">
                                         <input class="form-check-input research-checkbox" type="checkbox"
                                             name="ret_indicators[]" value="{{ ind.indicator_id }}" {% if ns.is_selected
-                                            %}checked{% endif %} {% if has_submitted or (chair_review and
+                                            %}checked{% endif %} {% if has_submitted or ns.is_assigned or (chair_review and
                                             chair_review.overall_status=='Rejected' ) or (ret_review and
                                             ret_review.overall_status=='Rejected' ) %}disabled{% endif %}
                                             style="transform: scale(1.2);">
@@ -383,6 +388,9 @@
                                             {{ ind.indicator_description }}
                                             <span class="badge bg-primary bg-opacity-10 text-primary ms-2">Qty: {{
                                                 ns.quantity }}</span>
+                                            {% if ns.is_assigned %}
+                                            <span class="badge bg-info bg-opacity-10 text-info ms-1"><i class="bi bi-lock-fill me-1"></i>Assigned by RET Chair</span>
+                                            {% endif %}
                                         </p>
                                     </div>
                                 </div>
@@ -398,60 +406,34 @@
                     </div>
                 </div>
 
-                <!-- Extension Card -->
+                {% endif %}
+
+                <!-- Extension Card (read-only — distributed by RET Chair to all faculty) -->
                 <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-tools me-2"></i>Extension Menu</h5>
-                        <p class="small mb-0 text-muted">Select based on your academic rank ({{ academic_rank
-                            }})</p>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-tools me-2"></i>Extension Targets</h5>
+                        <p class="small mb-0 text-muted">Distributed by the RET Chair to all faculty (not selectable).</p>
                     </div>
                     <div class="card-body bg-light">
-                        <div
-                            class="d-flex justify-content-between align-items-center mb-3 p-3 bg-white rounded shadow-sm border border-warning border-opacity-25">
-                            <span class="fw-semibold text-dark">Required Selections:</span>
-                            <span class="badge bg-warning text-dark fs-5 px-3 py-2 rounded-pill"
-                                id="extensionCountDisplay">
-                                0 / {{ ret_menu.extension_required }}
-                            </span>
-                        </div>
-
-                        {% if ret_menu.extension_indicators|length > 0 %}
+                        {% if extension_targets %}
                         <div class="ret-options-container" style="max-height: 250px; overflow-y: auto;">
-                            {% for ind in ret_menu.extension_indicators %}
-                            {% set ns = namespace(is_selected=false, quantity=ind.target_quantity) %}
-                            {% for t in assigned_targets %}
-                            {% if t.indicator_id == ind.indicator_id and t.assigned_quantity > 0 %}
-                            {% set ns.is_selected = true %}
-                            {% set ns.quantity = t.assigned_quantity %}
-                            {% endif %}
-                            {% endfor %}
-                            <label
-                                class="ret-card d-block p-3 mb-2 bg-white rounded shadow-sm border border-light transition-all hover-shadow"
-                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
-                                <div class="d-flex align-items-start gap-3">
-                                    <div class="form-check mt-1">
-                                        <input class="form-check-input extension-checkbox" type="checkbox"
-                                            name="ret_indicators[]" value="{{ ind.indicator_id }}" {% if ns.is_selected
-                                            %}checked{% endif %} {% if has_submitted or (chair_review and
-                                            chair_review.overall_status=='Rejected' ) or (ret_review and
-                                            ret_review.overall_status=='Rejected' ) %}disabled{% endif %}
-                                            style="transform: scale(1.2);">
-                                    </div>
-                                    <div>
-                                        <p class="mb-0 small text-secondary">
-                                            {{ ind.indicator_description }}
-                                            <span class="badge bg-warning bg-opacity-10 text-warning ms-2">Qty: {{
-                                                ns.quantity }}</span>
-                                        </p>
-                                    </div>
+                            {% for ext in extension_targets %}
+                            <div class="d-block p-3 mb-2 bg-white rounded shadow-sm border border-light">
+                                <div class="d-flex align-items-start gap-2">
+                                    <i class="bi bi-lock-fill text-warning mt-1"></i>
+                                    <p class="mb-0 small text-secondary">
+                                        {{ ext.indicator_description }}
+                                        <span class="badge bg-warning bg-opacity-10 text-warning ms-2">Qty: {{ ext.target_quantity }}</span>
+                                        <span class="badge bg-info bg-opacity-10 text-info ms-1"><i class="bi bi-broadcast me-1"></i>Assigned to all faculty</span>
+                                    </p>
                                 </div>
-                            </label>
+                            </div>
                             {% endfor %}
                         </div>
                         {% else %}
                         <div class="text-center py-4">
                             <i class="bi bi-slash-circle fs-2 text-muted opacity-50 mb-2 d-block"></i>
-                            <p class="text-muted small">No Extension indicators available.</p>
+                            <p class="text-muted small">No Extension targets distributed yet.</p>
                         </div>
                         {% endif %}
                     </div>
@@ -462,7 +444,7 @@
 
         <div class="mt-4 text-end">
             {% if not has_submitted %}
-            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="submitBtn" {% if is_ret_eligible and (ret_menu.research_required > 0 or ret_menu.extension_required > 0) %}disabled{% endif %}>
+            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="submitBtn">
                 {% if (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and
                 ret_review.overall_status == 'Rejected') %}
                 <i class="bi bi-send-check-fill me-2"></i>Submit IPCR for Approval
@@ -471,8 +453,8 @@
                 {% endif %}
             </button>
             <p class="small text-muted mt-2 mb-0" id="submitHelpText">
-                {% if is_ret_eligible and (ret_menu.research_required > 0 or ret_menu.extension_required > 0) %}
-                You must complete your Research and Extension selections before submitting.
+                {% if is_ret_eligible and ret_menu.research_required > 0 %}
+                Research targets are optional — you may select up to {{ ret_menu.research_required }}.
                 {% endif %}
             </p>
 
@@ -720,46 +702,26 @@
             return;
         }
 
-        let rValid = rSelected === rRequiredCount;
-        let eValid = eSelected === eRequiredCount;
+        // Research is OPTIONAL — submission is never blocked by the count. The rank menu's
+        // configured count acts as a soft cap (faculty may pick 0 up to N).
+        const rAtCap = rRequiredCount > 0 && rSelected >= rRequiredCount;
 
-        // Handle Research Count Display
         if (rCountDisplay) {
-            if (rValid) {
-                rCountDisplay.classList.remove('bg-warning', 'text-dark');
-                rCountDisplay.classList.add('bg-primary', 'text-white');
-                researchCheckboxes.forEach(cb => { if (!cb.checked) cb.disabled = true; });
-            } else {
-                rCountDisplay.classList.remove('bg-primary', 'text-white');
-                rCountDisplay.classList.add('bg-warning', 'text-dark');
-                researchCheckboxes.forEach(cb => cb.disabled = false);
-            }
+            rCountDisplay.classList.remove('bg-warning', 'text-dark');
+            rCountDisplay.classList.add('bg-primary', 'text-white');
+            // Lock the remaining unchecked Research boxes once the cap is reached.
+            researchCheckboxes.forEach(cb => { if (!cb.checked) cb.disabled = rAtCap; });
         }
 
-        // Handle Extension Count Display
-        if (eCountDisplay) {
-            if (eValid) {
-                eCountDisplay.classList.remove('bg-warning', 'text-dark');
-                eCountDisplay.classList.add('bg-success', 'text-white');
-                extensionCheckboxes.forEach(cb => { if (!cb.checked) cb.disabled = true; });
-            } else {
-                eCountDisplay.classList.remove('bg-success', 'text-white');
-                eCountDisplay.classList.add('bg-warning', 'text-dark');
-                extensionCheckboxes.forEach(cb => cb.disabled = false);
-            }
-        }
-
-        if (rValid && eValid) {
-            if (submitBtn) submitBtn.disabled = false;
-            if (helpText) helpText.style.display = 'none';
-        } else {
-            if (submitBtn) submitBtn.disabled = true;
-            if (helpText) helpText.style.display = 'block';
-        }
+        // Submit is always allowed (Research optional; Extension is chair-distributed).
+        if (submitBtn) submitBtn.disabled = false;
     }
 
     researchCheckboxes.forEach(cb => cb.addEventListener('change', updateSelectionCount));
     extensionCheckboxes.forEach(cb => cb.addEventListener('change', updateSelectionCount));
+    // Set the correct initial button state (e.g. when chair-assigned research already
+    // meets the requirement via locked/disabled checkboxes that never fire 'change').
+    updateSelectionCount();
 
     // Helper to show custom confirmation modal
     window.showCustomConfirm = function ({ title, mainText, subText, confirmText, confirmClass, iconClass, onConfirm }) {

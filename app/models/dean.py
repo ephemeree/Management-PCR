@@ -228,7 +228,7 @@ def get_available_master_indicators(cursor, term_id):
         FROM tbl_master_indicators mi
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s
-          AND (mi.is_custom = 1 OR tc.category_name IN ('A. Instructions', 'Support Functions'))
+          AND (mi.is_custom = 1 OR (tc.review_lane = 'CHAIR' AND tc.is_core = 1))
         ORDER BY tc.category_name, mi.indicator_id
     """
     return timed_query(cursor, query, (term_id,), label="get_available_master_indicators")

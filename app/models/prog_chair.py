@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from app.models.criteria import SLUG_INSTRUCTION
+
 
 # ─────────────────────────────────────────────
 # Existing functions (unchanged)
@@ -8,12 +10,12 @@ from datetime import datetime
 def get_chair_indicators(cursor, term_id, specialization):
     from app.models.connection import timed_query
     query = """
-        SELECT mi.indicator_id, mi.indicator_description, mi.efficiency_type, tc.category_name, cq.total_target_value as dept_quota
+        SELECT mi.indicator_id, mi.indicator_description, mi.efficiency_type, tc.category_name, tc.slug, cq.total_target_value as dept_quota
         FROM tbl_master_indicators mi
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         JOIN tbl_cascaded_quotas cq ON mi.indicator_id = cq.indicator_id AND cq.term_id = mi.term_id
         WHERE mi.term_id = %s
-          AND tc.category_name IN ('A. Instructions', 'Support Functions')
+          AND tc.review_lane = 'CHAIR' AND tc.is_core = 1
           AND cq.assigned_to_role = %s
         ORDER BY tc.category_name, mi.indicator_id
     """
@@ -93,15 +95,15 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
 
             # Determine category of the indicator
             cursor.execute("""
-                SELECT tc.category_name
+                SELECT tc.slug
                 FROM tbl_master_indicators mi
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                 WHERE mi.indicator_id = %s
             """, (indicator_id,))
             cat_row = cursor.fetchone()
-            cat_name = cat_row[0] if cat_row else ''
+            cat_slug = cat_row[0] if cat_row else ''
 
-            if 'Instruction' in cat_name:
+            if cat_slug == SLUG_INSTRUCTION:
                 # Instruction targets are cascaded to both Regular and Designated Faculty
                 target_emp_ids = faculty_ids
             else:
@@ -188,9 +190,9 @@ def get_pending_drafts_count(cursor, specialization, term_id):
           AND ep.designation = 'Regular Faculty'
           AND dt.review_status IN ('Pending Review', 'Waiting for Approval')
           AND (
-              (tc.category_name IN ('A. Instructions', 'Support Functions') AND COALESCE(ri.reviewed_quantity, dt.proposed_quantity) > 0)
-              OR (tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') AND COALESCE(rri.reviewed_quantity, dt.proposed_quantity) > 0)
-              OR (tc.category_name NOT IN ('A. Instructions', 'Support Functions', 'A. Research', 'B. Extension Services / Training / Advisory') AND dt.proposed_quantity > 0)
+              ((tc.review_lane = 'CHAIR' AND tc.is_core = 1) AND COALESCE(ri.reviewed_quantity, dt.proposed_quantity) > 0)
+              OR (tc.review_lane = 'RET' AND COALESCE(rri.reviewed_quantity, dt.proposed_quantity) > 0)
+              OR (tc.is_core = 0 AND dt.proposed_quantity > 0)
           )
           AND (cr.overall_status IS NULL OR cr.overall_status = 'Pending' OR cr.overall_status = 'Waiting for Approval')
     """
@@ -223,9 +225,9 @@ def get_pending_draft_ipcrs(cursor, specialization, term_id):
                 LEFT JOIN tbl_ipcr_ret_review_items rri2 ON rri2.review_id = rr2.review_id AND rri2.indicator_id = dt2.indicator_id
                 WHERE dt2.emp_id = ep.emp_id AND mi2.term_id = %s
                   AND (
-                      (tc2.category_name IN ('A. Instructions', 'Support Functions') AND COALESCE(ri2.reviewed_quantity, dt2.proposed_quantity) > 0)
-                      OR (tc2.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') AND COALESCE(rri2.reviewed_quantity, dt2.proposed_quantity) > 0)
-                      OR (tc2.category_name NOT IN ('A. Instructions', 'Support Functions', 'A. Research', 'B. Extension Services / Training / Advisory') AND dt2.proposed_quantity > 0)
+                      ((tc2.review_lane = 'CHAIR' AND tc2.is_core = 1) AND COALESCE(ri2.reviewed_quantity, dt2.proposed_quantity) > 0)
+                      OR (tc2.review_lane = 'RET' AND COALESCE(rri2.reviewed_quantity, dt2.proposed_quantity) > 0)
+                      OR (tc2.is_core = 0 AND dt2.proposed_quantity > 0)
                   )
             ) AS target_count,
             CASE 
@@ -340,7 +342,7 @@ def get_or_create_chair_review(conn, cursor, emp_id, term_id, chair_emp_id):
             SET ri.original_quantity = dt.proposed_quantity,
                 ri.reviewed_quantity = dt.proposed_quantity
             WHERE ri.review_id = %s
-              AND tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory')
+              AND tc.review_lane = 'RET'
             """,
             (review_id,)
         )
@@ -406,8 +408,8 @@ def get_review_items(cursor, review_id):
         JOIN tbl_draft_targets dt ON ri.draft_id = dt.draft_id
         WHERE ri.review_id = %s
           AND (
-              tc.category_name NOT IN ('A. Research', 'B. Extension Services / Training / Advisory')
-              OR (tc.category_name IN ('A. Research', 'B. Extension Services / Training / Advisory') AND dt.proposed_quantity > 0)
+              tc.review_lane <> 'RET'
+              OR (tc.review_lane = 'RET' AND dt.proposed_quantity > 0)
           )
         ORDER BY tc.category_name, mi.indicator_id
     """
@@ -497,9 +499,9 @@ def decide_chair_review(conn, cursor, review_id, action, overall_remarks):
                     JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
                     JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                     SET dt.review_status = 'Returned'
-                    WHERE dt.emp_id = %s 
+                    WHERE dt.emp_id = %s
                       AND mi.term_id = %s
-                      AND tc.category_name IN ('A. Instructions', 'Support Functions')
+                      AND tc.review_lane = 'CHAIR' AND tc.is_core = 1
                     """,
                     (emp_id, term_id)
                 )
