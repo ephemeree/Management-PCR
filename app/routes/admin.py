@@ -16,13 +16,18 @@ def admin_dashboard():
     terms = get_all_terms(cursor)
     active_term = next((t for t in terms if t['is_active'] == 1), None)
     indicators = get_master_indicators(cursor, active_term['term_id']) if active_term else []
+    criteria = get_all_criteria(cursor)
+    weight_groups = get_weight_groups(cursor)
+    weights_grid = get_criteria_weights_grid(cursor, active_term['term_id']) if active_term else {}
     audit_logs = get_recent_audit_logs(cursor)
     security_users = get_all_users_for_security(cursor)
     kpis = get_admin_kpis(cursor)
     cursor.close()
     conn.close()
     return render_template('admin_dashboard.html', profiles=profiles, terms=terms, active_term=active_term,
-                           indicators=indicators, audit_logs=audit_logs, security_users=security_users, kpis=kpis)
+                           indicators=indicators, criteria=criteria, weight_groups=weight_groups,
+                           weights_grid=weights_grid, rank_bands=RANK_BANDS, audit_logs=audit_logs,
+                           security_users=security_users, kpis=kpis)
 
 
 @admin_bp.route('/backup')
@@ -273,6 +278,116 @@ def admin_import_indicators():
     except Exception as e:
         flash(f"Error importing indicators: {str(e)}", "danger")
     return redirect(url_for('admin.admin_dashboard') + '#nav-indicators')
+
+
+@admin_bp.route('/criteria/add', methods=['POST'])
+@role_required('ADMIN')
+def admin_add_criteria():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        success, msg = add_criteria(
+            conn, cursor,
+            request.form.get('name'),
+            request.form.get('slug'),
+            request.form.get('review_lane'),
+            request.form.get('is_core') == 'on',
+            request.form.get('weight_group'),
+            request.form.get('display_order') or 100,
+        )
+        cursor.close()
+        conn.close()
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error adding criterion: {str(e)}", "danger")
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+
+
+@admin_bp.route('/criteria/edit', methods=['POST'])
+@role_required('ADMIN')
+def admin_edit_criteria():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        success, msg = update_criteria(
+            conn, cursor,
+            request.form.get('category_id'),
+            request.form.get('name'),
+            request.form.get('review_lane'),
+            request.form.get('is_core') == 'on',
+            request.form.get('weight_group'),
+            request.form.get('display_order') or 100,
+        )
+        cursor.close()
+        conn.close()
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error updating criterion: {str(e)}", "danger")
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+
+
+@admin_bp.route('/criteria/toggle_active', methods=['POST'])
+@role_required('ADMIN')
+def admin_toggle_criteria():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        is_active = request.form.get('is_active') == '1'
+        success, msg = set_criteria_active(conn, cursor, request.form.get('category_id'), is_active)
+        cursor.close()
+        conn.close()
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error updating criterion status: {str(e)}", "danger")
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+
+
+@admin_bp.route('/criteria/save_weights', methods=['POST'])
+@role_required('ADMIN')
+def admin_save_weights():
+    term_id = request.form.get('term_id')
+    if not term_id:
+        flash("No term specified.", "danger")
+        return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        weight_groups = get_weight_groups(cursor)
+        rows = []
+        for idx, band in enumerate(RANK_BANDS):
+            for group in weight_groups:
+                val = request.form.get(f'w_{idx}_{group}', '0')
+                try:
+                    pct = float(val)
+                except (ValueError, TypeError):
+                    pct = 0
+                rows.append((band, group, pct))
+        success, msg = save_criteria_weights(conn, cursor, int(term_id), rows)
+        cursor.close()
+        conn.close()
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error saving weights: {str(e)}", "danger")
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+
+
+@admin_bp.route('/criteria/copy_weights', methods=['POST'])
+@role_required('ADMIN')
+def admin_copy_weights():
+    term_id = request.form.get('term_id')
+    if not term_id:
+        flash("No term specified.", "danger")
+        return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        success, msg = copy_weights_from_previous_term(conn, cursor, int(term_id))
+        cursor.close()
+        conn.close()
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error copying weights: {str(e)}", "danger")
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
 @admin_bp.route('/security/reset_password', methods=['POST'])
