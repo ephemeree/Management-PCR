@@ -52,25 +52,39 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
                 VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s)
             """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead, dur_value, dur_unit))
 
-        # Ensure mandatory default Teaching Load target (10 hours) is saved
+        # Ensure the mandatory Teaching Load target is saved, using the Admin's configured
+        # hours and duration for Designated faculty (previously hardcoded at 10 hours).
+        from app.models.institution import resolve_teaching_load, teaching_load_description
+        from app.models.scoring import format_duration
+        cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        tl_rank_row = cursor.fetchone()
+        tl_hours, tl_dur_value, tl_dur_unit = resolve_teaching_load(
+            cursor, term_id, 'Designated Faculty', tl_rank_row[0] if tl_rank_row else None)
+        tl_desc = teaching_load_description(tl_hours)
+        tl_deadline = format_duration(tl_dur_value, tl_dur_unit)
+
         cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
         cat_row = cursor.fetchone()
         cat_id = cat_row[0] if cat_row else 1
-        cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = '10 hours of Teaching Load' AND term_id = %s", (term_id,))
+        cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = %s AND term_id = %s",
+                       (tl_desc, term_id))
         tl_row = cursor.fetchone()
         if tl_row:
             tl_ind_id = tl_row[0]
         else:
-            cursor.execute("INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom) VALUES (%s, '10 hours of Teaching Load', 'Output-Based', %s, 0)", (cat_id, term_id))
+            cursor.execute("INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom) VALUES (%s, %s, 'Output-Based', %s, 0)",
+                           (cat_id, tl_desc, term_id))
             tl_ind_id = cursor.lastrowid
 
         cursor.execute("SELECT draft_id FROM tbl_draft_targets WHERE emp_id = %s AND indicator_id = %s", (emp_id, tl_ind_id))
         tl_draft = cursor.fetchone()
         if not tl_draft:
             cursor.execute("""
-                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
-                VALUES (%s, %s, 10, 'Pending Review', '10 hours of Teaching Load', '1 Semester')
-            """, (emp_id, tl_ind_id))
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
+                                               target_description, target_deadline,
+                                               target_duration_value, target_duration_unit)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s)
+            """, (emp_id, tl_ind_id, tl_hours, tl_desc, tl_deadline, tl_dur_value, tl_dur_unit))
 
         # 3. Process Custom Ad-Hoc Target Items
         for custom in custom_targets:
@@ -126,13 +140,23 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
 # ──────────────────────────────────────────────
 
 def get_designated_committed_targets(cursor, emp_id, term_id):
+    """
+    Designated faculty's committed targets, including the fields the scoring engine
+    needs (durations, reported accomplishment, efficiency type) so their IPCR rates
+    the same way a regular faculty's does.
+    """
     from app.models.connection import timed_query
+    from app.models.scoring import build_actual_accomplishment, client_satisfaction_label, compute_target_rating
     query = """
         SELECT ct.target_id, ct.indicator_id, ct.assigned_quantity, ct.actual_quantity, ct.status,
                COALESCE(ct.target_description, dt.target_description, mi.indicator_description) as indicator_description,
                COALESCE(ct.target_description, dt.target_description) as target_description,
-               COALESCE(ct.target_deadline, dt.target_deadline, '1 Semester') as target_deadline,
-               tc.category_name, mi.is_custom
+               COALESCE(ct.target_deadline, dt.target_deadline) as target_deadline,
+               COALESCE(ct.target_duration_value, dt.target_duration_value) as target_duration_value,
+               COALESCE(ct.target_duration_unit, dt.target_duration_unit) as target_duration_unit,
+               ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
+               mi.efficiency_type,
+               tc.category_name, tc.category_id, mi.is_custom
         FROM tbl_committed_targets ct
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
@@ -140,7 +164,17 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
         WHERE ct.emp_id = %s AND mi.term_id = %s
         ORDER BY tc.category_name, mi.indicator_id
     """
-    return timed_query(cursor, query, (emp_id, term_id), label="get_designated_committed_targets")
+    rows = timed_query(cursor, query, (emp_id, term_id), label="get_designated_committed_targets")
+    for r in rows:
+        r['actual_accomplishment'] = build_actual_accomplishment(
+            r.get('indicator_description'),
+            r.get('actual_quantity'),
+            r.get('actual_duration_value'),
+            r.get('target_duration_unit'),
+            client_satisfaction_label(r.get('efficiency_rating_E')),
+        )
+        r['rating'] = compute_target_rating(r)
+    return rows
 
 
 

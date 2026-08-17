@@ -3,6 +3,7 @@
 from .connection import *
 from .criteria import *
 from .scoring import *
+from .institution import *
 from .user import *
 from .term import *
 from .indicator import *

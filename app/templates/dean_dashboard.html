@@ -111,12 +111,14 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Master Indicator</th>
-                                <th width="10%">WST Program</th>
-                                <th width="10%">DST Program</th>
-                                <th width="10%">NST Program</th>
-                                <th width="10%">BSDS Program</th>
-                                <th width="10%">RET / Extension</th>
-                                <th width="11%">College-Wide</th>
+                                {# Columns come from the managed department list plus the
+                                   non-department cascade roles. #}
+                                {% for d in departments %}
+                                <th>{{ d.department_name }}</th>
+                                {% endfor %}
+                                {% for r in special_roles %}
+                                <th>{{ r }}</th>
+                                {% endfor %}
                             </tr>
                         </thead>
                         <tbody>
@@ -125,7 +127,7 @@
                             {% if indicator.category_name != current_category.name %}
                             {% set current_category.name = indicator.category_name %}
                             <tr class="table-secondary">
-                                <td colspan="7" class="fw-bold text-uppercase text-dark border-bottom border-2">
+                                <td colspan="{{ 1 + (departments | length) + (special_roles | length) }}" class="fw-bold text-uppercase text-dark border-bottom border-2">
                                     <i class="bi bi-folder2-open me-2"></i> {% if 'Instruction' in indicator.category_name or 'Strategic' in indicator.category_name %}Strategic Priorities{% else %}{{ indicator.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}
                                 </td>
                             </tr>
@@ -136,48 +138,15 @@
                                     {{ indicator.indicator_description }}
                                     <span class="badge bg-dark ms-2">{{ indicator.efficiency_type }}</span>
                                 </td>
+                                {% for role in (departments | map(attribute='department_name') | list) + special_roles %}
                                 <td>
                                     <input type="number"
-                                        class="form-control form-control-sm shadow-sm fw-bold quota-input" name="wst[]"
-                                        min="0"
-                                        value="{{ existing_quotas.get(indicator.indicator_id, {}).get('WST Program', 0) }}"
+                                        class="form-control form-control-sm shadow-sm fw-bold quota-input {% if role == 'College-Wide' %}text-success{% endif %}"
+                                        name="quota_{{ loop.index0 }}[]" min="0"
+                                        value="{{ existing_quotas.get(indicator.indicator_id, {}).get(role, 0) }}"
                                         data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()">
                                 </td>
-                                <td>
-                                    <input type="number"
-                                        class="form-control form-control-sm shadow-sm fw-bold quota-input" name="dst[]"
-                                        min="0"
-                                        value="{{ existing_quotas.get(indicator.indicator_id, {}).get('DST Program', 0) }}"
-                                        data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()">
-                                </td>
-                                <td>
-                                    <input type="number"
-                                        class="form-control form-control-sm shadow-sm fw-bold quota-input" name="nst[]"
-                                        min="0"
-                                        value="{{ existing_quotas.get(indicator.indicator_id, {}).get('NST Program', 0) }}"
-                                        data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()">
-                                </td>
-                                <td>
-                                    <input type="number"
-                                        class="form-control form-control-sm shadow-sm fw-bold quota-input" name="bsds[]"
-                                        min="0"
-                                        value="{{ existing_quotas.get(indicator.indicator_id, {}).get('BSDS Program', 0) }}"
-                                        data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()">
-                                </td>
-                                <td>
-                                    <input type="number"
-                                        class="form-control form-control-sm shadow-sm fw-bold quota-input" name="ret[]"
-                                        min="0"
-                                        value="{{ existing_quotas.get(indicator.indicator_id, {}).get('RET / Extension', 0) }}"
-                                        data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()">
-                                </td>
-                                <td>
-                                    <input type="number"
-                                        class="form-control form-control-sm text-success shadow-sm fw-bold quota-input"
-                                        name="college[]" min="0"
-                                        value="{{ existing_quotas.get(indicator.indicator_id, {}).get('College-Wide', 0) }}"
-                                        data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()">
-                                </td>
+                                {% endfor %}
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -187,11 +156,87 @@
                 <div id="validationMessage" class="alert d-none mt-2"></div>
 
                 <div class="text-end mt-3 border-top pt-3">
-                    <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4" id="cascadeBtn">
+                    <button type="button" class="btn btn-primary fw-bold shadow-sm px-4" id="cascadeBtn"
+                            onclick="confirmCascade()">
                         Cascade Institutional Targets <i class="bi bi-arrow-right-circle-fill ms-1"></i>
                     </button>
                 </div>
             </form>
+
+            <!-- Cascade confirmation: blocks submission while any target is unassigned -->
+            <div class="modal fade" id="cascadeConfirmModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold"><i class="bi bi-broadcast me-2"></i>Cascade Institutional Targets</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="cascadeBlockedBox" class="alert alert-danger border-0 small" style="display:none;">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <strong>Cannot cascade yet.</strong> Every target must be assigned to at least
+                                one department. The following have no allocation:
+                                <ul class="mb-0 mt-2" id="cascadeUnassignedList"></ul>
+                            </div>
+                            <div id="cascadeReadyBox" style="display:none;">
+                                <p class="mb-2">This will distribute <strong id="cascadeTargetCount">0</strong>
+                                    target(s) to the departments as entered.</p>
+                                <p class="text-muted small mb-0">Program Chairs and the RET Chair will then be able
+                                    to allocate them to faculty.</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="cascadeConfirmBtn"
+                                    onclick="document.getElementById('cascadeForm').submit();">Confirm &amp; Cascade</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            function confirmCascade() {
+                const rows = document.querySelectorAll('input[name="indicator_id[]"]');
+                const unassigned = [];
+                let assignedCount = 0;
+
+                rows.forEach(function (hidden) {
+                    const tr = hidden.closest('tr');
+                    if (!tr) return;
+                    let total = 0;
+                    tr.querySelectorAll('.quota-input').forEach(function (inp) {
+                        total += parseInt(inp.value, 10) || 0;
+                    });
+                    if (total > 0) {
+                        assignedCount += 1;
+                    } else {
+                        const label = (tr.querySelector('td') || {}).innerText || 'Untitled target';
+                        unassigned.push(label.trim().split('\\n')[0].slice(0, 90));
+                    }
+                });
+
+                const blocked = unassigned.length > 0;
+                document.getElementById('cascadeBlockedBox').style.display = blocked ? '' : 'none';
+                document.getElementById('cascadeReadyBox').style.display = blocked ? 'none' : '';
+                document.getElementById('cascadeConfirmBtn').style.display = blocked ? 'none' : '';
+                document.getElementById('cascadeTargetCount').textContent = assignedCount;
+
+                const list = document.getElementById('cascadeUnassignedList');
+                list.innerHTML = '';
+                unassigned.slice(0, 12).forEach(function (name) {
+                    const li = document.createElement('li');
+                    li.textContent = name;
+                    list.appendChild(li);
+                });
+                if (unassigned.length > 12) {
+                    const li = document.createElement('li');
+                    li.textContent = '… and ' + (unassigned.length - 12) + ' more';
+                    list.appendChild(li);
+                }
+
+                new bootstrap.Modal(document.getElementById('cascadeConfirmModal')).show();
+            }
+            </script>
             {% else %}
             <div class="alert alert-warning">
                 No master indicators found for the active term. Please ensure indicators are configured.

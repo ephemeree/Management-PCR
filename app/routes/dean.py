@@ -21,6 +21,8 @@ def dean_dashboard():
         conn.close()
         return render_template('dean_dashboard.html',
                                active_term=None,
+                               departments=[],
+                               special_roles=SPECIAL_CASCADE_ROLES,
                                master_indicators=[],
                                existing_quotas={},
                                completion_rate=0,
@@ -76,11 +78,15 @@ def dean_dashboard():
             college_wide_allocations[ind_id] = []
         college_wide_allocations[ind_id].append(alloc)
 
+    departments = get_departments(cursor)
+
     cursor.close()
     conn.close()
 
     return render_template('dean_dashboard.html',
                            active_term=active_term,
+                           departments=departments,
+                           special_roles=SPECIAL_CASCADE_ROLES,
                            master_indicators=indicators,
                            existing_quotas=existing_quotas,
                            completion_rate=completion_rate,
@@ -110,25 +116,29 @@ def cascade_quotas():
 
         quotas_data = []
         indicator_ids = request.form.getlist('indicator_id[]')
-        wst_values = request.form.getlist('wst[]')
-        dst_values = request.form.getlist('dst[]')
-        nst_values = request.form.getlist('nst[]')
-        bsds_values = request.form.getlist('bsds[]')
-        ret_values = request.form.getlist('ret[]')
-        college_values = request.form.getlist('college[]')
+
+        # Cascade columns are generated from the managed department list plus the two
+        # non-department roles, so adding a program needs no code change.
+        departments = get_departments(cursor)
+        cascade_roles = [d['department_name'] for d in departments] + SPECIAL_CASCADE_ROLES
+        role_values = {role: request.form.getlist(f'quota_{i}[]')
+                       for i, role in enumerate(cascade_roles)}
+
+        def _qty(role, idx):
+            vals = role_values.get(role, [])
+            if idx >= len(vals) or not vals[idx]:
+                return 0
+            try:
+                v = int(vals[idx])
+            except (TypeError, ValueError):
+                return 0
+            return v if v > 0 else 0
 
         for i, ind_id in enumerate(indicator_ids):
             if not ind_id:
                 continue
 
-            values = [
-                ('WST Program', int(wst_values[i]) if wst_values[i] and int(wst_values[i]) > 0 else 0),
-                ('DST Program', int(dst_values[i]) if dst_values[i] and int(dst_values[i]) > 0 else 0),
-                ('NST Program', int(nst_values[i]) if nst_values[i] and int(nst_values[i]) > 0 else 0),
-                ('BSDS Program', int(bsds_values[i]) if bsds_values[i] and int(bsds_values[i]) > 0 else 0),
-                ('RET / Extension', int(ret_values[i]) if ret_values[i] and int(ret_values[i]) > 0 else 0),
-                ('College-Wide', int(college_values[i]) if i < len(college_values) and college_values[i] and int(college_values[i]) > 0 else 0)
-            ]
+            values = [(role, _qty(role, i)) for role in cascade_roles]
 
             for role, value in values:
                 if value > 0:
@@ -306,7 +316,10 @@ def export_dpcr():
             key = get_category_key(ind['category_name'])
             indicators_by_category[key].append(ind)
 
-        col_map = {'DST Program': 9, 'WST Program': 10, 'NST Program': 11, 'BSDS Program': 12, 'RET / Extension': 13}
+        # Export columns follow the managed department order, then RET / Extension.
+        # The DPCR template reserves columns 9..13 for these.
+        _export_roles = [d['department_name'] for d in get_departments(cursor)] + [ROLE_RET]
+        col_map = {role: 9 + i for i, role in enumerate(_export_roles[:5])}
         template_blocks = {
             'instruction': [(17, 19), (20, 21), (22, 24), (25, 27), (28, 29), (30, 32), (33, 34), (35, 37)],
             'research': [(39, 40), (41, 43), (44, 47), (48, 50), (51, 53)],

@@ -27,6 +27,15 @@ def admin_dashboard():
         dt: (get_weights_mode(cursor, active_term['term_id'], dt) if active_term else MODE_GENERAL)
         for dt in DESIGNATION_TYPES
     }
+    departments = get_departments(cursor, active_only=False)
+    teaching_load = {
+        dt: (get_teaching_load_grid(cursor, active_term['term_id'], dt) if active_term else {})
+        for dt in DESIGNATION_TYPES
+    }
+    teaching_load_mode = {
+        dt: (get_teaching_load_mode(cursor, active_term['term_id'], dt) if active_term else 'GENERAL')
+        for dt in DESIGNATION_TYPES
+    }
     audit_logs = get_recent_audit_logs(cursor)
     security_users = get_all_users_for_security(cursor)
     kpis = get_admin_kpis(cursor)
@@ -36,6 +45,8 @@ def admin_dashboard():
                            indicators=indicators, criteria=criteria,
                            ipcr_categories=ipcr_categories, category_types=category_types,
                            weights_grid=weights_grid, weights_mode=weights_mode,
+                           departments=departments, teaching_load=teaching_load,
+                           teaching_load_mode=teaching_load_mode,
                            rank_bands=RANK_BANDS, general_band=GENERAL_BAND,
                            designation_types=DESIGNATION_TYPES, audit_logs=audit_logs,
                            security_users=security_users, kpis=kpis)
@@ -389,6 +400,81 @@ def admin_toggle_category():
     except Exception as e:
         flash(f"Error updating category status: {str(e)}", "danger")
     return redirect(url_for('admin.admin_dashboard') + '#nav-categories')
+
+
+@admin_bp.route('/departments/save', methods=['POST'])
+@role_required('ADMIN')
+def admin_save_department():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        success, msg = save_department(
+            conn, cursor,
+            request.form.get('department_name'),
+            request.form.get('department_code'),
+            request.form.get('display_order') or 100,
+            request.form.get('department_id') or None,
+        )
+        cursor.close()
+        conn.close()
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error saving department: {str(e)}", "danger")
+    return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
+
+
+@admin_bp.route('/departments/toggle_active', methods=['POST'])
+@role_required('ADMIN')
+def admin_toggle_department():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        is_active = request.form.get('is_active') == '1'
+        success, msg = set_department_active(conn, cursor, request.form.get('department_id'), is_active)
+        cursor.close()
+        conn.close()
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error updating department: {str(e)}", "danger")
+    return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
+
+
+@admin_bp.route('/teaching_load/save', methods=['POST'])
+@role_required('ADMIN')
+def admin_save_teaching_load():
+    term_id = request.form.get('term_id')
+    designation_type = request.form.get('designation_type')
+    mode = request.form.get('mode', 'GENERAL')
+    if not term_id or designation_type not in DESIGNATION_TYPES:
+        flash("No term or designation type specified.", "danger")
+        return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
+
+    def _int(field, default=0):
+        try:
+            return int(request.form.get(field) or default)
+        except (TypeError, ValueError):
+            return default
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        rows = []
+        if mode == 'GENERAL':
+            rows.append((GENERAL_BAND, _int('tl_general_hours'),
+                         _int('tl_general_duration', 6),
+                         request.form.get('tl_general_unit') or 'months'))
+        else:
+            for idx, band in enumerate(RANK_BANDS):
+                rows.append((band, _int(f'tl_{idx}_hours'),
+                             _int(f'tl_{idx}_duration', 6),
+                             request.form.get(f'tl_{idx}_unit') or 'months'))
+        success, msg = save_teaching_load(conn, cursor, int(term_id), designation_type, mode, rows)
+        cursor.close()
+        conn.close()
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error saving teaching load: {str(e)}", "danger")
+    return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
 
 
 @admin_bp.route('/criteria/save_weights', methods=['POST'])

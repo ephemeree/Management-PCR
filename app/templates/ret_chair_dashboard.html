@@ -372,19 +372,47 @@ function openAssignmentEditor(empId) {
                 {% if extension_distribution %}
                 <div class="list-group mb-3">
                     {% for ext in extension_distribution %}
-                    <label class="list-group-item d-flex align-items-center gap-2 {% if extension_locked and not ext.is_distributed %}opacity-50{% endif %}">
-                        <input class="form-check-input m-0" type="checkbox" name="ext_indicator_ids[]"
-                               value="{{ ext.indicator_id }}" {% if ext.is_distributed %}checked{% endif %}
-                               {% if extension_locked %}disabled{% endif %}>
-                        <span class="flex-grow-1">{{ ext.indicator_description }}
-                            {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
-                        </span>
-                        <span class="text-muted small">Qty / faculty</span>
-                        <input type="number" min="1" class="form-control form-control-sm" style="width: 90px;"
-                               name="ext_quantity_{{ ext.indicator_id }}"
-                               value="{{ ext.distributed_quantity if ext.distributed_quantity > 0 else 1 }}"
-                               {% if extension_locked %}disabled{% endif %}>
-                    </label>
+                    <div class="list-group-item {% if extension_locked and not ext.is_distributed %}opacity-50{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <input class="form-check-input m-0" type="checkbox" name="ext_indicator_ids[]"
+                                   value="{{ ext.indicator_id }}" {% if ext.is_distributed %}checked{% endif %}
+                                   {% if extension_locked %}disabled{% endif %}>
+                            <span class="flex-grow-1 fw-semibold small">{{ ext.indicator_description }}
+                                {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
+                            </span>
+                            <span class="text-muted small">Qty / faculty</span>
+                            <input type="number" min="1" class="form-control form-control-sm" style="width: 90px;"
+                                   name="ext_quantity_{{ ext.indicator_id }}"
+                                   value="{{ ext.distributed_quantity if ext.distributed_quantity > 0 else 1 }}"
+                                   {% if extension_locked %}disabled{% endif %}>
+                        </div>
+                        {# Description + duration, matching how the Program Chair allocates —
+                           the duration is what makes this target scorable for Timeliness. #}
+                        <div class="row g-2 mt-2 ps-4">
+                            <div class="col-md-7">
+                                <input type="text" class="form-control form-control-sm"
+                                       name="ext_description_{{ ext.indicator_id }}"
+                                       placeholder="IPCR target description"
+                                       value="{{ ext.target_description or '' }}"
+                                       {% if extension_locked %}disabled{% endif %}>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="d-flex gap-1">
+                                    <input type="number" min="1" class="form-control form-control-sm text-center"
+                                           name="ext_dur_value_{{ ext.indicator_id }}" placeholder="Duration"
+                                           value="{{ ext.target_duration_value or '' }}"
+                                           {% if extension_locked %}disabled{% endif %}>
+                                    <select class="form-select form-select-sm"
+                                            name="ext_dur_unit_{{ ext.indicator_id }}"
+                                            {% if extension_locked %}disabled{% endif %}>
+                                        {% for u in ['days', 'weeks', 'months', 'semesters'] %}
+                                        <option value="{{ u }}" {% if ext.target_duration_unit == u %}selected{% elif not ext.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
                 {% if not extension_locked %}

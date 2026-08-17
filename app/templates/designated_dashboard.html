@@ -557,6 +557,65 @@
                 </div>
             </div>
 
+            <!-- IPCR Summary of Ratings (uses the Designated Faculty weight table) -->
+            {% if ipcr_score %}
+            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-calculator-fill me-2 text-primary"></i>Summary of Ratings</h5>
+                    <small class="text-muted">Live preview — updates as you report accomplishments.</small>
+                </div>
+                <div class="card-body p-0">
+                    {% if not ipcr_score.weights_configured %}
+                    <div class="alert alert-warning border-0 rounded-0 mb-0 small">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>No weight allocation has been configured
+                        for Designated Faculty this term, so a final rating cannot be computed.
+                    </div>
+                    {% else %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Category</th>
+                                    <th class="text-center" width="15%">Weight (%)</th>
+                                    <th class="text-center" width="15%">Average</th>
+                                    <th class="text-center" width="15%">Weighted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in ipcr_score.breakdown %}
+                                <tr>
+                                    <td class="ps-4 fw-semibold">{{ b.category_name }}
+                                        <span class="text-muted small">({{ b.target_count }} target{{ '' if b.target_count == 1 else 's' }})</span>
+                                    </td>
+                                    <td class="text-center">{{ b.weight_pct }}%</td>
+                                    <td class="text-center fw-bold">{{ b.raw_avg if b.raw_avg is not none else '—' }}</td>
+                                    <td class="text-center fw-bold text-primary">{{ b.weighted_value if b.weighted_value is not none else '—' }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                    <td class="ps-4 fw-bold" colspan="2">Total Overall Rating</td>
+                                    <td class="text-center fw-bold" colspan="2">{{ ipcr_score.total_overall_rating if ipcr_score.total_overall_rating is not none else '—' }}</td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td class="ps-4 fw-bold" colspan="2">Final Weighted Rating</td>
+                                    <td class="text-center fw-bold fs-5 text-primary" colspan="2">{{ ipcr_score.final_weighted_rating if ipcr_score.final_weighted_rating is not none else '—' }}</td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td class="ps-4 fw-bold" colspan="2">Adjectival Rating</td>
+                                    <td class="text-center" colspan="2">
+                                        {% if ipcr_score.adjectival_rating %}
+                                        <span class="badge bg-success px-3 py-2 fs-6">{{ ipcr_score.adjectival_rating }}</span>
+                                        {% else %}<span class="text-muted">—</span>{% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
             {% if evidence_readiness %}
             <div class="mt-3 text-end">
                 {% if evidence_readiness.evidence_submitted %}

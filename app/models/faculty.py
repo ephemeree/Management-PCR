@@ -75,7 +75,15 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
     # Filter out designated 10 hours teaching load target for Regular Faculty
     targets = [t for t in targets if '10 hours' not in str(t.get('indicator_description', '')) and '10 hrs' not in str(t.get('indicator_description', ''))]
 
-    # Ensure mandatory default Teaching Load target (21 hours) is present
+    # Ensure the mandatory Teaching Load target is present. Hours and duration come from
+    # the Admin's teaching-load configuration rather than a hardcoded literal.
+    from app.models.institution import resolve_teaching_load, teaching_load_description
+    cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+    rank_row = cursor.fetchone()
+    tl_hours, tl_dur_value, tl_dur_unit = resolve_teaching_load(
+        cursor, term_id, 'Regular Faculty', rank_row[0] if rank_row else None)
+    tl_desc = teaching_load_description(tl_hours)
+
     has_teaching_load = any(
         t.get('category_name') == 'A. Instructions' and 'Teaching Load' in str(t.get('indicator_description', ''))
         for t in targets
@@ -86,25 +94,25 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
         cat_id = cat_row[0] if cat_row else 1
         cursor.execute("""
             SELECT indicator_id FROM tbl_master_indicators
-            WHERE indicator_description = '21 hours of Teaching Load' AND term_id = %s
-        """, (term_id,))
+            WHERE indicator_description = %s AND term_id = %s
+        """, (tl_desc, term_id))
         ind_row = cursor.fetchone()
         if ind_row:
             tl_ind_id = ind_row[0]
         else:
             cursor.execute("""
                 INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom)
-                VALUES (%s, '21 hours of Teaching Load', 'Output-Based', %s, 0)
-            """, (cat_id, term_id))
+                VALUES (%s, %s, 'Output-Based', %s, 0)
+            """, (cat_id, tl_desc, term_id))
             tl_ind_id = cursor.lastrowid
 
         mandatory_target = {
             'target_id': f'tl_{tl_ind_id}',
             'indicator_id': tl_ind_id,
-            'assigned_quantity': 21,
+            'assigned_quantity': tl_hours,
             'status': 'Draft',
-            'indicator_description': '21 hours of Teaching Load',
-            'target_deadline': '1 Semester',
+            'indicator_description': tl_desc,
+            'target_deadline': format_duration(tl_dur_value, tl_dur_unit),
             'category_name': 'A. Instructions',
             'chair_item_remarks': None,
             'chair_reviewed_quantity': None,
@@ -116,7 +124,7 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
             if t.get('category_name') == 'A. Instructions' and 'Teaching Load' in str(t.get('indicator_description', '')):
                 t['is_mandatory'] = True
                 if not t.get('assigned_quantity'):
-                    t['assigned_quantity'] = 21
+                    t['assigned_quantity'] = tl_hours
 
     return targets
 
@@ -281,26 +289,39 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, (emp_id, ind_id, qty, target_status, cust_desc, t_dead, dur_value, dur_unit))
 
-        # Ensure mandatory default Teaching Load target (21 hours) is saved
+        # Ensure the mandatory Teaching Load target is saved, using the Admin's configured
+        # hours and duration so it can be scored for Timeliness like any other target.
+        from app.models.institution import resolve_teaching_load, teaching_load_description
+        cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        tl_rank_row = cursor.fetchone()
+        tl_hours, tl_dur_value, tl_dur_unit = resolve_teaching_load(
+            cursor, active_term_id, 'Regular Faculty', tl_rank_row[0] if tl_rank_row else None)
+        tl_desc = teaching_load_description(tl_hours)
+        tl_deadline = format_duration(tl_dur_value, tl_dur_unit)
+
         cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
         cat_row = cursor.fetchone()
         cat_id = cat_row[0] if cat_row else 1
-        cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = '21 hours of Teaching Load' AND term_id = %s", (active_term_id,))
+        cursor.execute("SELECT indicator_id FROM tbl_master_indicators WHERE indicator_description = %s AND term_id = %s",
+                       (tl_desc, active_term_id))
         tl_row = cursor.fetchone()
         if tl_row:
             tl_ind_id = tl_row[0]
         else:
-            cursor.execute("INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom) VALUES (%s, '21 hours of Teaching Load', 'Output-Based', %s, 0)", (cat_id, active_term_id))
+            cursor.execute("INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom) VALUES (%s, %s, 'Output-Based', %s, 0)",
+                           (cat_id, tl_desc, active_term_id))
             tl_ind_id = cursor.lastrowid
-
 
         cursor.execute("SELECT draft_id FROM tbl_draft_targets WHERE emp_id = %s AND indicator_id = %s", (emp_id, tl_ind_id))
         tl_draft = cursor.fetchone()
         if not tl_draft:
             cursor.execute("""
-                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
-                VALUES (%s, %s, 21, %s, '21 hours of Teaching Load', '1 Semester')
-            """, (emp_id, tl_ind_id, target_status))
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
+                                               target_description, target_deadline,
+                                               target_duration_value, target_duration_unit)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (emp_id, tl_ind_id, tl_hours, target_status, tl_desc, tl_deadline,
+                  tl_dur_value, tl_dur_unit))
 
         # 4. If this is a re-submission or non-RET submission, update status of existing standard workloads to target_status
         cursor.execute("""
@@ -450,18 +471,23 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
         """, (emp_id,))
         if active_term_id:
             cursor.execute("""
-                SELECT indicator_id, target_quantity
+                SELECT indicator_id, target_quantity, target_description,
+                       target_duration_value, target_duration_unit
                 FROM tbl_ret_extension_distribution
                 WHERE term_id = %s
             """, (active_term_id,))
-            for ext_ind_id, ext_qty in cursor.fetchall():
+            for ext_ind_id, ext_qty, ext_desc, ext_dur_value, ext_dur_unit in cursor.fetchall():
                 # Extension is chair-distributed and auto-flows (never enters RET review),
                 # so it is materialized already 'Approved' — this lets the Program Chair see
                 # it as RET-approved and covers faculty who have extension but no research.
+                # The duration carries over so Timeliness can be scored.
                 cursor.execute("""
-                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                    VALUES (%s, %s, %s, 'Approved')
-                """, (emp_id, ext_ind_id, ext_qty))
+                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
+                                                   target_description, target_deadline,
+                                                   target_duration_value, target_duration_unit)
+                    VALUES (%s, %s, %s, 'Approved', %s, %s, %s, %s)
+                """, (emp_id, ext_ind_id, ext_qty, ext_desc,
+                      format_duration(ext_dur_value, ext_dur_unit), ext_dur_value, ext_dur_unit))
 
         # 8. Update existing Program Chair review records for active term to 'Pending' and clear items/remarks
         if active_term_id and is_resubmission:

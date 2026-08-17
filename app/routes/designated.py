@@ -75,6 +75,7 @@ def designated_dashboard():
                 can_edit = False
 
         evidence_readiness = None
+        ipcr_score = None
         if is_committed:
             can_edit = False
             has_submitted = True
@@ -101,6 +102,9 @@ def designated_dashboard():
                     t['is_locked'] = True
                 t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             evidence_readiness = check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets)
+            # Live IPCR summary — uses the Designated Faculty weight table.
+            from app.models.scoring import compute_ipcr_score
+            ipcr_score = compute_ipcr_score(cursor, emp_id, term_id)
 
         elif can_edit:
             # Load standard selectable indicators and exclude 21 hours regular teaching load targets
@@ -141,16 +145,24 @@ def designated_dashboard():
                     d['category_name'] = 'Support Functions'
             
             draft_map = {d['indicator_id']: d for d in draft_targets}
-            
+
+            # Configured teaching load, used as the fallback when a draft row has none.
+            cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+            _tl_rank = cursor.fetchone()
+            tl_default_hours, _tl_dv, _tl_du = resolve_teaching_load(
+                cursor, term_id, 'Designated Faculty', _tl_rank[0] if _tl_rank else None)
+            tl_default_desc = teaching_load_description(tl_default_hours)
+            tl_default_deadline = format_duration(_tl_dv, _tl_du)
+
             dpcr_targets = []
             for t in standard_targets:
                 ind_id = t['indicator_id']
                 is_tl = 'Teaching Load' in t['indicator_description']
                 
                 if is_tl:
-                    t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else 10
-                    t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or '10 hours of Teaching Load'
-                    t['target_deadline'] = (draft_map[ind_id]['target_deadline'] if ind_id in draft_map else None) or '1 Semester'
+                    t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else tl_default_hours
+                    t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or tl_default_desc
+                    t['target_deadline'] = (draft_map[ind_id]['target_deadline'] if ind_id in draft_map else None) or tl_default_deadline
                     t['status'] = draft_map[ind_id]['status'] if ind_id in draft_map else 'Draft'
                     t['is_selected'] = True
                     t['is_mandatory'] = True
@@ -208,31 +220,40 @@ def designated_dashboard():
                 for t in dpcr_targets
             )
             if not has_teaching_load:
+                # Hours/duration come from the Admin's teaching-load configuration.
+                cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+                tl_rank_row = cursor.fetchone()
+                tl_hours, tl_dur_value, tl_dur_unit = resolve_teaching_load(
+                    cursor, term_id, 'Designated Faculty', tl_rank_row[0] if tl_rank_row else None)
+                tl_desc = teaching_load_description(tl_hours)
+
                 cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
                 cat_row = cursor.fetchone()
                 cat_id = cat_row[0] if cat_row else 1
                 cursor.execute("""
                     SELECT indicator_id FROM tbl_master_indicators
-                    WHERE indicator_description = '10 hours of Teaching Load' AND term_id = %s
-                """, (term_id,))
+                    WHERE indicator_description = %s AND term_id = %s
+                """, (tl_desc, term_id))
                 ind_row = cursor.fetchone()
                 if ind_row:
                     tl_ind_id = ind_row[0]
                 else:
                     cursor.execute("""
                         INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom)
-                        VALUES (%s, '10 hours of Teaching Load', 'Output-Based', %s, 0)
-                    """, (cat_id, term_id))
+                        VALUES (%s, %s, 'Output-Based', %s, 0)
+                    """, (cat_id, tl_desc, term_id))
                     tl_ind_id = cursor.lastrowid
 
                 mandatory_target = {
                     'target_id': f'tl_{tl_ind_id}',
                     'indicator_id': tl_ind_id,
-                    'total_target_value': 10,
+                    'total_target_value': tl_hours,
                     'status': 'Draft',
-                    'indicator_description': '10 hours of Teaching Load',
-                    'target_description': '10 hours of Teaching Load',
-                    'target_deadline': '1 Semester',
+                    'indicator_description': tl_desc,
+                    'target_description': tl_desc,
+                    'target_deadline': format_duration(tl_dur_value, tl_dur_unit),
+                    'target_duration_value': tl_dur_value,
+                    'target_duration_unit': tl_dur_unit,
                     'category_name': 'A. Instructions',
                     'is_custom': False,
                     'is_selected': True,
@@ -285,7 +306,8 @@ def designated_dashboard():
                            has_submitted=has_submitted,
                            can_edit=can_edit,
                            dean_review=dean_review,
-                           evidence_readiness=evidence_readiness)
+                           evidence_readiness=evidence_readiness,
+                           ipcr_score=ipcr_score)
 
 
 @designated_bp.route('/submit_evidence', methods=['POST'])

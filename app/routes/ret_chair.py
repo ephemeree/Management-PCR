@@ -73,7 +73,10 @@ def save_extension_distribution():
             qty = int(qty_val)
         except (ValueError, TypeError):
             qty = 1
-        distributions.append((int(ind_id), qty))
+        desc = (request.form.get(f'ext_description_{ind_id}', '') or '').strip() or None
+        dur_value, dur_unit, _ = parse_duration_fields(
+            request.form, f'ext_dur_value_{ind_id}', f'ext_dur_unit_{ind_id}')
+        distributions.append((int(ind_id), qty, desc, dur_value, dur_unit))
 
     conn = get_db_connection()
     cursor = conn.cursor()

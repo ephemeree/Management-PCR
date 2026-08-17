@@ -185,6 +185,9 @@ def get_ret_extension_distribution(cursor, term_id):
             mi.indicator_id,
             mi.indicator_description,
             COALESCE(red.target_quantity, 0) AS distributed_quantity,
+            red.target_description,
+            red.target_duration_value,
+            red.target_duration_unit,
             CASE WHEN red.dist_id IS NOT NULL THEN 1 ELSE 0 END AS is_distributed,
             (SELECT cq.total_target_value FROM tbl_cascaded_quotas cq
              WHERE cq.indicator_id = mi.indicator_id AND cq.term_id = %s LIMIT 1) AS dean_quota
@@ -203,7 +206,8 @@ def get_ret_extension_distribution(cursor, term_id):
 def get_distributed_extension_targets(cursor, term_id):
     """Extension targets distributed to all regular faculty — for the faculty read-only view."""
     query = """
-        SELECT red.indicator_id, mi.indicator_description, red.target_quantity
+        SELECT red.indicator_id, mi.indicator_description, red.target_quantity,
+               red.target_description, red.target_duration_value, red.target_duration_unit
         FROM tbl_ret_extension_distribution red
         JOIN tbl_master_indicators mi ON red.indicator_id = mi.indicator_id
         WHERE red.term_id = %s
@@ -245,16 +249,29 @@ def save_ret_extension_distribution(conn, cursor, term_id, distributions, distri
 
         saved = 0
         skipped = 0
-        for indicator_id, qty in distributions:
+        for item in distributions:
+            # Newer callers supply a description and target duration alongside the quantity.
+            if len(item) == 5:
+                indicator_id, qty, desc, dur_value, dur_unit = item
+            else:
+                indicator_id, qty = item[0], item[1]
+                desc, dur_value, dur_unit = None, None, None
             if indicator_id not in allowed:
                 skipped += 1
                 continue
             qty = qty if qty and int(qty) > 0 else 1
             cursor.execute("""
-                INSERT INTO tbl_ret_extension_distribution (term_id, indicator_id, target_quantity, distributed_by)
-                VALUES (%s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE target_quantity = VALUES(target_quantity), distributed_by = VALUES(distributed_by)
-            """, (term_id, indicator_id, int(qty), distributed_by))
+                INSERT INTO tbl_ret_extension_distribution
+                    (term_id, indicator_id, target_quantity, target_description,
+                     target_duration_value, target_duration_unit, distributed_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    target_quantity = VALUES(target_quantity),
+                    target_description = VALUES(target_description),
+                    target_duration_value = VALUES(target_duration_value),
+                    target_duration_unit = VALUES(target_duration_unit),
+                    distributed_by = VALUES(distributed_by)
+            """, (term_id, indicator_id, int(qty), desc, dur_value, dur_unit, distributed_by))
             saved += 1
 
         conn.commit()
