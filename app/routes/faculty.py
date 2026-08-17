@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, session, url_for, flash
+from flask import Blueprint, render_template, request, redirect, session, url_for, flash, jsonify
 from app.models import *
 from app.decorators import role_required
 
@@ -77,6 +77,7 @@ def faculty_dashboard():
             has_submitted = True
 
         evidence_readiness = None
+        ipcr_score = None
         if is_locked:
             has_submitted = True
             from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target, check_faculty_evidence_readiness
@@ -85,6 +86,9 @@ def faculty_dashboard():
             for target in assigned_targets:
                 target['evidence_list'] = get_evidence_by_target(cursor, target['target_id'], emp_id, target['indicator_id'])
             evidence_readiness = check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets)
+            # Live IPCR summary (computed, not persisted — the record is written on finalize)
+            from app.models.scoring import compute_ipcr_score
+            ipcr_score = compute_ipcr_score(cursor, emp_id, term_id)
 
     cursor.close()
     conn.close()
@@ -103,8 +107,43 @@ def faculty_dashboard():
                            chair_review=chair_review,
                            ret_review=ret_review,
                            ipcr_status=ipcr_status,
-                           evidence_readiness=evidence_readiness)
+                           evidence_readiness=evidence_readiness,
+                           ipcr_score=ipcr_score)
 
+
+
+@faculty_bp.route('/save_accomplishment', methods=['POST'])
+@role_required('FACULTY')
+def faculty_save_accomplishment():
+    """AJAX — save Timeliness (and client-satisfaction Efficiency) inputs for one target."""
+    emp_id = session.get('user_id')
+    data = request.get_json(silent=True) or request.form
+    target_id = data.get('target_id')
+    if not target_id:
+        return jsonify({'success': False, 'message': 'Missing target_id.'}), 400
+
+    def _int_or_none(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models.faculty import save_accomplishment_details
+        success, msg = save_accomplishment_details(
+            conn, cursor, emp_id, int(target_id),
+            _int_or_none(data.get('actual_duration_value')),
+            (data.get('completion_status') or '').strip() or None,
+            _int_or_none(data.get('efficiency_rating_E')),
+        )
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @faculty_bp.route('/submit_evidence', methods=['POST'])

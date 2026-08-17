@@ -192,11 +192,20 @@
                                         {% if targets_saved %}disabled{% endif %}>
                                 </td>
                                 <td>
-                                    <input type="number" name="target_deadlines"
-                                        class="form-control form-control-sm shadow-sm text-center target-deadline-input"
-                                        placeholder="e.g. 6" min="1"
-                                        value="{{ ind.target_deadline if ind.target_deadline else '' }}"
-                                        {% if targets_saved %}disabled{% endif %}>
+                                    <div class="d-flex gap-1">
+                                        <input type="number" name="target_duration_values"
+                                            class="form-control form-control-sm shadow-sm text-center target-deadline-input"
+                                            placeholder="e.g. 6" min="1" style="max-width: 70px;"
+                                            value="{{ ind.target_duration_value if ind.target_duration_value else '' }}"
+                                            {% if targets_saved %}disabled{% endif %}>
+                                        <select name="target_duration_units"
+                                            class="form-select form-select-sm shadow-sm"
+                                            {% if targets_saved %}disabled{% endif %}>
+                                            {% for u in ['days', 'weeks', 'months', 'semesters'] %}
+                                            <option value="{{ u }}" {% if ind.target_duration_unit == u %}selected{% elif not ind.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
                                 </td>
                                 <td>
                                     <textarea name="custom_descriptions"
@@ -268,11 +277,20 @@
                                         {% if targets_saved %}disabled{% endif %}>
                                 </td>
                                 <td>
-                                    <input type="number" name="target_deadlines"
-                                        class="form-control form-control-sm shadow-sm text-center target-deadline-input"
-                                        placeholder="e.g. 6" min="1"
-                                        value="{{ ind.target_deadline if ind.target_deadline else '' }}"
-                                        {% if targets_saved %}disabled{% endif %}>
+                                    <div class="d-flex gap-1">
+                                        <input type="number" name="target_duration_values"
+                                            class="form-control form-control-sm shadow-sm text-center target-deadline-input"
+                                            placeholder="e.g. 6" min="1" style="max-width: 70px;"
+                                            value="{{ ind.target_duration_value if ind.target_duration_value else '' }}"
+                                            {% if targets_saved %}disabled{% endif %}>
+                                        <select name="target_duration_units"
+                                            class="form-select form-select-sm shadow-sm"
+                                            {% if targets_saved %}disabled{% endif %}>
+                                            {% for u in ['days', 'weeks', 'months', 'semesters'] %}
+                                            <option value="{{ u }}" {% if ind.target_duration_unit == u %}selected{% elif not ind.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
                                 </td>
                                 <td>
                                     <textarea name="custom_descriptions"
@@ -1511,10 +1529,12 @@
                     <table class="table align-middle border mb-0" style="border-radius: 10px; overflow: hidden;">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3" width="40%">Target Indicator</th>
-                                <th class="text-center" width="12%">Target Qty</th>
-                                <th class="text-center" width="15%">Accomplished Qty</th>
-                                <th class="ps-3" width="33%">Uploaded Evidences</th>
+                                <th class="ps-3" width="26%">Target Indicator</th>
+                                <th class="text-center" width="8%">Target Qty</th>
+                                <th class="text-center" width="10%">Accomplished Qty</th>
+                                <th width="22%">Reported &amp; Rating</th>
+                                <th class="text-center" width="12%">Status</th>
+                                <th class="ps-3" width="22%">Uploaded Evidences</th>
                             </tr>
                         </thead>
                         <tbody id="modalEvidenceTableBody">
@@ -1535,7 +1555,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
     document.getElementById('evidenceModalFacultyName').innerText = facultyName;
     document.getElementById('evidenceModalFacultyRank').innerText = 'Loading details...';
     const tbody = document.getElementById('modalEvidenceTableBody');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading evidence files...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading evidence files...</td></tr>';
 
     const modal = new bootstrap.Modal(document.getElementById('facultyEvidenceVerificationModal'));
     modal.show();
@@ -1544,7 +1564,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
         .then(res => res.json())
         .then(data => {
             if (!data.success) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error: ${data.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Error: ${data.message}</td></tr>`;
                 return;
             }
 
@@ -1555,7 +1575,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
             tbody.innerHTML = '';
 
             if (!data.targets || data.targets.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No committed targets found for this faculty member.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No committed targets found for this faculty member.</td></tr>';
                 return;
             }
 
@@ -1593,7 +1613,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-light fw-bold';
                 headerTr.innerHTML = `
-                    <td colspan="4" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: #f1f3f5; border-top: 2px solid #dee2e6;">
+                    <td colspan="6" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: #f1f3f5; border-top: 2px solid #dee2e6;">
                         <i class="bi bi-folder-fill me-2 text-primary"></i>${group.title}
                     </td>
                 `;
@@ -1618,13 +1638,68 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                         ? `<span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>${t.actual_quantity}</span>`
                         : `<span class="badge bg-secondary px-3 py-2 rounded-pill">${t.actual_quantity || 0}</span>`;
 
+                    // What the faculty reported (for validating against the evidence) plus the
+                    // ratings derived from it. Read-only — the faculty owns these inputs.
+                    const unit = t.target_duration_unit || '';
+                    let reportedHtml = '';
+                    if (t.completion_status === 'PARTIAL_AT_DEADLINE') {
+                        reportedHtml = '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Partially completed at deadline</span>';
+                    } else if (t.completion_status === 'NOT_BEGUN') {
+                        reportedHtml = '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Not yet begun</span>';
+                    } else if (t.actual_duration_value != null) {
+                        const tgt = t.target_duration_value != null ? ` <span class="text-muted">of ${t.target_duration_value} ${unit}</span>` : '';
+                        reportedHtml = `<span class="small"><i class="bi bi-stopwatch me-1 text-primary"></i>Completed in <strong>${t.actual_duration_value} ${unit}</strong>${tgt}</span>`;
+                    } else {
+                        reportedHtml = '<span class="badge bg-light text-muted border">Time to complete not reported</span>';
+                    }
+
+                    let effHtml = '';
+                    if (t.efficiency_type === 'Client Satisfaction') {
+                        const CS = { 5: 'Excellent', 4: 'Very Satisfactory', 3: 'Satisfactory', 2: 'Unsatisfactory', 1: 'Poor' };
+                        effHtml = t.efficiency_rating_E
+                            ? `<div class="small mt-1"><i class="bi bi-star-fill me-1 text-warning"></i>Client Satisfaction: <strong>${CS[t.efficiency_rating_E] || t.efficiency_rating_E}</strong></div>`
+                            : '<div class="small mt-1 text-muted"><i class="bi bi-star me-1"></i>Client Satisfaction not rated</div>';
+                    }
+
+                    const r = t.rating || {};
+                    const dash = v => (v === null || v === undefined) ? '—' : v;
+                    const ratingHtml = `
+                        <div class="mt-2 d-flex gap-1 flex-wrap align-items-center">
+                            <span class="badge bg-light text-dark border" style="font-size:0.7rem;">Q ${dash(r.q)}</span>
+                            <span class="badge bg-light text-dark border" style="font-size:0.7rem;">E ${dash(r.e)}</span>
+                            <span class="badge bg-light text-dark border" style="font-size:0.7rem;">T ${dash(r.t)}</span>
+                            <span class="badge bg-primary" style="font-size:0.7rem;">Avg ${dash(r.average)}</span>
+                        </div>`;
+
+                    // Aggregate verification status across this target's evidence files.
+                    let verifyHtml;
+                    const evs = t.evidence_list || [];
+                    if (t.is_ret) {
+                        verifyHtml = '<span class="badge bg-light text-secondary border small">RET Sector</span>';
+                    } else if (evs.length === 0) {
+                        verifyHtml = '<span class="badge bg-light text-muted border small">No evidence</span>';
+                    } else {
+                        const returned = evs.filter(e => e.verification_status === 'Returned').length;
+                        const approved = evs.filter(e => e.verification_status === 'Approved').length;
+                        if (returned > 0) {
+                            verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
+                        } else if (approved === evs.length) {
+                            verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>';
+                        } else {
+                            verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
+                        }
+                    }
+
                     tr.innerHTML = `
                         <td class="ps-3 py-3">
                             <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Standard'}</span>
-                            <p class="mb-0 small fw-semibold text-dark">${t.indicator_description}</p>
+                            <p class="mb-1 small fw-semibold text-dark">${t.indicator_description}</p>
+                            ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${t.actual_accomplishment}</p>` : ''}
                         </td>
                         <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                         <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
+                        <td class="py-3">${reportedHtml}${effHtml}${ratingHtml}</td>
+                        <td class="text-center">${verifyHtml}</td>
                         <td class="ps-3 py-3">${evHtml}</td>
                     `;
                     tbody.appendChild(tr);
@@ -1632,7 +1707,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
             });
         })
         .catch(err => {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
         });
 }
 
@@ -1669,23 +1744,39 @@ function openEvidenceViewer(evidenceList) {
                     </div>`;
             }
 
-            const statusBadge = ev.verification_status === 'Verified'
-                ? '<span class="badge bg-success rounded-pill">Verified</span>'
-                : ev.verification_status === 'Rejected'
-                ? '<span class="badge bg-danger rounded-pill">Rejected</span>'
+            const statusBadge = ev.verification_status === 'Approved'
+                ? '<span class="badge bg-success rounded-pill">Approved</span>'
+                : ev.verification_status === 'Returned'
+                ? '<span class="badge bg-danger rounded-pill">Returned</span>'
                 : '<span class="badge bg-warning text-dark rounded-pill">Pending</span>';
 
+            const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
+            const commentHtml = ev.supervisor_comment
+                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="bi bi-chat-left-text me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                : '';
+
             html += `
-                <div class="evidence-item mb-3 p-3 border rounded-3 bg-white shadow-sm">
+                <div class="evidence-item mb-3 p-3 border rounded-3 bg-white shadow-sm" id="evidence-item-${ev.evidence_id}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="text-truncate me-2">
                             <span class="fw-semibold small text-dark">${fileName}</span>
-                            <span class="ms-2">${statusBadge}</span>
+                            <span class="ms-2" id="evidence-status-${ev.evidence_id}">${statusBadge}</span>
                         </div>
                         <div class="small text-muted flex-shrink-0">
                             <span><i class="bi bi-check-circle me-1"></i>Qty: ${ev.actual_qty_Q}</span>
                             ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="bi bi-people-fill me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
                         </div>
+                    </div>
+                    ${commentHtml}
+                    <div class="d-flex justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none;"' : ''}>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                onclick="returnEvidence(${ev.evidence_id})">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Return
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3"
+                                onclick="verifyEvidence(${ev.evidence_id}, 'Approved')">
+                            <i class="bi bi-check-circle-fill me-1"></i>Approve
+                        </button>
                     </div>
                     ${previewHtml}
                 </div>
@@ -1695,11 +1786,44 @@ function openEvidenceViewer(evidenceList) {
     }
     new bootstrap.Modal(document.getElementById('evidenceViewerModal')).show();
 }
+
+// Returning requires a reason, which is shown back to the faculty member.
+function returnEvidence(evidenceId) {
+    const reason = prompt('Reason for returning this evidence (required):');
+    if (reason === null) return;                 // cancelled
+    if (!reason.trim()) {
+        alert('A reason is required when returning evidence.');
+        return;
+    }
+    verifyEvidence(evidenceId, 'Returned', reason.trim());
+}
+
+function verifyEvidence(evidenceId, status, comment) {
+    fetch("{{ url_for('prog_chair.prog_chair_verify_evidence') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evidence_id: evidenceId, status: status, comment: comment || '' })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+        const badge = document.getElementById('evidence-status-' + evidenceId);
+        const actions = document.getElementById('evidence-actions-' + evidenceId);
+        if (badge) {
+            badge.innerHTML = status === 'Approved'
+                ? '<span class="badge bg-success rounded-pill">Approved</span>'
+                : '<span class="badge bg-danger rounded-pill">Returned</span>';
+        }
+        if (actions) actions.style.display = 'none';
+    })
+    .catch(err => alert('Error: ' + err));
+}
 </script>
 
 <!-- Evidence Viewer Modal (Left-Side Portrait Panel) -->
 <div class="modal fade" id="evidenceViewerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
+    <!-- Full-width so PDF/image evidence is actually readable while verifying. -->
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
                 <h5 class="modal-title fw-bold fs-6"><i class="bi bi-file-earmark-pdf-fill me-2"></i>Uploaded Evidence</h5>

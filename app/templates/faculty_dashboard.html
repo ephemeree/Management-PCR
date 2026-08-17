@@ -517,10 +517,11 @@
                         <table class="table align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="ps-4" width="40%">Target Indicator</th>
-                                    <th class="text-center" width="15%">Target Qty</th>
-                                    <th class="text-center" width="15%">Accomplished Qty</th>
-                                    <th class="ps-3 text-center" width="30%">Evidence Action</th>
+                                    <th class="ps-4" width="28%">Target Indicator</th>
+                                    <th width="30%">Actual Accomplishment</th>
+                                    <th class="text-center" width="10%">Target Qty</th>
+                                    <th class="text-center" width="10%">Accomplished Qty</th>
+                                    <th class="ps-3 text-center" width="22%">Evidence Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -535,6 +536,16 @@
                                         <span class="badge bg-light text-dark border mb-1">{{ target.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}</span>
                                         {% endif %}
                                         <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}</p>
+                                    </td>
+                                    <td class="py-4">
+                                        <p class="mb-1 small text-secondary fst-italic">{{ target.actual_accomplishment }}</p>
+                                        {% if target.completion_status == 'PARTIAL_AT_DEADLINE' %}
+                                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning" style="font-size:0.7rem;">Partially completed at deadline</span>
+                                        {% elif target.completion_status == 'NOT_BEGUN' %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger" style="font-size:0.7rem;">Not yet begun</span>
+                                        {% elif not target.actual_duration_value %}
+                                        <span class="badge bg-light text-muted border" style="font-size:0.7rem;"><i class="bi bi-clock me-1"></i>Time to complete not reported</span>
+                                        {% endif %}
                                     </td>
                                     <td class="text-center fw-bold fs-5 text-primary">
                                         {{ target.assigned_quantity }}
@@ -565,6 +576,65 @@
                     </div>
                 </div>
             </div>
+
+            <!-- IPCR Summary of Ratings (mirrors the printed form's Final Average Rating table) -->
+            {% if ipcr_score %}
+            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-calculator-fill me-2 text-primary"></i>Summary of Ratings</h5>
+                    <small class="text-muted">Live preview — updates as you report accomplishments.</small>
+                </div>
+                <div class="card-body p-0">
+                    {% if not ipcr_score.weights_configured %}
+                    <div class="alert alert-warning border-0 rounded-0 mb-0 small">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>No weight allocation has been configured for
+                        this term yet, so a final rating cannot be computed. Please contact the Administrator.
+                    </div>
+                    {% else %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Category</th>
+                                    <th class="text-center" width="15%">Weight (%)</th>
+                                    <th class="text-center" width="15%">Average</th>
+                                    <th class="text-center" width="15%">Weighted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in ipcr_score.breakdown %}
+                                <tr>
+                                    <td class="ps-4 fw-semibold">{{ b.category_name }}
+                                        <span class="text-muted small">({{ b.target_count }} target{{ '' if b.target_count == 1 else 's' }})</span>
+                                    </td>
+                                    <td class="text-center">{{ b.weight_pct }}%</td>
+                                    <td class="text-center fw-bold">{{ b.raw_avg if b.raw_avg is not none else '—' }}</td>
+                                    <td class="text-center fw-bold text-primary">{{ b.weighted_value if b.weighted_value is not none else '—' }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                    <td class="ps-4 fw-bold" colspan="2">Total Overall Rating</td>
+                                    <td class="text-center fw-bold" colspan="2">{{ ipcr_score.total_overall_rating if ipcr_score.total_overall_rating is not none else '—' }}</td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td class="ps-4 fw-bold" colspan="2">Final Weighted Rating</td>
+                                    <td class="text-center fw-bold fs-5 text-primary" colspan="2">{{ ipcr_score.final_weighted_rating if ipcr_score.final_weighted_rating is not none else '—' }}</td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td class="ps-4 fw-bold" colspan="2">Adjectival Rating</td>
+                                    <td class="text-center" colspan="2">
+                                        {% if ipcr_score.adjectival_rating %}
+                                        <span class="badge bg-success px-3 py-2 fs-6">{{ ipcr_score.adjectival_rating }}</span>
+                                        {% else %}<span class="text-muted">—</span>{% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
 
             {% if evidence_readiness %}
             <div class="mt-3 text-end">
@@ -834,6 +904,94 @@
     }
 
 
+    // "Completed in" only applies to a target that was actually completed.
+    window.toggleCompletedInState = function () {
+        const checked = document.querySelector('input[name="completionStatus"]:checked');
+        const isCompleted = !checked || checked.value === 'COMPLETED';
+        const input = document.getElementById('evidenceCompletedIn');
+        if (!input) return;
+        input.disabled = !isCompleted;
+        if (!isCompleted) input.value = '';
+    };
+
+    window.saveAccomplishmentDetails = function () {
+        const targetId = document.getElementById('evidenceTargetId').value;
+        const status = (document.querySelector('input[name="completionStatus"]:checked') || {}).value || 'COMPLETED';
+        const durationRaw = document.getElementById('evidenceCompletedIn').value;
+        const effRaw = document.getElementById('evidenceEfficiency').value;
+        const msg = document.getElementById('accomplishmentSaveMsg');
+        msg.className = 'small me-2 text-muted';
+        msg.textContent = 'Saving...';
+
+        fetch("{{ url_for('faculty.faculty_save_accomplishment') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                target_id: targetId,
+                actual_duration_value: durationRaw === '' ? null : durationRaw,
+                completion_status: status,
+                efficiency_rating_E: effRaw === '' ? null : effRaw
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            msg.className = 'small me-2 ' + (data.success ? 'text-success' : 'text-danger');
+            msg.textContent = data.message || (data.success ? 'Saved.' : 'Failed to save.');
+            if (data.success) {
+                // Keep the in-page map in sync so reopening shows the saved values.
+                const meta = TARGET_META[String(targetId)];
+                if (meta) {
+                    meta.actualDurationValue = durationRaw === '' ? null : parseInt(durationRaw, 10);
+                    meta.completionStatus = status;
+                    meta.efficiencyRating = effRaw === '' ? null : parseInt(effRaw, 10);
+                }
+                setTimeout(() => window.location.reload(), 700);
+            }
+        })
+        .catch(err => {
+            msg.className = 'small me-2 text-danger';
+            msg.textContent = 'Error: ' + err;
+        });
+    };
+
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.name === 'completionStatus') toggleCompletedInState();
+    });
+
+    // Once evidences are submitted for verification the faculty can still view their
+    // uploads, but cannot add more until a verifier returns one.
+    const EVIDENCE_SUBMITTED = {{ 'true' if (evidence_readiness and evidence_readiness.evidence_submitted) else 'false' }};
+
+    function applyEvidenceLock() {
+        const form = document.getElementById('uploadEvidenceForm');
+        const notice = document.getElementById('uploadLockedNotice');
+        if (!form) return;
+        form.querySelectorAll('input, button, select, textarea').forEach(el => {
+            el.disabled = EVIDENCE_SUBMITTED;
+        });
+        if (notice) notice.style.display = EVIDENCE_SUBMITTED ? '' : 'none';
+        form.style.display = EVIDENCE_SUBMITTED ? 'none' : '';
+    }
+
+    // Per-target metadata backing the Accomplishment Details panel (Timeliness / Efficiency).
+    const TARGET_META = {
+        {% for target in assigned_targets %}
+        "{{ target.target_id }}": {
+            actualAccomplishment: {{ (target.actual_accomplishment or '') | tojson }},
+            targetDurationValue: {{ target.target_duration_value if target.target_duration_value else 'null' }},
+            durationUnit: {{ (target.target_duration_unit or '') | tojson }},
+            actualDurationValue: {{ target.actual_duration_value if target.actual_duration_value else 'null' }},
+            completionStatus: {{ (target.completion_status or 'COMPLETED') | tojson }},
+            efficiencyType: {{ (target.efficiency_type or '') | tojson }},
+            efficiencyRating: {{ target.efficiency_rating_E if target.efficiency_rating_E else 'null' }},
+            ratingQ: {{ target.rating.q if target.rating and target.rating.q is not none else 'null' }},
+            ratingE: {{ target.rating.e if target.rating and target.rating.e is not none else 'null' }},
+            ratingT: {{ target.rating.t if target.rating and target.rating.t is not none else 'null' }},
+            ratingAvg: {{ target.rating.average if target.rating and target.rating.average is not none else 'null' }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
     // Process 6 Modal helpers
     window.openEvidenceModal = function (targetId, indicatorId, isResearch, description, targetQty, actualQty) {
         // Set standard elements
@@ -844,89 +1002,46 @@
         document.getElementById('evidenceFile').value = '';
         document.getElementById('evidenceQty').value = '1';
 
+        // Populate Accomplishment Details from the target's stored values
+        const meta = TARGET_META[String(targetId)] || {};
+        document.getElementById('evidenceActualAccomplishment').textContent = meta.actualAccomplishment || '—';
+        document.getElementById('evidenceCompletedIn').value = meta.actualDurationValue != null ? meta.actualDurationValue : '';
+        document.getElementById('evidenceDurationUnit').textContent = meta.durationUnit || '';
+        document.getElementById('evidenceTargetDuration').textContent =
+            meta.targetDurationValue != null ? `${meta.targetDurationValue} ${meta.durationUnit || ''}`.trim() : 'not set';
+
+        const status = meta.completionStatus || 'COMPLETED';
+        document.querySelectorAll('input[name="completionStatus"]').forEach(r => { r.checked = (r.value === status); });
+
+        // Efficiency is only entered directly for client-satisfaction rated indicators.
+        const effRow = document.getElementById('efficiencyRow');
+        const effSelect = document.getElementById('evidenceEfficiency');
+        if ((meta.efficiencyType || '') === 'Client Satisfaction') {
+            effRow.style.display = '';
+            effSelect.value = meta.efficiencyRating != null ? String(meta.efficiencyRating) : '';
+        } else {
+            effRow.style.display = 'none';
+            effSelect.value = '';
+        }
+        // Computed sub-ratings (read-only)
+        const dash = v => (v === null || v === undefined) ? '—' : v;
+        document.getElementById('ratingQ').textContent = dash(meta.ratingQ);
+        document.getElementById('ratingE').textContent = dash(meta.ratingE);
+        document.getElementById('ratingT').textContent = dash(meta.ratingT);
+        document.getElementById('ratingAvg').textContent = dash(meta.ratingAvg);
+
+        document.getElementById('accomplishmentSaveMsg').textContent = '';
+        toggleCompletedInState();
+        applyEvidenceLock();
+
         // Containers
         const submissionsContainer = document.getElementById('submissionsListContainer');
         submissionsContainer.innerHTML = '<div class="text-center text-muted py-3 small"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading submissions...</div>';
 
-        const coAuthorSection = document.getElementById('coAuthorSection');
-        const coAuthorList = document.getElementById('coAuthorList');
-        const claimCoAuthoredSection = document.getElementById('claimCoAuthoredSection');
-        const claimEvidenceListBody = document.getElementById('claimEvidenceListBody');
+        // Co-authoring (tag + claim) has been retired from the evidence modal. Existing
+        // co-authored evidence still displays in the submissions list below.
 
-        coAuthorList.innerHTML = '';
-        claimEvidenceListBody.innerHTML = '';
-
-        if (isResearch) {
-            coAuthorSection.style.display = 'block';
-            coAuthorList.innerHTML = '<p class="text-muted small">Loading eligible co-authors...</p>';
-
-            claimCoAuthoredSection.style.display = 'block';
-            claimEvidenceListBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-2 small">Loading unclaimed files...</td></tr>';
-
-            // 1. Fetch eligible co-authors
-            fetch(`/faculty/eligible_co_authors/${indicatorId}`)
-                .then(res => res.json())
-                .then(data => {
-                    coAuthorList.innerHTML = '';
-                    if (data.success && data.co_authors.length > 0) {
-                        data.co_authors.forEach(fac => {
-                            const div = document.createElement('div');
-                            div.className = 'form-check mb-2 text-start';
-                            div.innerHTML = `
-                                <input class="form-check-input" type="checkbox" name="co_authors[]" value="${fac.emp_id}" id="co_author_${fac.emp_id}">
-                                <label class="form-check-label small" for="co_author_${fac.emp_id}">
-                                    ${fac.name}
-                                </label>
-                            `;
-                            coAuthorList.appendChild(div);
-                        });
-                    } else {
-                        coAuthorList.innerHTML = '<p class="text-muted small text-start">No other faculty have this indicator committed.</p>';
-                    }
-                })
-                .catch(err => {
-                    coAuthorList.innerHTML = '<p class="text-danger small text-start">Error loading co-authors.</p>';
-                });
-
-            // 2. Fetch unclaimed co-authored evidence
-            fetch(`/faculty/unclaimed_co_authored_evidence/${indicatorId}`)
-                .then(res => res.json())
-                .then(data => {
-                    claimEvidenceListBody.innerHTML = '';
-                    if (data.success && data.evidence_list.length > 0) {
-                        data.evidence_list.forEach(item => {
-                            const parts = item.file_path.split('/');
-                            const cleanName = parts[parts.length - 1].substring(33);
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td class="small fw-semibold text-dark text-start">${cleanName}</td>
-                                <td class="text-center small">${item.actual_qty_Q}</td>
-                                <td class="small text-secondary text-start">${item.uploaded_by}</td>
-                                <td class="text-end">
-                                    <form action="/faculty/claim_evidence" method="POST" class="m-0">
-                                        <input type="hidden" name="co_author_id" value="${item.co_author_id}">
-                                        <input type="hidden" name="target_id" value="${targetId}">
-                                        <button type="submit" class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill" style="font-size: 0.75rem;">
-                                            Link File
-                                        </button>
-                                    </form>
-                                </td>
-                            `;
-                            claimEvidenceListBody.appendChild(row);
-                        });
-                    } else {
-                        claimEvidenceListBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3 small">No unclaimed co-authored files found.</td></tr>';
-                    }
-                })
-                .catch(err => {
-                    claimEvidenceListBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-2 small">Error loading co-authored files.</td></tr>';
-                });
-        } else {
-            coAuthorSection.style.display = 'none';
-            claimCoAuthoredSection.style.display = 'none';
-        }
-
-        // 3. Fetch current submissions for the target
+        // Fetch current submissions for the target
         fetch(`/faculty/target_evidence/${targetId}/${indicatorId}`)
             .then(res => {
                 if (!res.ok) {
@@ -945,9 +1060,9 @@
                             let badgeHtml = '';
                             if (ev.verification_status === 'Approved') {
                                 badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.72rem;">Approved</span>`;
-                            } else if (ev.verification_status === 'Rejected') {
+                            } else if (ev.verification_status === 'Returned' || ev.verification_status === 'Rejected') {
                                 const remarks = ev.supervisor_comment || 'No comment';
-                                badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.72rem;" title="Remarks: ${remarks}">Rejected</span>`;
+                                badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.72rem;" title="Reason: ${remarks}">Returned</span>`;
                             } else {
                                 badgeHtml = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size: 0.72rem;">Pending</span>`;
                             }
@@ -1053,6 +1168,80 @@
                     </div>
                 </div>
 
+                <!-- Accomplishment Details: Timeliness (T) and, where applicable, Efficiency (E) -->
+                <div class="mb-4 p-3 border border-light shadow-xs text-start" style="border-radius: 12px;">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-stopwatch-fill me-2 text-primary"></i>Accomplishment Details</h6>
+                        <span class="small text-muted">Used to compute your Timeliness rating.</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small mb-1">Actual Accomplishment</label>
+                        <p id="evidenceActualAccomplishment" class="mb-0 small fst-italic text-secondary p-2 bg-light rounded"></p>
+                    </div>
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label for="evidenceCompletedIn" class="form-label fw-semibold text-secondary small">Completed in</label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="number" class="form-control" id="evidenceCompletedIn" min="0" style="max-width: 110px;">
+                                <span id="evidenceDurationUnit" class="text-muted small"></span>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.72rem;">Target: <span id="evidenceTargetDuration">—</span></small>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold text-secondary small d-block">Completion Status</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusCompleted" value="COMPLETED" checked>
+                                <label class="form-check-label small" for="statusCompleted">Completed</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusPartial" value="PARTIAL_AT_DEADLINE">
+                                <label class="form-check-label small" for="statusPartial">Partially completed at deadline</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusNotBegun" value="NOT_BEGUN">
+                                <label class="form-check-label small" for="statusNotBegun">Not yet begun</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1" id="efficiencyRow" style="display: none;">
+                        <div class="col-md-5">
+                            <label for="evidenceEfficiency" class="form-label fw-semibold text-secondary small">Client Satisfaction Rating</label>
+                            <select class="form-select" id="evidenceEfficiency">
+                                <option value="">— not yet rated —</option>
+                                {% for label, score in [('Excellent', 5), ('Very Satisfactory', 4), ('Satisfactory', 3), ('Unsatisfactory', 2), ('Poor', 1)] %}
+                                <option value="{{ score }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Computed sub-ratings (read-only; derived from the values above) -->
+                    <div class="mt-3 pt-3 border-top">
+                        <label class="form-label fw-semibold text-secondary small mb-2">Computed Rating</label>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="badge bg-light text-dark border px-3 py-2">Quantity <span id="ratingQ" class="fw-bold ms-1">—</span></span>
+                            <span class="badge bg-light text-dark border px-3 py-2">Efficiency <span id="ratingE" class="fw-bold ms-1">—</span></span>
+                            <span class="badge bg-light text-dark border px-3 py-2">Timeliness <span id="ratingT" class="fw-bold ms-1">—</span></span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-primary px-3 py-2">Average <span id="ratingAvg" class="fw-bold ms-1">—</span></span>
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                            Computed automatically — Quantity from your evidence, Timeliness from the values above.
+                        </small>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <span id="accomplishmentSaveMsg" class="small me-2"></span>
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-4"
+                                onclick="saveAccomplishmentDetails()">
+                            <i class="bi bi-save me-1"></i>Save Details
+                        </button>
+                    </div>
+                </div>
+
                 <div class="row g-4">
                     <!-- Left Column: Actions (Upload & Claims) -->
                     <div class="col-lg-6">
@@ -1064,6 +1253,11 @@
                                         class="bi bi-cloud-upload-fill me-2 text-primary"></i>Upload New Evidence</h6>
                             </div>
                             <div class="card-body">
+                                <div id="uploadLockedNotice" class="alert alert-secondary border-0 small mb-0" style="display: none;">
+                                    <i class="bi bi-lock-fill me-2"></i>Your evidences have been submitted for
+                                    verification. Uploading is locked — you can still view your files below. If a
+                                    verifier returns an item, uploading re-opens.
+                                </div>
                                 <form id="uploadEvidenceForm" action="/faculty/upload_evidence" method="POST"
                                     enctype="multipart/form-data" class="m-0">
                                     <input type="hidden" name="target_id" id="evidenceTargetId">
@@ -1082,16 +1276,6 @@
                                         <small class="text-muted" style="font-size: 0.72rem;">Specify how many
                                             accomplishments this document represents.</small>
                                     </div>
-                                    <div id="coAuthorSection" class="mb-3 text-start" style="display: none;">
-                                        <label class="form-label fw-semibold text-purple small"><i
-                                                class="bi bi-people-fill me-1"></i>Tag Co-Authors</label>
-                                        <div id="coAuthorList" class="p-3 border rounded bg-light"
-                                            style="max-height: 150px; overflow-y: auto;">
-                                            <!-- Checkboxes populated dynamically -->
-                                        </div>
-                                        <small class="text-muted" style="font-size: 0.72rem;">Tagged co-authors will see
-                                            this paper in their co-authored list to link/claim it.</small>
-                                    </div>
                                     <div class="text-start mt-2">
                                         <button type="submit"
                                             class="btn btn-primary fw-semibold px-4 rounded-pill">Upload &
@@ -1101,31 +1285,6 @@
                             </div>
                         </div>
 
-                        <!-- Claim/Link Section (Research only) -->
-                        <div id="claimCoAuthoredSection" class="card border border-light shadow-xs"
-                            style="border-radius: 12px; overflow: hidden; display: none;">
-                            <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
-                                <h6 class="fw-bold text-dark mb-0"><i class="bi bi-link-45deg me-2 text-purple"></i>Link
-                                    Co-authored Documents</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                                    <table class="table table-sm align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="small text-start">File Name</th>
-                                                <th class="small text-center">Qty</th>
-                                                <th class="small text-start">Uploaded By</th>
-                                                <th class="small text-end">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="claimEvidenceListBody">
-                                            <!-- Populated dynamically -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Right Column: Submissions View -->

@@ -191,6 +191,30 @@ def save_assignments():
     return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
 
+@ret_chair_bp.route('/verify_evidence', methods=['POST'])
+@role_required('RET_CHAIR')
+def ret_chair_verify_evidence():
+    """AJAX — approve or return a Research/Extension evidence file."""
+    data = request.get_json(silent=True) or request.form
+    evidence_id = data.get('evidence_id')
+    status = (data.get('status') or '').strip()
+    comment = data.get('comment') or ''
+    if not evidence_id:
+        return jsonify({'success': False, 'message': 'Missing evidence_id.'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models.faculty import set_evidence_verification
+        success, msg = set_evidence_verification(conn, cursor, int(evidence_id), status, comment)
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @ret_chair_bp.route('/faculty_evidence_details/<int:emp_id>')
 @role_required('RET_CHAIR')
 def ret_chair_faculty_evidence_details(emp_id):
@@ -250,7 +274,8 @@ def ret_chair_save_rule():
         flash("Please fill all required fields.", "warning")
         return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
-    # Parse quantities for each checked Research indicator (Extension is distributed, not rank-menu based)
+    # Parse quantity, IPCR description and target duration for each checked Research
+    # indicator (Extension is distributed, not rank-menu based).
     research_indicators = []
     for r_id in research_indicator_ids:
         qty_val = request.form.get(f'research_quantity_{r_id}', 1)
@@ -260,7 +285,10 @@ def ret_chair_save_rule():
                 qty = 1
         except ValueError:
             qty = 1
-        research_indicators.append((int(r_id), qty))
+        desc = (request.form.get(f'research_description_{r_id}', '') or '').strip() or None
+        dur_value, dur_unit, _ = parse_duration_fields(
+            request.form, f'research_dur_value_{r_id}', f'research_dur_unit_{r_id}')
+        research_indicators.append((int(r_id), qty, desc, dur_value, dur_unit))
 
     try:
         conn = get_db_connection()

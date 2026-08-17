@@ -44,10 +44,13 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
         for target in selected_targets:
             desc = target.get('target_description') or None
             dead = target.get('target_deadline') or None
+            dur_value = target.get('target_duration_value')
+            dur_unit = target.get('target_duration_unit')
             cursor.execute("""
-                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
-                VALUES (%s, %s, %s, 'Pending Review', %s, %s)
-            """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead))
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
+                                               target_duration_value, target_duration_unit)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s)
+            """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead, dur_value, dur_unit))
 
         # Ensure mandatory default Teaching Load target (10 hours) is saved
         cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
@@ -74,6 +77,8 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
             text_clean = custom['description'].strip()
             qty = custom['proposed_quantity']
             dead = custom.get('target_deadline') or None
+            cust_dur_value = custom.get('target_duration_value')
+            cust_dur_unit = custom.get('target_duration_unit')
             if not text_clean:
                 continue
 
@@ -104,9 +109,10 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
 
             # Step C: Downstream projection into the unified draft staging table
             cursor.execute("""
-                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
-                VALUES (%s, %s, %s, 'Pending Review', %s, %s)
-            """, (emp_id, new_indicator_id, qty, text_clean, dead))
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
+                                               target_duration_value, target_duration_unit)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s)
+            """, (emp_id, new_indicator_id, qty, text_clean, dead, cust_dur_value, cust_dur_unit))
 
         conn.commit()
         return True, "Designated IPCR successfully compiled and submitted to Draft Targets for verification review."

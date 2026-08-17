@@ -112,18 +112,20 @@ def designated_dashboard():
             
             # Fetch cascaded instruction allocations from Program Chair
             cursor.execute("""
-                SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline
+                SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
+                       da.target_duration_value, da.target_duration_unit
                 FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                 WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
             """, (emp_id, term_id))
             alloc_rows = cursor.fetchall()
-            alloc_map = {r[0]: {'assigned_quantity': r[1], 'custom_description': r[2], 'target_deadline': r[3]} for r in alloc_rows}
+            alloc_map = {r[0]: {'assigned_quantity': r[1], 'custom_description': r[2], 'target_deadline': r[3],
+                                'target_duration_value': r[4], 'target_duration_unit': r[5]} for r in alloc_rows}
 
             draft_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
-                       dt.target_description, dt.target_deadline,
+                       dt.target_description, dt.target_deadline, dt.target_duration_value, dt.target_duration_unit,
                        mi.indicator_description, tc.category_name, mi.is_custom,
                        dri.item_remarks as dean_remarks, dri.original_quantity, dri.reviewed_quantity
                 FROM tbl_draft_targets dt
@@ -183,6 +185,13 @@ def designated_dashboard():
                     t['is_selected'] = False
                     t['is_core'] = False
                     t['is_locked'] = False
+
+                # Structured duration (drives Timeliness): prefer the faculty's own draft,
+                # else the Program Chair's cascaded allocation.
+                _src = draft_map.get(ind_id) or {}
+                _alloc = alloc_map.get(ind_id) or {}
+                t['target_duration_value'] = _src.get('target_duration_value') or _alloc.get('target_duration_value')
+                t['target_duration_unit'] = _src.get('target_duration_unit') or _alloc.get('target_duration_unit')
                 dpcr_targets.append(t)
                 
             # Add custom targets from drafts
@@ -245,7 +254,7 @@ def designated_dashboard():
             # If they cannot edit, we just load their submitted drafts
             dpcr_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
-                       dt.target_description, dt.target_deadline,
+                       dt.target_description, dt.target_deadline, dt.target_duration_value, dt.target_duration_unit,
                        mi.indicator_description, tc.category_name, mi.is_custom,
                        dri.item_remarks as dean_remarks, dri.original_quantity, dri.reviewed_quantity
                 FROM tbl_draft_targets dt
@@ -326,29 +335,38 @@ def submit_designated_ipcr_route():
     for ind_id in selected_ids:
         qty_val = request.form.get(f'target_qty_{ind_id}', '0')
         desc_val = request.form.get(f'target_desc_{ind_id}', '')
-        dead_val = request.form.get(f'target_dead_{ind_id}', '')
+        # Structured duration drives Timeliness; the text label is derived from it.
+        dur_value, dur_unit, dead_label = parse_duration_fields(
+            request.form, f'target_dur_value_{ind_id}', f'target_dur_unit_{ind_id}')
         selected_targets.append({
             'indicator_id': int(ind_id),
             'proposed_quantity': int(qty_val) if qty_val.isdigit() else 1,
             'target_description': desc_val.strip(),
-            'target_deadline': dead_val.strip()
+            'target_deadline': dead_label,
+            'target_duration_value': dur_value,
+            'target_duration_unit': dur_unit
         })
         
     # Parse custom targets added on the frontend
     custom_descriptions = request.form.getlist('custom_descriptions[]')
     custom_quantities = request.form.getlist('custom_quantities[]')
     custom_categories = request.form.getlist('custom_categories[]')
-    custom_deadlines = request.form.getlist('custom_deadlines[]')
-    
+    custom_dur_values = request.form.getlist('custom_duration_values[]')
+    custom_dur_units = request.form.getlist('custom_duration_units[]')
+
     custom_targets = []
     for idx, (desc, qty, cat) in enumerate(zip(custom_descriptions, custom_quantities, custom_categories)):
         if desc.strip():
-            dead = custom_deadlines[idx].strip() if idx < len(custom_deadlines) else ''
+            dur_value, dur_unit, dead_label = parse_duration_fields(
+                {'v': custom_dur_values[idx] if idx < len(custom_dur_values) else None,
+                 'u': custom_dur_units[idx] if idx < len(custom_dur_units) else None}, 'v', 'u')
             custom_targets.append({
                 'description': desc.strip(),
                 'proposed_quantity': int(qty) if str(qty).isdigit() else 1,
                 'category_name': cat.strip(),
-                'target_deadline': dead
+                'target_deadline': dead_label,
+                'target_duration_value': dur_value,
+                'target_duration_unit': dur_unit
             })
 
     conn = get_db_connection()

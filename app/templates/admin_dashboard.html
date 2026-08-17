@@ -16,13 +16,13 @@
     <i class="bi bi-people-fill"></i>
     <span class="nav-text">HR Roster</span>
 </button>
-<button class="nav-item" data-section="nav-term" onclick="showSection('nav-term')">
-    <i class="bi bi-calendar3"></i>
-    <span class="nav-text">Term Configuration</span>
-</button>
 <button class="nav-item" data-section="nav-criteria" onclick="showSection('nav-criteria')">
     <i class="bi bi-diagram-3-fill"></i>
     <span class="nav-text">Criteria</span>
+</button>
+<button class="nav-item" data-section="nav-term" onclick="showSection('nav-term')">
+    <i class="bi bi-calendar3"></i>
+    <span class="nav-text">Term Configuration</span>
 </button>
 <button class="nav-item" data-section="nav-indicators" onclick="showSection('nav-indicators')">
     <i class="bi bi-bullseye"></i>
@@ -286,16 +286,6 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Weight Group <span class="text-muted fw-normal">(for scoring, optional)</span></label>
-                            <select class="form-select" name="weight_group">
-                                <option value="">— none —</option>
-                                <option value="instruction">instruction</option>
-                                <option value="ret">ret</option>
-                                <option value="support">support</option>
-                                <option value="admin">admin</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label small fw-bold">Display Order</label>
                             <input type="number" class="form-control" name="display_order" value="100" min="0">
                         </div>
@@ -321,28 +311,29 @@
                                     <th>Slug</th>
                                     <th>Lane</th>
                                     <th class="text-center">Core</th>
-                                    <th>Weight Group</th>
                                     <th class="text-center">Order</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for c in criteria %}
-                                <tr class="{% if not c.is_active %}opacity-50{% endif %}">
-                                    <td class="fw-semibold">{{ c.category_name }}
+                                {# Dim only the descriptive cells when inactive — the action buttons
+                                   stay at full opacity so they don't read as disabled. #}
+                                {% set dim = 'opacity-50' if not c.is_active else '' %}
+                                <tr>
+                                    <td class="fw-semibold {{ dim }}">{{ c.category_name }}
                                         {% if not c.is_active %}<span class="badge bg-secondary ms-1">Inactive</span>{% endif %}
                                     </td>
-                                    <td><code class="small">{{ c.slug }}</code></td>
-                                    <td><span class="badge {% if c.review_lane == 'RET' %}bg-warning text-dark{% else %}bg-primary{% endif %}">{{ c.review_lane }}</span></td>
-                                    <td class="text-center">{% if c.is_core %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-dash text-muted"></i>{% endif %}</td>
-                                    <td>{{ c.weight_group or '—' }}</td>
-                                    <td class="text-center">{{ c.display_order }}</td>
+                                    <td class="{{ dim }}"><code class="small">{{ c.slug }}</code></td>
+                                    <td class="{{ dim }}"><span class="badge {% if c.review_lane == 'RET' %}bg-warning text-dark{% else %}bg-primary{% endif %}">{{ c.review_lane }}</span></td>
+                                    <td class="text-center {{ dim }}">{% if c.is_core %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-dash text-muted"></i>{% endif %}</td>
+                                    <td class="text-center {{ dim }}">{{ c.display_order }}</td>
                                     <td class="text-end">
                                         <div class="d-flex justify-content-end gap-2">
                                             <button type="button" class="btn btn-sm btn-outline-primary"
                                                     data-cid="{{ c.category_id }}" data-name="{{ c.category_name | e }}"
                                                     data-lane="{{ c.review_lane }}" data-core="{{ 1 if c.is_core else 0 }}"
-                                                    data-group="{{ c.weight_group or '' }}" data-order="{{ c.display_order }}"
+                                                    data-order="{{ c.display_order }}"
                                                     onclick="fillCriteriaEditModal(this)">Edit</button>
                                             <form action="{{ url_for('admin.admin_toggle_criteria') }}" method="POST" class="d-inline">
                                                 <input type="hidden" name="category_id" value="{{ c.category_id }}">
@@ -355,7 +346,7 @@
                                     </td>
                                 </tr>
                                 {% else %}
-                                <tr><td colspan="7" class="text-center text-muted py-4">No criteria defined yet.</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted py-4">No criteria defined yet.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -365,96 +356,331 @@
         </div>
     </div>
 
+    <!-- Category Management: the weighted IPCR categories per designation type -->
+    <div class="card shadow-sm border-0 mb-4" id="nav-categories">
+        <div class="card-header bg-white border-0 pt-4 pb-2">
+            <h5 class="fw-bold text-dark mb-0">Category Management</h5>
+            <small class="text-muted">The categories that appear on the printed IPCR and carry the
+                weight (e.g. Strategic Priorities, Core Functions). Each one groups the target types
+                above — and the grouping differs per designation type.</small>
+        </div>
+        <div class="card-body">
+            {% for dt in designation_types %}
+            <h6 class="fw-bold text-dark mt-2 mb-2">{{ dt }}</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Category</th>
+                            <th>Target Types Included</th>
+                            <th class="text-center" style="width: 90px;">Order</th>
+                            <th class="text-end" style="width: 190px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in ipcr_categories.get(dt, []) %}
+                        {% set assigned = category_types.get(dt, {}).get(c.ipcr_category_id, []) %}
+                        <tr>
+                            <td class="fw-semibold">{{ c.category_name }}</td>
+                            <td>
+                                {% for t in criteria if t.category_id in assigned %}
+                                <span class="badge bg-light text-dark border me-1">{{ t.category_name }}</span>
+                                {% else %}
+                                <span class="text-muted small">none assigned</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-center">{{ c.display_order }}</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        data-cid="{{ c.ipcr_category_id }}"
+                                        data-dt="{{ dt }}"
+                                        data-name="{{ c.category_name | e }}"
+                                        data-order="{{ c.display_order }}"
+                                        data-types="{{ assigned | join(',') }}"
+                                        onclick="fillCategoryModal(this)">Edit</button>
+                                <form action="{{ url_for('admin.admin_toggle_category') }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="ipcr_category_id" value="{{ c.ipcr_category_id }}">
+                                    <input type="hidden" name="is_active" value="0">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted py-3">No categories defined for {{ dt }}.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary mb-4"
+                    onclick="newCategory('{{ dt }}')">
+                <i class="bi bi-plus-lg me-1"></i>Add Category for {{ dt }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Add/Edit Category Modal -->
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ url_for('admin.admin_save_category') }}" method="POST">
+                    <input type="hidden" name="ipcr_category_id" id="catId">
+                    <input type="hidden" name="designation_type" id="catDesignation">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">IPCR Category — <span id="catDesignationLabel"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Category Name</label>
+                            <input type="text" class="form-control" name="category_name" id="catName" required
+                                   placeholder="e.g. Strategic Priorities">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Display Order</label>
+                            <input type="number" class="form-control" name="display_order" id="catOrder" min="0" value="100">
+                        </div>
+                        <div class="mb-1">
+                            <label class="form-label small fw-bold">Target Types Under This Category</label>
+                            <div class="border rounded p-2" style="max-height: 220px; overflow-y: auto;">
+                                {% for t in criteria if t.is_active and t.is_core %}
+                                <div class="form-check">
+                                    <input class="form-check-input cat-type-check" type="checkbox"
+                                           name="type_ids[]" value="{{ t.category_id }}" id="cattype_{{ t.category_id }}">
+                                    <label class="form-check-label small" for="cattype_{{ t.category_id }}">{{ t.category_name }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text small">A target type may sit under a different category for each designation type.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Category</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function _resetCategoryForm() {
+        document.querySelectorAll('.cat-type-check').forEach(cb => { cb.checked = false; });
+    }
+    function newCategory(designationType) {
+        _resetCategoryForm();
+        document.getElementById('catId').value = '';
+        document.getElementById('catDesignation').value = designationType;
+        document.getElementById('catDesignationLabel').textContent = designationType;
+        document.getElementById('catName').value = '';
+        document.getElementById('catOrder').value = 100;
+        new bootstrap.Modal(document.getElementById('categoryModal')).show();
+    }
+    function fillCategoryModal(btn) {
+        _resetCategoryForm();
+        document.getElementById('catId').value = btn.dataset.cid;
+        document.getElementById('catDesignation').value = btn.dataset.dt;
+        document.getElementById('catDesignationLabel').textContent = btn.dataset.dt;
+        document.getElementById('catName').value = btn.dataset.name;
+        document.getElementById('catOrder').value = btn.dataset.order;
+        (btn.dataset.types || '').split(',').filter(Boolean).forEach(id => {
+            const cb = document.getElementById('cattype_' + id.trim());
+            if (cb) cb.checked = true;
+        });
+        new bootstrap.Modal(document.getElementById('categoryModal')).show();
+    }
+    </script>
+
     <!-- Weight Allocation by Rank -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-start flex-wrap gap-2">
-            <div>
-                <h5 class="fw-bold text-dark mb-0">Weight Allocation by Rank</h5>
-                <small class="text-muted">Percentage each criterion group contributes to the final score, per
-                    academic rank band, for the active term. Each configured row must total 100%.</small>
-            </div>
-            {% if active_term %}
-            <form action="{{ url_for('admin.admin_copy_weights') }}" method="POST" class="d-inline">
-                <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-clock-history me-1"></i>Copy from Previous Term
-                </button>
-            </form>
-            {% endif %}
+        <div class="card-header bg-white border-0 pt-4 pb-2">
+            <h5 class="fw-bold text-dark mb-0">Weight Allocation by Rank</h5>
+            <small class="text-muted">Percentage each criterion group contributes to the final score, per
+                academic rank band, for the active term. Each configured row must total 100%. Regular and
+                Designated faculty are configured independently — the same criterion can carry a different
+                weight (or not apply at all) for each.</small>
         </div>
         <div class="card-body">
             {% if not active_term %}
             <div class="text-center py-4 text-muted">
                 <i class="bi bi-calendar-x fs-3 d-block mb-2"></i>No active academic term.
             </div>
-            {% elif not weight_groups %}
+            {% elif not (ipcr_categories.get(designation_types[0]) or ipcr_categories.get(designation_types[1])) %}
             <div class="text-center py-4 text-muted">
                 <i class="bi bi-exclamation-triangle fs-3 d-block mb-2"></i>
-                No criteria have a Weight Group assigned yet — set one on a criterion above to enable weighting.
+                No IPCR categories defined yet — add them under Category Management to enable weighting.
             </div>
             {% else %}
-            <form action="{{ url_for('admin.admin_save_weights') }}" method="POST" id="weightMatrixForm">
-                <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle mb-3" id="weightMatrixTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Academic Rank</th>
-                                {% for g in weight_groups %}
-                                <th class="text-center text-capitalize">{{ g }}</th>
-                                {% endfor %}
-                                <th class="text-center" style="width: 110px;">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for band in rank_bands %}
-                            {% set row_idx = loop.index0 %}
-                            <tr>
-                                <td class="fw-semibold">{{ band }}</td>
-                                {% for g in weight_groups %}
-                                <td>
-                                    <input type="number" class="form-control form-control-sm text-center weight-input"
-                                           data-row="{{ row_idx }}"
-                                           name="w_{{ row_idx }}_{{ g }}"
-                                           value="{{ weights_grid.get(band, {}).get(g, 0) }}"
-                                           min="0" max="100" step="0.01">
-                                </td>
-                                {% endfor %}
-                                <td class="text-center">
-                                    <span class="badge row-total-badge" data-row-total="{{ row_idx }}">0%</span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            <div class="btn-group mb-3" role="group">
+                {% for dt in designation_types %}
+                {% set slug = dt | lower | replace(' ', '_') %}
+                <button type="button" class="btn btn-sm {% if loop.first %}btn-primary{% else %}btn-outline-primary{% endif %} weight-tab-btn"
+                        id="weightTabBtn_{{ slug }}" onclick="showWeightTab('{{ slug }}')">{{ dt }}</button>
+                {% endfor %}
+            </div>
+
+            {% for dt in designation_types %}
+            {% set slug = dt | lower | replace(' ', '_') %}
+            {% set cats = ipcr_categories.get(dt, []) %}
+            <div class="weight-tab-panel" id="weightTabPanel_{{ slug }}" style="{% if not loop.first %}display:none;{% endif %}">
+                <div class="d-flex justify-content-end mb-2">
+                    <form action="{{ url_for('admin.admin_copy_weights') }}" method="POST" class="d-inline">
+                        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+                        <input type="hidden" name="designation_type" value="{{ dt }}">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-clock-history me-1"></i>Copy from Previous Term
+                        </button>
+                    </form>
                 </div>
-                <div class="text-end">
-                    <button type="submit" class="btn btn-primary fw-bold">
-                        <i class="bi bi-floppy-fill me-1"></i>Save Weight Allocations
-                    </button>
-                </div>
-            </form>
+                {% set cur_mode = weights_mode.get(dt, 'GENERAL') %}
+                <form action="{{ url_for('admin.admin_save_weights') }}" method="POST" id="weightMatrixForm_{{ slug }}">
+                    <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+                    <input type="hidden" name="designation_type" value="{{ dt }}">
+                    <input type="hidden" name="mode" id="weightMode_{{ slug }}" value="{{ cur_mode }}">
+
+                    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                        <span class="small fw-semibold text-muted">Allocation:</span>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="radio" name="mode_toggle_{{ slug }}"
+                                   id="modeGeneral_{{ slug }}" value="GENERAL"
+                                   {% if cur_mode == 'GENERAL' %}checked{% endif %}
+                                   onchange="setWeightMode('{{ slug }}', 'GENERAL')">
+                            <label class="form-check-label small" for="modeGeneral_{{ slug }}">
+                                General <span class="text-muted">(same for all ranks)</span>
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="radio" name="mode_toggle_{{ slug }}"
+                                   id="modeSpecific_{{ slug }}" value="SPECIFIC"
+                                   {% if cur_mode == 'SPECIFIC' %}checked{% endif %}
+                                   onchange="setWeightMode('{{ slug }}', 'SPECIFIC')">
+                            <label class="form-check-label small" for="modeSpecific_{{ slug }}">
+                                Specific per Academic Rank
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- GENERAL: one set of weights for every rank -->
+                    <div class="weight-mode-general" id="weightGeneral_{{ slug }}"
+                         style="{% if cur_mode != 'GENERAL' %}display:none;{% endif %}">
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle mb-3" id="weightGeneralTable_{{ slug }}">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Applies to</th>
+                                        {% for c in cats %}
+                                        <th class="text-center">{{ c.category_name }}</th>
+                                        {% endfor %}
+                                        <th class="text-center" style="width: 110px;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="fw-semibold">All Academic Ranks</td>
+                                        {% for c in cats %}
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm text-center weight-input"
+                                                   data-row="0" name="w_general_{{ c.ipcr_category_id }}"
+                                                   value="{{ weights_grid.get(dt, {}).get(general_band, {}).get(c.ipcr_category_id, 0) }}"
+                                                   min="0" max="100" step="0.01">
+                                        </td>
+                                        {% endfor %}
+                                        <td class="text-center">
+                                            <span class="badge row-total-badge" data-row-total="0">0%</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- SPECIFIC: one row per academic rank band -->
+                    <div class="weight-mode-specific" id="weightSpecific_{{ slug }}"
+                         style="{% if cur_mode != 'SPECIFIC' %}display:none;{% endif %}">
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle mb-3" id="weightMatrixTable_{{ slug }}">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Academic Rank</th>
+                                        {% for c in cats %}
+                                        <th class="text-center">{{ c.category_name }}</th>
+                                        {% endfor %}
+                                        <th class="text-center" style="width: 110px;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for band in rank_bands %}
+                                    {% set row_idx = loop.index0 %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ band }}</td>
+                                        {% for c in cats %}
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm text-center weight-input"
+                                                   data-row="{{ row_idx }}"
+                                                   name="w_{{ row_idx }}_{{ c.ipcr_category_id }}"
+                                                   value="{{ weights_grid.get(dt, {}).get(band, {}).get(c.ipcr_category_id, 0) }}"
+                                                   min="0" max="100" step="0.01">
+                                        </td>
+                                        {% endfor %}
+                                        <td class="text-center">
+                                            <span class="badge row-total-badge" data-row-total="{{ row_idx }}">0%</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary fw-bold">
+                            <i class="bi bi-floppy-fill me-1"></i>Save {{ dt }} Weights
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endfor %}
+
             <script>
+            function showWeightTab(slug) {
+                document.querySelectorAll('.weight-tab-panel').forEach(p => { p.style.display = 'none'; });
+                document.querySelectorAll('.weight-tab-btn').forEach(b => {
+                    b.classList.remove('btn-primary'); b.classList.add('btn-outline-primary');
+                });
+                const panel = document.getElementById('weightTabPanel_' + slug);
+                const btn = document.getElementById('weightTabBtn_' + slug);
+                if (panel) panel.style.display = '';
+                if (btn) { btn.classList.remove('btn-outline-primary'); btn.classList.add('btn-primary'); }
+            }
+            function setWeightMode(slug, mode) {
+                const hidden = document.getElementById('weightMode_' + slug);
+                if (hidden) hidden.value = mode;
+                const gen = document.getElementById('weightGeneral_' + slug);
+                const spec = document.getElementById('weightSpecific_' + slug);
+                if (gen) gen.style.display = (mode === 'GENERAL') ? '' : 'none';
+                if (spec) spec.style.display = (mode === 'SPECIFIC') ? '' : 'none';
+            }
             (function () {
-                const table = document.getElementById('weightMatrixTable');
-                if (!table) return;
                 const rowCount = {{ rank_bands|length }};
-                function recompute() {
-                    for (let r = 0; r < rowCount; r++) {
-                        let total = 0;
-                        table.querySelectorAll(`.weight-input[data-row="${r}"]`).forEach(inp => {
-                            total += parseFloat(inp.value) || 0;
-                        });
-                        const badge = table.querySelector(`[data-row-total="${r}"]`);
-                        if (badge) {
-                            badge.textContent = total.toFixed(1) + '%';
-                            badge.className = 'badge row-total-badge ' +
-                                (Math.abs(total - 100) < 0.01 ? 'bg-success' : (total === 0 ? 'bg-secondary' : 'bg-danger'));
+                function initTable(table) {
+                    function recompute() {
+                        for (let r = 0; r < rowCount; r++) {
+                            let total = 0;
+                            table.querySelectorAll(`.weight-input[data-row="${r}"]`).forEach(inp => {
+                                total += parseFloat(inp.value) || 0;
+                            });
+                            const badge = table.querySelector(`[data-row-total="${r}"]`);
+                            if (badge) {
+                                badge.textContent = total.toFixed(1) + '%';
+                                badge.className = 'badge row-total-badge ' +
+                                    (Math.abs(total - 100) < 0.01 ? 'bg-success' : (total === 0 ? 'bg-secondary' : 'bg-danger'));
+                            }
                         }
                     }
+                    table.addEventListener('input', recompute);
+                    recompute();
                 }
-                table.addEventListener('input', recompute);
-                recompute();
+                document.querySelectorAll('[id^="weightMatrixTable_"], [id^="weightGeneralTable_"]').forEach(initTable);
             })();
             </script>
             {% endif %}
@@ -485,16 +711,6 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Weight Group <span class="text-muted fw-normal">(optional)</span></label>
-                            <select class="form-select" name="weight_group" id="editCritGroup">
-                                <option value="">— none —</option>
-                                <option value="instruction">instruction</option>
-                                <option value="ret">ret</option>
-                                <option value="support">support</option>
-                                <option value="admin">admin</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label small fw-bold">Display Order</label>
                             <input type="number" class="form-control" name="display_order" id="editCritOrder" min="0">
                         </div>
@@ -517,7 +733,6 @@
         document.getElementById('editCritId').value = btn.dataset.cid;
         document.getElementById('editCritName').value = btn.dataset.name;
         document.getElementById('editCritLane').value = btn.dataset.lane;
-        document.getElementById('editCritGroup').value = btn.dataset.group;
         document.getElementById('editCritOrder').value = btn.dataset.order;
         document.getElementById('editCritCore').checked = btn.dataset.core === '1';
         new bootstrap.Modal(document.getElementById('editCriteriaModal')).show();
@@ -529,247 +744,248 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem; letter-spacing: -0.5px;">Master Indicators</h2>
+            <p class="text-muted small mb-0">Targets cascaded from the DPCR, grouped by IPCR category the same
+                way the DPCR is structured. Categories are configured under
+                <strong>Criteria &rarr; Category Management</strong>.</p>
+        </div>
+        {% if active_term and not indicators %}
+        <form action="{{ url_for('admin.admin_import_indicators') }}" method="POST">
+            <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-cloud-download me-1"></i> Import from Previous Term
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if not active_term %}
+    <div class="alert alert-warning border-0">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        No active term found. Please open a term under <strong>Term Configuration</strong> before adding indicators.
+    </div>
+    {% else %}
+    <div class="alert alert-primary border-0 small">
+        <i class="bi bi-calendar-check-fill me-1"></i>
+        Active Term: <strong>{{ active_term.academic_year }} &mdash; {{ active_term.semester }}</strong>
+    </div>
+
+    {# The DPCR mirrors the Regular Faculty category structure (Strategic Priorities /
+       Core Functions / Support Functions), so the panel groups by those. #}
+    {% set dpcr_dt = 'Regular Faculty' %}
+    {% set dpcr_cats = ipcr_categories.get(dpcr_dt, []) %}
+    {% set mapped_type_ids = [] %}
+    {% for c in dpcr_cats %}
+    {% for tid in category_types.get(dpcr_dt, {}).get(c.ipcr_category_id, []) %}
+    {% set _ = mapped_type_ids.append(tid) %}
+    {% endfor %}
+    {% endfor %}
+
+    {% for cat in dpcr_cats %}
+    {% set cat_type_ids = category_types.get(dpcr_dt, {}).get(cat.ipcr_category_id, []) %}
+    {% set cat_types = criteria | selectattr('category_id', 'in', cat_type_ids) | list %}
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2"
+             style="background: linear-gradient(90deg, #eef4ff 0%, #fbfcfe 100%); border-left: 4px solid #0d6efd !important;">
+            <div>
+                <h5 class="fw-bold text-primary mb-0">{{ cat.category_name }}</h5>
+                <div class="text-muted small">
+                    {% for t in cat_types %}
+                    <span class="badge bg-light text-dark border me-1">{{ t.category_name }}</span>
+                    {% else %}
+                    <span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>No target types assigned</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% if cat_types %}
+            <button type="button" class="btn btn-sm btn-primary fw-semibold"
+                    onclick='openAddIndicator({{ cat.category_name | tojson }}, {{ cat_types | map(attribute="category_name") | list | tojson }})'>
+                <i class="bi bi-plus-lg me-1"></i>Add Target
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% for t in cat_types %}
+            <div class="px-3 pt-3">
+                <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-dot"></i>{{ t.category_name }}</h6>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 8%;" class="ps-3">#</th>
+                            <th style="width: 57%;">Success Indicator (Target + Measure)</th>
+                            <th style="width: 18%;" class="text-center">Efficiency Type</th>
+                            <th style="width: 17%;" class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set ns = namespace(found=false) %}
+                        {% for ind in indicators if ind.category_name == t.category_name %}
+                        {% set ns.found = true %}
+                        <tr>
+                            <td class="text-muted small ps-3">{{ ind.indicator_id }}</td>
+                            <td class="small">{{ ind.indicator_description }}</td>
+                            <td class="text-center"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
+                            <td class="text-center">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <button class="btn btn-outline-secondary btn-sm rounded-pill px-2 py-1"
+                                        data-bs-toggle="modal" data-bs-target="#editIndicatorModal"
+                                        data-ind-id="{{ ind.indicator_id }}"
+                                        data-ind-category="{{ ind.category_name | e }}"
+                                        data-ind-desc="{{ ind.indicator_description | e }}"
+                                        data-ind-type="{{ ind.efficiency_type | e }}"
+                                        onclick="fillEditModal(this)">Edit</button>
+                                    <form action="{{ url_for('admin.admin_delete_indicator') }}" method="POST"
+                                        onsubmit="return confirm('Delete this indicator?');" class="d-inline">
+                                        <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not ns.found %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                <i class="bi bi-inbox me-1"></i> No targets under this type yet.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
         </div>
     </div>
-    <div class="row">
-        <!-- LEFT: Add Form -->
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white border-0 pt-4 pb-2">
-                    <h5 class="fw-bold text-dark mb-0">Add Master Indicator</h5>
-                </div>
-                <div class="card-body">
-                    {% if active_term %}
-                    <div class="alert alert-primary border-0 small mb-3">
-                        <i class="bi bi-calendar-check-fill me-1"></i>
-                        Active Term: <strong>{{ active_term.academic_year }} &mdash; {{ active_term.semester
-                            }}</strong>
-                    </div>
-                    <form action="{{ url_for('admin.admin_add_indicator') }}" method="POST">
-                        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Category (OPCR Group)</label>
-                            <select class="form-select" name="category_name" required>
-                                {% for c in criteria if c.is_active %}
-                                <option value="{{ c.category_name }}">{{ c.category_name }}{% if not c.is_core %} (non-core){% endif %}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Indicator Description</label>
-                            <textarea class="form-control" name="description" rows="4"
-                                placeholder="Enter performance indicator description..." required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Efficiency Type</label>
-                            <select class="form-select" name="efficiency_type" required>
-                                <option value="Quantity-Based">Quantity-Based</option>
-                                <option value="Adjectival">Adjectival</option>
-                                <option value="Client Satisfaction">Client Satisfaction</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 fw-bold">
-                            <i class="bi bi-plus-circle me-1"></i> Add Indicator
-                        </button>
-                    </form>
-                    {% else %}
-                    <div class="alert alert-warning border-0">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                        No active term found. Please open a term under <strong>Term Configuration</strong>
-                        before adding indicators.
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
+    {% endfor %}
+
+    {# Target types not part of the DPCR structure (e.g. Administrative Functions, which
+       only applies to Designated faculty) still need somewhere to be managed. #}
+    {% set other_types = criteria | selectattr('is_active') | selectattr('is_core')
+                                  | rejectattr('category_id', 'in', mapped_type_ids) | list %}
+    {% if other_types %}
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header border-0 py-3"
+             style="background: linear-gradient(90deg, #f6f6f8 0%, #fcfcfd 100%); border-left: 4px solid #6c757d !important;">
+            <h5 class="fw-bold text-secondary mb-0">Other Target Types</h5>
+            <div class="text-muted small">Not part of the DPCR category structure — used by Designated Faculty
+                or not yet assigned to a category.</div>
         </div>
-
-        <!-- RIGHT: Data Tables (3 grouped) -->
-        <div class="col-md-8">
-
-            <!-- Header Card -->
-            <div class="card shadow-sm border-0 mb-3">
-                <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="fw-bold text-dark mb-0">Indicators for Active Term</h5>
-                        <p class="text-muted small mb-0">Grouped by OPCR functional category</p>
-                    </div>
-                    {% if active_term and not indicators %}
-                    <form action="{{ url_for('admin.admin_import_indicators') }}" method="POST">
-                        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-cloud-download me-1"></i> Import from Previous Term
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
+        <div class="card-body p-0">
+            {% for t in other_types %}
+            <div class="px-3 pt-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-dot"></i>{{ t.category_name }}</h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary mb-2"
+                        onclick='openAddIndicator({{ t.category_name | tojson }}, {{ [t.category_name] | tojson }})'>
+                    <i class="bi bi-plus-lg me-1"></i>Add Target
+                </button>
             </div>
-
-            {% macro indicator_rows(category_filter) %}
-            {% set ns = namespace(found=false) %}
-            {% for ind in indicators %}
-            {% if category_filter == 'core' %}
-            {% if 'Research' in ind.category_name or 'Extension' in ind.category_name or 'EXTENSIONS' in ind.category_name %}
-            {% set ns.found = true %}
-            <tr>
-                <td style="width: 6%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
-                <td style="width: 20%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
-                <td style="width: 44%;" class="small">{{ ind.indicator_description }}</td>
-                <td style="width: 15%; text-align: center;"><span class="badge bg-info text-dark text-wrap">{{ ind.efficiency_type }}</span></td>
-                <td style="width: 15%; text-align: center; min-width: 120px;">
-                    {% if ind.is_cascaded %}
-                    <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
-                    {% else %}
-                    <div class="d-inline-flex gap-1 justify-content-center flex-nowrap">
-                        <button class="btn btn-outline-primary btn-sm rounded-pill px-2 py-1" data-bs-toggle="modal"
-                            data-bs-target="#editIndicatorModal" data-ind-id="{{ ind.indicator_id }}"
-                            data-ind-category="{{ ind.category_name | e }}"
-                            data-ind-desc="{{ ind.indicator_description | e }}"
-                            data-ind-type="{{ ind.efficiency_type | e }}" onclick="fillEditModal(this)">Edit</button>
-                        <form method="POST" action="{{ url_for('admin.admin_delete_indicator') }}" class="d-inline"
-                            onsubmit="return confirm('Delete this indicator? This cannot be undone.')">
-                            <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
-                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1">Delete</button>
-                        </form>
-                    </div>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endif %}
-            {% else %}
-            {% if ind.category_name == category_filter %}
-            {% set ns.found = true %}
-            <tr>
-                <td style="width: 6%;" class="text-muted small ps-3">{{ ind.indicator_id }}</td>
-                <td style="width: 20%;"><span class="badge bg-light text-dark border text-wrap text-start" style="max-width: 100%; white-space: normal;">{% if 'Instruction' in ind.category_name or 'Strategic' in ind.category_name %}Instructions{% else %}{{ ind.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span></td>
-                <td style="width: 44%;" class="small">{{ ind.indicator_description }}</td>
-                <td style="width: 15%; text-align: center;"><span class="badge bg-info text-dark text-wrap">{{ ind.efficiency_type }}</span></td>
-                <td style="width: 15%; text-align: center; min-width: 120px;">
-                    {% if ind.is_cascaded %}
-                    <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i>Locked</span>
-                    {% else %}
-                    <div class="d-inline-flex gap-1 justify-content-center flex-nowrap">
-                        <button class="btn btn-outline-primary btn-sm rounded-pill px-2 py-1" data-bs-toggle="modal"
-                            data-bs-target="#editIndicatorModal" data-ind-id="{{ ind.indicator_id }}"
-                            data-ind-category="{{ ind.category_name | e }}"
-                            data-ind-desc="{{ ind.indicator_description | e }}"
-                            data-ind-type="{{ ind.efficiency_type | e }}" onclick="fillEditModal(this)">Edit</button>
-                        <form method="POST" action="{{ url_for('admin.admin_delete_indicator') }}" class="d-inline"
-                            onsubmit="return confirm('Delete this indicator? This cannot be undone.')">
-                            <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
-                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1">Delete</button>
-                        </form>
-                    </div>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endif %}
-            {% endif %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 8%;" class="ps-3">#</th>
+                            <th style="width: 57%;">Success Indicator (Target + Measure)</th>
+                            <th style="width: 18%;" class="text-center">Efficiency Type</th>
+                            <th style="width: 17%;" class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set ns2 = namespace(found=false) %}
+                        {% for ind in indicators if ind.category_name == t.category_name %}
+                        {% set ns2.found = true %}
+                        <tr>
+                            <td class="text-muted small ps-3">{{ ind.indicator_id }}</td>
+                            <td class="small">{{ ind.indicator_description }}</td>
+                            <td class="text-center"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
+                            <td class="text-center">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <button class="btn btn-outline-secondary btn-sm rounded-pill px-2 py-1"
+                                        data-bs-toggle="modal" data-bs-target="#editIndicatorModal"
+                                        data-ind-id="{{ ind.indicator_id }}"
+                                        data-ind-category="{{ ind.category_name | e }}"
+                                        data-ind-desc="{{ ind.indicator_description | e }}"
+                                        data-ind-type="{{ ind.efficiency_type | e }}"
+                                        onclick="fillEditModal(this)">Edit</button>
+                                    <form action="{{ url_for('admin.admin_delete_indicator') }}" method="POST"
+                                        onsubmit="return confirm('Delete this indicator?');" class="d-inline">
+                                        <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not ns2.found %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                <i class="bi bi-inbox me-1"></i> No targets under this type yet.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
             {% endfor %}
-            {% if not ns.found %}
-            <tr>
-                <td colspan="5" class="text-center text-muted py-3">
-                    <i class="bi bi-inbox me-1"></i> No indicators in this group yet.
-                </td>
-            </tr>
-            {% endif %}
-            {% endmacro %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
 
-            <!-- TABLE 1: Strategic Priorities -->
-            <div class="card shadow-sm border-0 mb-3">
-                <div class="card-header border-0 py-2"
-                    style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-star-fill text-primary"></i>
-                        <span class="fw-bold text-primary">Strategic Priorities</span>
-                        <span class="badge bg-primary bg-opacity-10 text-primary ms-1">50%</span>
-                        <span class="text-muted small ms-auto">Instructions</span>
+<!-- Add Master Indicator Modal (opened from a category header) -->
+<div class="modal fade" id="addIndicatorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <form action="{{ url_for('admin.admin_add_indicator') }}" method="POST">
+                <input type="hidden" name="term_id" value="{{ active_term.term_id if active_term else '' }}">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold">Add Target &mdash; <span id="addIndicatorCatLabel"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Target Type</label>
+                        <select class="form-select" name="category_name" id="addIndicatorType" required></select>
+                        <div class="form-text small">Target types available under this category.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Success Indicator (Target + Measure)</label>
+                        <textarea class="form-control" name="description" rows="4" required
+                            placeholder="e.g. Complete 5 Research outputs in 6 months"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Efficiency Type</label>
+                        <select class="form-select" name="efficiency_type" required>
+                            <option value="Quantity-Based">Quantity-Based</option>
+                            <option value="Adjectival">Adjectival</option>
+                            <option value="Client Satisfaction">Client Satisfaction</option>
+                        </select>
+                        <div class="form-text small">Determines how the Efficiency (E) rating is obtained.</div>
                     </div>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="overflow-x: auto;">
-                        <table class="table table-hover align-middle mb-0" style="table-layout: auto; width: 100%; min-width: 650px;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 6%;" class="ps-3">#</th>
-                                    <th style="width: 20%;">Category</th>
-                                    <th style="width: 44%;">Description</th>
-                                    <th style="width: 15%; text-align: center;">Type</th>
-                                    <th style="width: 15%; text-align: center; min-width: 120px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {{ indicator_rows('A. Instructions') }}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Target</button>
                 </div>
-            </div>
-
-            <!-- TABLE 2: Core Functions -->
-            <div class="card shadow-sm border-0 mb-3">
-                <div class="card-header border-0 py-2"
-                    style="background: linear-gradient(90deg, #e8fff4 0%, #f8fffb 100%); border-left: 4px solid #198754 !important;">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-diagram-3-fill text-success"></i>
-                        <span class="fw-bold text-success">Core Functions</span>
-                        <span class="badge bg-success bg-opacity-10 text-success ms-1">40%</span>
-                        <span class="text-muted small ms-auto">Research &amp; Extension / Training</span>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="overflow-x: auto;">
-                        <table class="table table-hover align-middle mb-0" style="table-layout: auto; width: 100%; min-width: 650px;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 6%;" class="ps-3">#</th>
-                                    <th style="width: 20%;">Category</th>
-                                    <th style="width: 44%;">Description</th>
-                                    <th style="width: 15%; text-align: center;">Type</th>
-                                    <th style="width: 15%; text-align: center; min-width: 120px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {{ indicator_rows('core') }}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TABLE 3: Support Functions -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header border-0 py-2"
-                    style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-tools text-warning"></i>
-                        <span class="fw-bold text-warning">Support Functions</span>
-                        <span class="badge bg-warning bg-opacity-10 text-warning ms-1">10%</span>
-                        <span class="text-muted small ms-auto">Support Functions</span>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="overflow-x: auto;">
-                        <table class="table table-hover align-middle mb-0" style="table-layout: auto; width: 100%; min-width: 650px;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 6%;" class="ps-3">#</th>
-                                    <th style="width: 20%;">Category</th>
-                                    <th style="width: 44%;">Description</th>
-                                    <th style="width: 15%; text-align: center;">Type</th>
-                                    <th style="width: 15%; text-align: center; min-width: 120px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {{ indicator_rows('Support Functions') }}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+function openAddIndicator(categoryName, targetTypes) {
+    document.getElementById('addIndicatorCatLabel').textContent = categoryName;
+    const sel = document.getElementById('addIndicatorType');
+    sel.innerHTML = '';
+    (targetTypes || []).forEach(function (name) {
+        const o = document.createElement('option');
+        o.value = name; o.textContent = name;
+        sel.appendChild(o);
+    });
+    new bootstrap.Modal(document.getElementById('addIndicatorModal')).show();
+}
+</script>
 
 <!-- SYSTEM SECURITY SECTION -->
 <div id="nav-security" class="dashboard-section">
@@ -926,8 +1142,9 @@
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Category (OPCR Group)</label>
                         <select class="form-select" name="category_name" id="editIndicatorCategory" required>
-                            {% for c in criteria if c.is_active %}
-                            <option value="{{ c.category_name }}">{{ c.category_name }}{% if not c.is_core %} (non-core){% endif %}</option>
+                            {# Non-core criteria excluded — see the add form above. #}
+                            {% for c in criteria if c.is_active and c.is_core %}
+                            <option value="{{ c.category_name }}">{{ c.category_name }}</option>
                             {% endfor %}
                         </select>
                     </div>

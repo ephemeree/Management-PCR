@@ -38,22 +38,33 @@ def save_ret_rule(conn, cursor, term_id, academic_rank, research_selections, ext
             cursor.execute(f"DELETE FROM tbl_ret_rule_indicators WHERE rule_id IN ({format_strings})", tuple(rule_ids))
             cursor.execute(f"DELETE FROM tbl_ret_rules WHERE rule_id IN ({format_strings})", tuple(rule_ids))
 
-        # 2. Save Research rule (if indicators are selected)
+        # 2. Save Research rule (if indicators are selected).
+        # Each research indicator carries its own IPCR description and target duration so
+        # Timeliness can be scored and the accomplishment sentence can be composed.
         if research_indicators and int(research_selections) > 0:
-            cursor.execute("INSERT INTO tbl_ret_rules (academic_rank, required_selections) VALUES (%s, %s)", 
+            cursor.execute("INSERT INTO tbl_ret_rules (academic_rank, required_selections) VALUES (%s, %s)",
                            (academic_rank, int(research_selections)))
             res_rule_id = cursor.lastrowid
-            for ind_id, qty in research_indicators:
-                cursor.execute("INSERT INTO tbl_ret_rule_indicators (rule_id, indicator_id, target_quantity) VALUES (%s, %s, %s)", 
-                               (res_rule_id, ind_id, qty))
+            for item in research_indicators:
+                if len(item) == 5:
+                    ind_id, qty, desc, dur_value, dur_unit = item
+                else:
+                    ind_id, qty = item[0], item[1]
+                    desc, dur_value, dur_unit = None, None, None
+                cursor.execute("""
+                    INSERT INTO tbl_ret_rule_indicators
+                        (rule_id, indicator_id, target_quantity, target_description, target_duration_value, target_duration_unit)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (res_rule_id, ind_id, qty, desc, dur_value, dur_unit))
 
         # 3. Save Extension rule (if indicators are selected)
         if extension_indicators and int(extension_selections) > 0:
             cursor.execute("INSERT INTO tbl_ret_rules (academic_rank, required_selections) VALUES (%s, %s)", 
                            (academic_rank, int(extension_selections)))
             ext_rule_id = cursor.lastrowid
-            for ind_id, qty in extension_indicators:
-                cursor.execute("INSERT INTO tbl_ret_rule_indicators (rule_id, indicator_id, target_quantity) VALUES (%s, %s, %s)", 
+            for item in extension_indicators:
+                ind_id, qty = item[0], item[1]
+                cursor.execute("INSERT INTO tbl_ret_rule_indicators (rule_id, indicator_id, target_quantity) VALUES (%s, %s, %s)",
                                (ext_rule_id, ind_id, qty))
 
         conn.commit()
@@ -70,7 +81,8 @@ def get_ret_rules(cursor, term_id):
     # references no longer match the current term's indicators, making the table appear
     # empty and prompting the RET Chair to reconfigure for the new term.
     query = """
-        SELECT r.rule_id, r.academic_rank, r.required_selections, mi.indicator_id, mi.indicator_description, tc.category_name, rri.target_quantity
+        SELECT r.rule_id, r.academic_rank, r.required_selections, mi.indicator_id, mi.indicator_description, tc.category_name,
+               rri.target_quantity, rri.target_description, rri.target_duration_value, rri.target_duration_unit
         FROM tbl_ret_rules r
         JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
         JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
@@ -106,7 +118,12 @@ def get_ret_rules(cursor, term_id):
         # Safe matching using 'in' in case formatting contains letters like A. or B.
         if 'Research' in category:
             rules_dict[rank]['research_required'] = required
-            rules_dict[rank]['research_indicators'].append({'id': ind_id, 'desc': desc, 'qty': qty})
+            rules_dict[rank]['research_indicators'].append({
+                'id': ind_id, 'desc': desc, 'qty': qty,
+                'target_description': r.get('target_description') or '',
+                'duration_value': r.get('target_duration_value'),
+                'duration_unit': r.get('target_duration_unit'),
+            })
         elif 'Extension' in category or 'Training' in category or 'Advisory' in category:
             rules_dict[rank]['extension_required'] = required
             rules_dict[rank]['extension_indicators'].append({'id': ind_id, 'desc': desc, 'qty': qty})

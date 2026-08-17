@@ -330,7 +330,8 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
                 
                 # Fetch approved items with descriptions and deadlines
                 cursor.execute("""
-                    SELECT dt.indicator_id, COALESCE(dri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline
+                    SELECT dt.indicator_id, COALESCE(dri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline,
+                           dt.target_duration_value, dt.target_duration_unit
                     FROM tbl_draft_targets dt
                     JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
                     WHERE dri.review_id = %s
@@ -346,11 +347,12 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
                 """, (emp_id, term_id))
                 
                 # Insert into tbl_committed_targets with target_description and target_deadline
-                for indicator_id, qty, target_desc, target_dead in approved_items:
+                for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit in approved_items:
                     cursor.execute("""
-                        INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, actual_quantity, target_description, target_deadline)
-                        VALUES (%s, %s, %s, 'Approved', 0, %s, %s)
-                    """, (emp_id, indicator_id, qty, target_desc, target_dead))
+                        INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, actual_quantity, target_description, target_deadline,
+                                                           target_duration_value, target_duration_unit)
+                        VALUES (%s, %s, %s, 'Approved', 0, %s, %s, %s, %s)
+                    """, (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit))
 
 
         conn.commit()

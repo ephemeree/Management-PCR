@@ -24,10 +24,6 @@
     <i class="bi bi-list-check"></i>
     <span class="nav-text">Menu Config</span>
 </button>
-<button class="nav-item" data-section="nav-phase3" onclick="showSection('nav-phase3')">
-    <i class="bi bi-ui-checks"></i>
-    <span class="nav-text">Active Rules</span>
-</button>
 <button class="nav-item" data-section="nav-phase4" onclick="showSection('nav-phase4')">
     <i class="bi bi-person-check-fill"></i>
     <span class="nav-text">Commitments</span>
@@ -596,22 +592,47 @@ function openAssignmentEditor(empId) {
                                     {% for ind in ret_indicators %}
                                     {% if ind.category_name == 'A. Research' %}
                                     {% set ns_r.found = true %}
-                                    <li
-                                        class="list-group-item d-flex justify-content-between align-items-center py-2 small">
-                                        <div class="d-flex align-items-start" style="flex: 1; padding-right: 15px;">
-                                            <input
-                                                class="form-check-input me-2 indicator-checkbox research-indicator-checkbox"
-                                                type="checkbox" id="ind_{{ ind.indicator_id }}"
-                                                name="research_indicator_ids[]" value="{{ ind.indicator_id }}">
-                                            <label class="form-check-label" for="ind_{{ ind.indicator_id }}">
-                                                {{ ind.indicator_description }}
-                                            </label>
+                                    <li class="list-group-item py-2 small">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-start" style="flex: 1; padding-right: 15px;">
+                                                <input
+                                                    class="form-check-input me-2 indicator-checkbox research-indicator-checkbox"
+                                                    type="checkbox" id="ind_{{ ind.indicator_id }}"
+                                                    name="research_indicator_ids[]" value="{{ ind.indicator_id }}">
+                                                <label class="form-check-label" for="ind_{{ ind.indicator_id }}">
+                                                    {{ ind.indicator_description }}
+                                                </label>
+                                            </div>
+                                            <div style="width: 80px;">
+                                                <input type="number" class="form-control form-control-sm text-center"
+                                                    id="qty_{{ ind.indicator_id }}"
+                                                    name="research_quantity_{{ ind.indicator_id }}" value="1" min="1"
+                                                    disabled placeholder="Qty">
+                                            </div>
                                         </div>
-                                        <div style="width: 80px;">
-                                            <input type="number" class="form-control form-control-sm text-center"
-                                                id="qty_{{ ind.indicator_id }}"
-                                                name="research_quantity_{{ ind.indicator_id }}" value="1" min="1"
-                                                disabled placeholder="Qty">
+                                        {# IPCR description + target duration — needed so research targets
+                                           can be scored for Timeliness and render an accomplishment sentence. #}
+                                        <div class="row g-2 mt-1 ps-4 research-detail-row" id="detail_{{ ind.indicator_id }}">
+                                            <div class="col-md-7">
+                                                <input type="text" class="form-control form-control-sm research-detail-input"
+                                                    name="research_description_{{ ind.indicator_id }}"
+                                                    placeholder="IPCR target description (e.g. 1 research paper published in 6 months)"
+                                                    disabled>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <div class="d-flex gap-1">
+                                                    <input type="number" min="1"
+                                                        class="form-control form-control-sm text-center research-detail-input"
+                                                        name="research_dur_value_{{ ind.indicator_id }}"
+                                                        placeholder="Duration" disabled>
+                                                    <select class="form-select form-select-sm research-detail-input"
+                                                        name="research_dur_unit_{{ ind.indicator_id }}" disabled>
+                                                        {% for u in ['days', 'weeks', 'months', 'semesters'] %}
+                                                        <option value="{{ u }}" {% if u == 'months' %}selected{% endif %}>{{ u }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
                                     </li>
                                     {% endif %}
@@ -634,16 +655,13 @@ function openAssignmentEditor(empId) {
             </form>
         </div>
     </div>
-</div>
 
-<!-- Phase 3: Active Rules -->
-<div id="nav-phase3" class="dashboard-section">
-    <div class="page-header">
-        <h2>Phase 3: Active Research Rules</h2>
-        <p>Current logic mappings dictating what faculty see on their dashboards.</p>
-    </div>
-
+    <!-- Active Rules — kept in the same panel so editing a rule doesn't jump sections -->
     <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold text-dark mb-0">Active Research Rules</h5>
+            <span class="badge bg-secondary"><i class="bi bi-list-check me-1"></i> Configured Menus</span>
+        </div>
         <div class="card-body">
             <p class="text-muted small">Current logic mappings dictating what faculty see on their dashboards.</p>
             <div class="table-responsive">
@@ -670,7 +688,7 @@ function openAssignmentEditor(empId) {
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary px-3"
-                                        onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
+                                        onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}, desc_text: {{ (i.target_description or "") | tojson }}, dur_value: {{ i.duration_value if i.duration_value else "null" }}, dur_unit: {{ (i.duration_unit or "") | tojson }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
                                         <i class="bi bi-pencil me-1"></i>Edit
                                     </button>
                                     <form method="POST" action="{{ url_for('ret_chair.ret_chair_delete_rule') }}"
@@ -977,6 +995,23 @@ function openAssignmentEditor(empId) {
         const rankSelect = document.getElementById('academic_rank');
         const checkboxes = document.querySelectorAll('.indicator-checkbox');
 
+        // Enable/disable the per-indicator detail fields (description + duration) alongside
+        // its quantity input.
+        function setIndicatorFields(indicatorId, enabled) {
+            const qtyInput = document.getElementById('qty_' + indicatorId);
+            if (qtyInput) {
+                qtyInput.disabled = !enabled;
+                if (!enabled) qtyInput.value = 1;
+            }
+            const detail = document.getElementById('detail_' + indicatorId);
+            if (detail) {
+                detail.querySelectorAll('.research-detail-input').forEach(el => {
+                    el.disabled = !enabled;
+                    if (!enabled && el.tagName !== 'SELECT') el.value = '';
+                });
+            }
+        }
+
         function toggleCheckboxes() {
             const rankVal = rankSelect.value;
             const disabled = !rankVal;
@@ -988,25 +1023,15 @@ function openAssignmentEditor(empId) {
                 cb.disabled = disabled;
                 if (disabled) {
                     cb.checked = false;
-                    const qtyInput = document.getElementById('qty_' + cb.value);
-                    if (qtyInput) {
-                        qtyInput.disabled = true;
-                        qtyInput.value = 1;
-                    }
+                    setIndicatorFields(cb.value, false);
                 }
             });
         }
 
-        // Toggle quantity inputs based on checkbox state
+        // Toggle quantity/detail inputs based on checkbox state
         checkboxes.forEach(cb => {
             cb.addEventListener('change', function () {
-                const qtyInput = document.getElementById('qty_' + cb.value);
-                if (qtyInput) {
-                    qtyInput.disabled = !cb.checked;
-                    if (!cb.checked) {
-                        qtyInput.value = 1;
-                    }
-                }
+                setIndicatorFields(cb.value, cb.checked);
             });
         });
 
@@ -1035,7 +1060,7 @@ function openAssignmentEditor(empId) {
         const event = new Event('change');
         document.getElementById('academic_rank').dispatchEvent(event);
 
-        // Uncheck and disable all quantities first
+        // Uncheck and disable everything first
         const checkboxes = document.querySelectorAll('.indicator-checkbox');
         checkboxes.forEach(cb => {
             cb.checked = false;
@@ -1044,20 +1069,36 @@ function openAssignmentEditor(empId) {
                 qtyInput.value = 1;
                 qtyInput.disabled = true;
             }
+            const detail = document.getElementById('detail_' + cb.value);
+            if (detail) {
+                detail.querySelectorAll('.research-detail-input').forEach(el => {
+                    el.disabled = true;
+                    if (el.tagName !== 'SELECT') el.value = '';
+                });
+            }
         });
 
-        // Check the previously selected ones and set their quantities
+        // Restore the previously selected indicators with their quantity, description
+        // and target duration.
         researchIds.forEach(item => {
             const id = item.id;
-            const qty = item.qty;
             const cb = document.getElementById('ind_' + id);
-            if (cb) {
-                cb.checked = true;
-                const qtyInput = document.getElementById('qty_' + id);
-                if (qtyInput) {
-                    qtyInput.value = qty;
-                    qtyInput.disabled = false;
-                }
+            if (!cb) return;
+            cb.checked = true;
+            const qtyInput = document.getElementById('qty_' + id);
+            if (qtyInput) {
+                qtyInput.value = item.qty;
+                qtyInput.disabled = false;
+            }
+            const detail = document.getElementById('detail_' + id);
+            if (detail) {
+                detail.querySelectorAll('.research-detail-input').forEach(el => { el.disabled = false; });
+                const descEl = detail.querySelector(`[name="research_description_${id}"]`);
+                const durEl = detail.querySelector(`[name="research_dur_value_${id}"]`);
+                const unitEl = detail.querySelector(`[name="research_dur_unit_${id}"]`);
+                if (descEl) descEl.value = item.desc_text || '';
+                if (durEl) durEl.value = (item.dur_value != null) ? item.dur_value : '';
+                if (unitEl && item.dur_unit) unitEl.value = item.dur_unit;
             }
         });
 

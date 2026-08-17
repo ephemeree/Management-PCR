@@ -214,7 +214,8 @@
                                 <td class="text-center">
                                     <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>{{ target.target_deadline or '1 Semester' }}</span>
                                     {% if can_edit %}
-                                    <input type="hidden" name="target_dead_{{ target.indicator_id }}" value="{{ target.target_deadline or '1 Semester' }}">
+                                    <input type="hidden" name="target_dur_value_{{ target.indicator_id }}" value="{{ target.target_duration_value or 1 }}">
+                                    <input type="hidden" name="target_dur_unit_{{ target.indicator_id }}" value="{{ target.target_duration_unit or 'semesters' }}">
                                     {% endif %}
                                 </td>
                                 {% if not (dean_review and dean_review.overall_status == 'Approved') %}
@@ -325,10 +326,18 @@
                                 </td>
                                 <td class="text-center">
                                     {% if can_edit and not target.is_custom %}
-                                    <input type="text" class="form-control form-control-sm text-center shadow-sm"
-                                           name="target_dead_{{ target.indicator_id }}"
-                                           value="{{ target.target_deadline or '' }}"
-                                           placeholder="e.g. 5 mos">
+                                    <div class="d-flex gap-1 justify-content-center">
+                                        <input type="number" class="form-control form-control-sm text-center shadow-sm"
+                                               name="target_dur_value_{{ target.indicator_id }}"
+                                               value="{{ target.target_duration_value or '' }}"
+                                               min="1" placeholder="e.g. 6" style="max-width: 70px;">
+                                        <select class="form-select form-select-sm shadow-sm"
+                                                name="target_dur_unit_{{ target.indicator_id }}" style="max-width: 110px;">
+                                            {% for u in ['days', 'weeks', 'months', 'semesters'] %}
+                                            <option value="{{ u }}" {% if target.target_duration_unit == u %}selected{% elif not target.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
                                     {% else %}
                                     {% if target.target_deadline %}
                                     <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>{{ target.target_deadline }}</span>
@@ -416,9 +425,18 @@
                     </div>
 
                     <div class="mb-0">
-                        <label for="targetDeadline" class="form-label fw-bold">Target Deadline</label>
-                        <input type="text" class="form-control form-control-lg" id="targetDeadline"
-                            placeholder="e.g., 5 months or YYYY-MM-DD">
+                        <label for="targetDurationValue" class="form-label fw-bold">Target Duration</label>
+                        <div class="d-flex gap-2">
+                            <input type="number" class="form-control form-control-lg" id="targetDurationValue"
+                                   min="1" placeholder="e.g., 6" style="max-width: 140px;">
+                            <select class="form-select form-select-lg" id="targetDurationUnit">
+                                <option value="days">days</option>
+                                <option value="weeks">weeks</option>
+                                <option value="months" selected>months</option>
+                                <option value="semesters">semesters</option>
+                            </select>
+                        </div>
+                        <div class="form-text small">Used to compute the Timeliness rating.</div>
                     </div>
                 </form>
             </div>
@@ -602,7 +620,10 @@
                 const categorySelect = addTargetForm.querySelector('[name="Indicator"]').value; // 'Instructions' or 'Support'
                 const description = document.getElementById('targetDescription').value.trim();
                 const quantity = document.getElementById('targetQuantity').value;
-                const deadline = (document.getElementById('targetDeadline')?.value || '').trim();
+                const durValue = (document.getElementById('targetDurationValue')?.value || '').trim();
+                const durUnit = (document.getElementById('targetDurationUnit')?.value || 'months');
+                // Human-readable label mirrors format_duration() on the server.
+                const deadline = durValue ? `${durValue} ${durValue === '1' ? durUnit.replace(/s$/, '') : durUnit}` : '';
 
                 // Quick Frontend Validation check
                 if (!description || !quantity || parseInt(quantity) < 1) {
@@ -653,7 +674,8 @@
                                 <p class="mb-0 small text-secondary">${description}</p>
                                 <input type="hidden" name="custom_descriptions[]" value="${description}">
                                 <input type="hidden" name="custom_categories[]" value="${categoryName}">
-                                <input type="hidden" name="custom_deadlines[]" value="${deadline}">
+                                <input type="hidden" name="custom_duration_values[]" value="${durValue}">
+                                <input type="hidden" name="custom_duration_units[]" value="${durUnit}">
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('tr').remove(); checkEmptyTable('${categoryId}');">
                                 <i class="bi bi-trash-fill"></i>

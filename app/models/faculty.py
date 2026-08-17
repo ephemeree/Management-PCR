@@ -1,5 +1,6 @@
 # Trigger reload 19
 from app.models.criteria import SLUG_RESEARCH, SLUG_EXTENSION
+from app.models.scoring import format_duration
 
 
 def get_faculty_assigned_targets(cursor, emp_id, term_id):
@@ -145,7 +146,8 @@ def get_faculty_chair_review_status(cursor, emp_id, term_id):
 def get_faculty_ret_menu(cursor, academic_rank, term_id):
     from app.models.connection import timed_query
     query = """
-        SELECT r.required_selections, mi.indicator_id, mi.indicator_description, tc.category_name, tc.slug, rri.target_quantity
+        SELECT r.required_selections, mi.indicator_id, mi.indicator_description, tc.category_name, tc.slug,
+               rri.target_quantity, rri.target_description, rri.target_duration_value, rri.target_duration_unit
         FROM tbl_ret_rules r
         JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
         JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
@@ -248,7 +250,8 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
 
         # 2. Gather all assigned regular workloads distributed by the Program Chair for this specialization (if any)
         cursor.execute("""
-            SELECT da.indicator_id, MAX(da.assigned_quantity), MAX(da.custom_description), MAX(da.target_deadline)
+            SELECT da.indicator_id, MAX(da.assigned_quantity), MAX(da.custom_description), MAX(da.target_deadline),
+                   MAX(da.target_duration_value), MAX(da.target_duration_unit)
             FROM tbl_draft_allocation da
             JOIN tbl_employee_profiles ep ON da.emp_id = ep.emp_id
             WHERE ep.specialization = (SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s)
@@ -257,24 +260,26 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
         chair_allocations = cursor.fetchall()
 
         # 3. Process and migrate standard workloads into tbl_draft_targets
-        for ind_id, qty, cust_desc, t_dead in chair_allocations:
+        for ind_id, qty, cust_desc, t_dead, dur_value, dur_unit in chair_allocations:
             cursor.execute("""
-                SELECT draft_id FROM tbl_draft_targets 
+                SELECT draft_id FROM tbl_draft_targets
                 WHERE emp_id = %s AND indicator_id = %s
             """, (emp_id, ind_id))
             existing_draft = cursor.fetchone()
 
             if existing_draft:
                 cursor.execute("""
-                    UPDATE tbl_draft_targets 
-                    SET proposed_quantity = %s, review_status = %s, target_description = %s, target_deadline = %s 
+                    UPDATE tbl_draft_targets
+                    SET proposed_quantity = %s, review_status = %s, target_description = %s, target_deadline = %s,
+                        target_duration_value = %s, target_duration_unit = %s
                     WHERE draft_id = %s
-                """, (qty, target_status, cust_desc, t_dead, existing_draft[0]))
+                """, (qty, target_status, cust_desc, t_dead, dur_value, dur_unit, existing_draft[0]))
             else:
                 cursor.execute("""
-                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (emp_id, ind_id, qty, target_status, cust_desc, t_dead))
+                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
+                                                   target_duration_value, target_duration_unit)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (emp_id, ind_id, qty, target_status, cust_desc, t_dead, dur_value, dur_unit))
 
         # Ensure mandatory default Teaching Load target (21 hours) is saved
         cursor.execute("SELECT category_id FROM tbl_target_categories WHERE slug = 'instruction'")
@@ -349,8 +354,11 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                 for target in selected_research_targets:
                     res_ind_id = target['indicator_id']
 
+                    # Pull the rank menu's quantity, IPCR description and target duration
+                    # so research targets are scorable for Timeliness like any other target.
                     cursor.execute("""
-                        SELECT rri.target_quantity
+                        SELECT rri.target_quantity, rri.target_description,
+                               rri.target_duration_value, rri.target_duration_unit
                         FROM tbl_ret_rule_indicators rri
                         JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
                         JOIN tbl_employee_profiles ep ON ep.academic_rank = r.academic_rank
@@ -359,21 +367,35 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                     """, (emp_id, res_ind_id))
                     row = cursor.fetchone()
                     res_qty = row[0] if (row and row[0] is not None) else 1
+                    res_desc = row[1] if row else None
+                    res_dur_value = row[2] if row else None
+                    res_dur_unit = row[3] if row else None
+                    res_deadline = format_duration(res_dur_value, res_dur_unit)
 
                     cursor.execute("""
-                        INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                        VALUES (%s, %s, %s, %s)
-                    """, (emp_id, res_ind_id, res_qty, target_status))
+                        INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
+                                                       target_description, target_deadline,
+                                                       target_duration_value, target_duration_unit)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (emp_id, res_ind_id, res_qty, target_status, res_desc, res_deadline,
+                          res_dur_value, res_dur_unit))
 
                 # Materialize the RET Chair's direct Research assignments (locked — always
                 # present regardless of self-selection). Chair-assigned quantities are
                 # authoritative if the same indicator was also self-selected.
+                # Assigned research inherits the same rank-menu description/duration so it
+                # scores identically to a self-selected target.
                 cursor.execute("""
-                    SELECT indicator_id, target_quantity
-                    FROM tbl_ret_assignments
-                    WHERE emp_id = %s AND term_id = %s
-                """, (emp_id, active_term_id))
-                for assign_ind_id, assign_qty in cursor.fetchall():
+                    SELECT ra.indicator_id, ra.target_quantity,
+                           rri.target_description, rri.target_duration_value, rri.target_duration_unit
+                    FROM tbl_ret_assignments ra
+                    LEFT JOIN tbl_ret_rule_indicators rri ON rri.indicator_id = ra.indicator_id
+                    LEFT JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
+                        AND r.academic_rank = (SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s)
+                    WHERE ra.emp_id = %s AND ra.term_id = %s
+                """, (emp_id, emp_id, active_term_id))
+                for assign_ind_id, assign_qty, a_desc, a_dur_value, a_dur_unit in cursor.fetchall():
+                    a_deadline = format_duration(a_dur_value, a_dur_unit)
                     cursor.execute("""
                         SELECT draft_id FROM tbl_draft_targets
                         WHERE emp_id = %s AND indicator_id = %s
@@ -382,14 +404,18 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                     if existing:
                         cursor.execute("""
                             UPDATE tbl_draft_targets
-                            SET proposed_quantity = %s, review_status = %s
+                            SET proposed_quantity = %s, review_status = %s, target_description = %s,
+                                target_deadline = %s, target_duration_value = %s, target_duration_unit = %s
                             WHERE draft_id = %s
-                        """, (assign_qty, target_status, existing[0]))
+                        """, (assign_qty, target_status, a_desc, a_deadline, a_dur_value, a_dur_unit, existing[0]))
                     else:
                         cursor.execute("""
-                            INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                            VALUES (%s, %s, %s, %s)
-                        """, (emp_id, assign_ind_id, assign_qty, target_status))
+                            INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
+                                                           target_description, target_deadline,
+                                                           target_duration_value, target_duration_unit)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (emp_id, assign_ind_id, assign_qty, target_status, a_desc, a_deadline,
+                              a_dur_value, a_dur_unit))
             else:
                 # RET review already decided (Approved/Rejected): Research is locked from
                 # further self-editing; only refresh its status. Scoped to research.
@@ -520,18 +546,68 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
 
 def get_faculty_committed_targets(cursor, emp_id, term_id):
     from app.models.connection import timed_query
+    from app.models.scoring import build_actual_accomplishment, client_satisfaction_label
     query = """
         SELECT ct.target_id, ct.indicator_id, ct.assigned_quantity, ct.actual_quantity, ct.status,
                COALESCE(ct.target_description, mi.indicator_description) as indicator_description,
-               ct.target_deadline,
-               tc.category_name
+               ct.target_deadline, ct.target_duration_value, ct.target_duration_unit,
+               ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
+               mi.efficiency_type,
+               tc.category_name, tc.category_id
         FROM tbl_committed_targets ct
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE ct.emp_id = %s AND mi.term_id = %s AND ct.assigned_quantity > 0
         ORDER BY tc.category_name, mi.indicator_id
     """
-    return timed_query(cursor, query, (emp_id, term_id), label="get_faculty_committed_targets")
+    rows = timed_query(cursor, query, (emp_id, term_id), label="get_faculty_committed_targets")
+    # Compose the IPCR "Actual Accomplishments" sentence and derive Q/E/T for each target.
+    from app.models.scoring import compute_target_rating
+    for r in rows:
+        r['actual_accomplishment'] = build_actual_accomplishment(
+            r.get('indicator_description'),
+            r.get('actual_quantity'),
+            r.get('actual_duration_value'),
+            r.get('target_duration_unit'),
+            client_satisfaction_label(r.get('efficiency_rating_E')),
+        )
+        r['rating'] = compute_target_rating(r)
+    return rows
+
+
+def save_accomplishment_details(conn, cursor, emp_id, target_id, actual_duration_value,
+                                completion_status, efficiency_rating_E):
+    """
+    Save the per-target accomplishment inputs used for Timeliness (T) and, where the
+    indicator is client-satisfaction rated, Efficiency (E). Ownership is enforced so a
+    faculty member can only update their own committed targets.
+    """
+    from app.models.scoring import COMPLETION_STATUSES
+    try:
+        cursor.execute(
+            "SELECT emp_id FROM tbl_committed_targets WHERE target_id = %s", (target_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False, "Target not found."
+        if row[0] != emp_id:
+            return False, "You can only update your own targets."
+
+        if completion_status and completion_status not in COMPLETION_STATUSES:
+            return False, "Invalid completion status."
+        # Only a completed target carries a meaningful elapsed duration.
+        if completion_status and completion_status != 'COMPLETED':
+            actual_duration_value = None
+
+        cursor.execute("""
+            UPDATE tbl_committed_targets
+            SET actual_duration_value = %s, completion_status = %s, efficiency_rating_E = %s
+            WHERE target_id = %s
+        """, (actual_duration_value, completion_status or None, efficiency_rating_E, target_id))
+        conn.commit()
+        return True, "Accomplishment details saved."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
 
 
 def recalculate_target_accomplished_quantity(cursor, target_id):
@@ -545,7 +621,7 @@ def recalculate_target_accomplished_quantity(cursor, target_id):
     # 2. Sum direct uploads (exclude Rejected evidence)
     cursor.execute("""
         SELECT COALESCE(SUM(actual_qty_Q), 0) FROM tbl_evidence_repo
-        WHERE target_id = %s AND verification_status != 'Rejected'
+        WHERE target_id = %s AND verification_status NOT IN ('Rejected', 'Returned')
     """, (target_id,))
     direct_sum = cursor.fetchone()[0]
     
@@ -555,7 +631,7 @@ def recalculate_target_accomplished_quantity(cursor, target_id):
         JOIN tbl_evidence_repo er ON ca.evidence_id = er.evidence_id
         WHERE ca.emp_id = %s 
           AND ca.claimed = 1 
-          AND er.verification_status != 'Rejected'
+          AND er.verification_status NOT IN ('Rejected', 'Returned')
           AND (SELECT indicator_id FROM tbl_committed_targets WHERE target_id = er.target_id) = %s
     """, (emp_id, indicator_id))
     co_author_sum = cursor.fetchone()[0]
@@ -725,6 +801,57 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
     }
 
 
+# Evidence verification states. 'Pending' is set on upload; a verifier moves it to
+# 'Approved' or 'Returned'. Returned evidence is excluded from the accomplished
+# quantity and re-opens uploading for the faculty member.
+EVIDENCE_PENDING = 'Pending'
+EVIDENCE_APPROVED = 'Approved'
+EVIDENCE_RETURNED = 'Returned'
+EVIDENCE_STATUSES = [EVIDENCE_PENDING, EVIDENCE_APPROVED, EVIDENCE_RETURNED]
+
+
+def set_evidence_verification(conn, cursor, evidence_id, status, comment=None):
+    """
+    Approve or return a single uploaded evidence file.
+
+    Returning requires a reason, stores it as the supervisor comment, and unlocks the
+    owning target so the faculty member can upload a replacement. The accomplished
+    quantity is recalculated either way, since returned evidence no longer counts.
+    """
+    if status not in (EVIDENCE_APPROVED, EVIDENCE_RETURNED):
+        return False, "Invalid verification status."
+    if status == EVIDENCE_RETURNED and not (comment or '').strip():
+        return False, "A reason is required when returning evidence."
+
+    try:
+        cursor.execute("SELECT target_id FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False, "Evidence not found."
+        target_id = row[0]
+
+        cursor.execute("""
+            UPDATE tbl_evidence_repo
+            SET verification_status = %s, supervisor_comment = %s
+            WHERE evidence_id = %s
+        """, (status, (comment or '').strip() or None, evidence_id))
+
+        # Returned evidence re-opens the target for re-upload.
+        if status == EVIDENCE_RETURNED:
+            cursor.execute(
+                "UPDATE tbl_committed_targets SET status = 'Approved' WHERE target_id = %s",
+                (target_id,))
+
+        recalculate_target_accomplished_quantity(cursor, target_id)
+        conn.commit()
+        msg = ("Evidence approved." if status == EVIDENCE_APPROVED
+               else "Evidence returned to the faculty member for re-upload.")
+        return True, msg
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
 def submit_faculty_evidences(conn, cursor, emp_id, term_id):
     targets = get_faculty_committed_targets(cursor, emp_id, term_id)
     if not targets:
@@ -741,7 +868,16 @@ def submit_faculty_evidences(conn, cursor, emp_id, term_id):
         update_sql = "UPDATE tbl_committed_targets ct JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id SET ct.status = 'Submitted' WHERE ct.emp_id = %s AND mi.term_id = %s"
         cursor.execute(update_sql, (emp_id, term_id))
         conn.commit()
-        return True, "Evidences submitted successfully for verification."
+
+        # Snapshot the IPCR rating at submission — this is the record the Dean approves,
+        # and it preserves the weights in force at the time even if they change later.
+        # A missing weight configuration must not block submission, so failures here are
+        # reported alongside success rather than rolling the submission back.
+        from app.models.scoring import save_final_score
+        scored, score_msg, _ = save_final_score(conn, cursor, emp_id, term_id)
+        if scored:
+            return True, f"Evidences submitted successfully for verification. {score_msg}"
+        return True, f"Evidences submitted successfully for verification. (Rating not computed: {score_msg})"
     except Exception as e:
         conn.rollback()
         return False, f"Error submitting evidences: {str(e)}"

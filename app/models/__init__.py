@@ -2,6 +2,7 @@
 # Routes can still use `from app.models import *`
 from .connection import *
 from .criteria import *
+from .scoring import *
 from .user import *
 from .term import *
 from .indicator import *

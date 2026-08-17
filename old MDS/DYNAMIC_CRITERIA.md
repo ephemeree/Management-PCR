@@ -118,6 +118,35 @@ to a **nonzero** total must sum to **exactly 100**; an all-zero rank is treated 
 yet configured" and its rows are simply cleared — so the matrix can be filled in
 incrementally without one incomplete row blocking the rest.
 
+**Correction — designation-type axis.** Reviewing the actual sample IPCR forms (Regular
+vs. Designated Faculty) showed the same criterion can sit under a differently-weighted
+bucket depending on designation — Instruction is 50% ("Strategic Priorities") for Regular
+faculty but only 25% ("Core Functions") for Designated faculty, and Designated faculty
+have no Research/Extension (`ret`) bucket at all. `tbl_criteria_weights` gained a
+`designation_type ENUM('Regular Faculty','Designated Faculty')` column (added to its
+unique key), and the matrix UI became **two independent tabs** — Regular and Designated —
+each with its own rows, own "Copy from Previous Term", and own 100%-per-row validation.
+Verified against the real forms: Regular saves `instruction=50 / ret=40 / support=10`;
+Designated saves `instruction=25 / support=75` with **no `ret` row** — matching the
+sample IPCRs exactly.
+
+**General vs. Specific allocation.** Each designation tab also carries a mode toggle:
+
+| Mode | Meaning | Storage |
+|---|---|---|
+| **General** (default) | One set of percentages applying to every academic rank | rows with `rank_band = 'General'` |
+| **Specific per Academic Rank** | A separate set per rank band | rows with `rank_band` = the band |
+
+No migration was needed — `rank_band` is a plain `VARCHAR` with no FK, so `'General'` is
+usable as a sentinel band. The modes are **mutually exclusive**: saving in either mode
+clears *all* rows for that `(term, designation_type)` first, so a configuration can never
+be left half in each mode. Unconfigured defaults to **General** for both designation types
+(notably Designated Faculty, whose weights follow the designation rather than rank).
+
+`get_applicable_weights(term, designation_type, academic_rank)` is the resolution helper
+Phase 4 will use: General rows win for every rank if present, otherwise it falls back to
+the employee's rank band, returning `{}` when nothing is configured.
+
 ---
 
 ## 3. Rank-band normalization

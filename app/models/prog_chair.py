@@ -46,13 +46,15 @@ def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
     fac_placeholders = ','.join(['%s'] * len(faculty_ids))
     ind_placeholders = ','.join(['%s'] * len(indicator_ids))
     query = f"""
-        SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline
+        SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
+               da.target_duration_value, da.target_duration_unit
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
-        WHERE mi.term_id = %s 
+        WHERE mi.term_id = %s
           AND da.indicator_id IN ({ind_placeholders})
           AND da.emp_id IN ({fac_placeholders})
-        GROUP BY da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline
+        GROUP BY da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
+                 da.target_duration_value, da.target_duration_unit
     """
     rows = timed_query(cursor, query, [term_id] + indicator_ids + faculty_ids, label="get_assigned_quantity_batch")
     result = {}
@@ -60,7 +62,9 @@ def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
         result[row['indicator_id']] = {
             'assigned_quantity': row['assigned_quantity'],
             'custom_description': row.get('custom_description'),
-            'target_deadline': row.get('target_deadline')
+            'target_deadline': row.get('target_deadline'),
+            'target_duration_value': row.get('target_duration_value'),
+            'target_duration_unit': row.get('target_duration_unit')
         }
     return result
 
@@ -87,7 +91,12 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
             return False, "No active faculty found for this specialization."
 
         for item in allocations:
-            if len(item) == 4:
+            # Newer callers pass a structured duration (value + unit) alongside the label.
+            duration_value, duration_unit = None, None
+            if len(item) == 6:
+                (indicator_id, assigned_quantity, custom_description,
+                 target_deadline, duration_value, duration_unit) = item
+            elif len(item) == 4:
                 indicator_id, assigned_quantity, custom_description, target_deadline = item
             else:
                 indicator_id, assigned_quantity = item[0], item[1]
@@ -127,17 +136,21 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
 
                 if existing:
                     update_query = """
-                        UPDATE tbl_draft_allocation 
-                        SET assigned_quantity = %s, custom_description = %s, target_deadline = %s 
+                        UPDATE tbl_draft_allocation
+                        SET assigned_quantity = %s, custom_description = %s, target_deadline = %s,
+                            target_duration_value = %s, target_duration_unit = %s
                         WHERE allocation_id = %s
                     """
-                    cursor.execute(update_query, (assigned_quantity, custom_description, target_deadline, existing[0][0]))
+                    cursor.execute(update_query, (assigned_quantity, custom_description, target_deadline,
+                                                  duration_value, duration_unit, existing[0][0]))
                 else:
                     insert_query = """
-                        INSERT INTO tbl_draft_allocation (emp_id, indicator_id, assigned_quantity, custom_description, target_deadline)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO tbl_draft_allocation (emp_id, indicator_id, assigned_quantity, custom_description, target_deadline,
+                                                          target_duration_value, target_duration_unit)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
-                    cursor.execute(insert_query, (emp_id, indicator_id, assigned_quantity, custom_description, target_deadline))
+                    cursor.execute(insert_query, (emp_id, indicator_id, assigned_quantity, custom_description,
+                                                  target_deadline, duration_value, duration_unit))
 
         conn.commit()
         return True, "Targets distributed successfully to all faculty draft worklists."
@@ -538,7 +551,8 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
 
         cursor.execute(
             """
-            SELECT dt.indicator_id, COALESCE(ri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline
+            SELECT dt.indicator_id, COALESCE(ri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline,
+                   dt.target_duration_value, dt.target_duration_unit
             FROM tbl_draft_targets dt
             JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
             LEFT JOIN tbl_ipcr_chair_review cr ON cr.emp_id = dt.emp_id AND cr.term_id = mi.term_id
@@ -561,14 +575,15 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
             (emp_id, term_id)
         )
 
-        for indicator_id, qty, target_desc, target_dead in drafts:
+        for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit in drafts:
             if qty > 0:
                 cursor.execute(
                     """
-                    INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, target_description, target_deadline)
-                    VALUES (%s, %s, %s, 'Approved', %s, %s)
+                    INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, target_description, target_deadline,
+                                                       target_duration_value, target_duration_unit)
+                    VALUES (%s, %s, %s, 'Approved', %s, %s, %s, %s)
                     """,
-                    (emp_id, indicator_id, qty, target_desc, target_dead)
+                    (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit)
                 )
 
         cursor.execute(

@@ -64,14 +64,19 @@ def prog_chair_dashboard():
                     assigned_qty = alloc_info.get('assigned_quantity', 0)
                     cust_desc = alloc_info.get('custom_description') or ''
                     t_dead = alloc_info.get('target_deadline') or ''
+                    dur_value = alloc_info.get('target_duration_value')
+                    dur_unit = alloc_info.get('target_duration_unit')
                 else:
                     assigned_qty = alloc_info or 0
                     cust_desc = ''
                     t_dead = ''
+                    dur_value, dur_unit = None, None
 
                 ind['assigned_per_faculty'] = assigned_qty
                 ind['custom_description'] = cust_desc
                 ind['target_deadline'] = t_dead
+                ind['target_duration_value'] = dur_value
+                ind['target_duration_unit'] = dur_unit
 
                 if ind.get('slug') == SLUG_INSTRUCTION:
                     ind['applicable_faculty_count'] = all_faculty_count
@@ -104,6 +109,30 @@ def prog_chair_dashboard():
             locked_drafts=locked_drafts,
             evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else []
         )
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@prog_chair_bp.route('/verify_evidence', methods=['POST'])
+@role_required('PROGRAM_CHAIR')
+def prog_chair_verify_evidence():
+    """AJAX — approve or return a single uploaded evidence file."""
+    data = request.get_json(silent=True) or request.form
+    evidence_id = data.get('evidence_id')
+    status = (data.get('status') or '').strip()
+    comment = data.get('comment') or ''
+    if not evidence_id:
+        return jsonify({'success': False, 'message': 'Missing evidence_id.'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models.faculty import set_evidence_verification
+        success, msg = set_evidence_verification(conn, cursor, int(evidence_id), status, comment)
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         cursor.close()
         conn.close()
@@ -169,7 +198,8 @@ def assign_chair_target():
     indicator_ids = request.form.getlist('indicator_ids')
     assigned_quantities = request.form.getlist('assigned_quantities')
     custom_descriptions = request.form.getlist('custom_descriptions')
-    target_deadlines = request.form.getlist('target_deadlines')
+    target_duration_values = request.form.getlist('target_duration_values')
+    target_duration_units = request.form.getlist('target_duration_units')
 
     if not specialization or not term_id or not indicator_ids or not assigned_quantities:
         flash("Missing required data for assignment.", "danger")
@@ -195,8 +225,13 @@ def assign_chair_target():
         for idx, (ind_id, qty) in enumerate(zip(indicator_ids, assigned_quantities)):
             try:
                 c_desc = custom_descriptions[idx].strip() if idx < len(custom_descriptions) and custom_descriptions[idx] else None
-                t_dead = target_deadlines[idx].strip() if idx < len(target_deadlines) and target_deadlines[idx] else None
-                allocations.append((int(ind_id), int(qty), c_desc, t_dead))
+                # Structured duration drives Timeliness; the text label is derived from it
+                # so existing deadline displays keep working.
+                raw_value = target_duration_values[idx] if idx < len(target_duration_values) else None
+                raw_unit = target_duration_units[idx] if idx < len(target_duration_units) else None
+                dur_value, dur_unit, t_dead = parse_duration_fields(
+                    {'v': raw_value, 'u': raw_unit}, 'v', 'u')
+                allocations.append((int(ind_id), int(qty), c_desc, t_dead, dur_value, dur_unit))
             except ValueError:
                 continue
 
