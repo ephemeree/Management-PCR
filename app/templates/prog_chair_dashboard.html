@@ -317,7 +317,7 @@
         <!-- Single Save Button at the bottom -->
         <div class="d-flex justify-content-end mb-4 px-2">
             {% if not targets_saved %}
-            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" data-bs-toggle="modal" data-bs-target="#confirmSaveTargetsModal">
+            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="btnInitiateSaveTargets">
                 <i class="bi bi-save me-2"></i>Save Targets
             </button>
             {% else %}
@@ -847,6 +847,56 @@
             });
         }
 
+        const btnInitiateSaveTargets = document.getElementById('btnInitiateSaveTargets');
+        if (btnInitiateSaveTargets) {
+            btnInitiateSaveTargets.addEventListener('click', function () {
+                let isValid = true;
+                const form = document.getElementById('targetAllocationForm');
+                
+                if (!form) return;
+                
+                const assignedInputs = form.querySelectorAll('input[name^="assigned_quantity_"]');
+                const deadlineInputs = form.querySelectorAll('input[name^="target_deadline_value_"]');
+                const deadlineSelects = form.querySelectorAll('select[name^="target_deadline_unit_"]');
+                const descriptionInputs = form.querySelectorAll('textarea[name^="custom_description_"]');
+                
+                function checkValid(list) {
+                    list.forEach(el => {
+                        if (!el.value || el.value.trim() === '') {
+                            isValid = false;
+                            el.classList.add('border-danger');
+                        } else {
+                            el.classList.remove('border-danger');
+                        }
+                    });
+                }
+                
+                checkValid(assignedInputs);
+                checkValid(deadlineInputs);
+                checkValid(deadlineSelects);
+                checkValid(descriptionInputs);
+
+                if (!isValid) {
+                    if (window.showCustomAlert) {
+                        showCustomAlert('Missing Fields', 'Please fill out all Assigned Quantities, Deadlines, and Target Descriptions before saving.', 'warning');
+                    } else {
+                        alert('Please fill out all Assigned Quantities, Deadlines, and Target Descriptions before saving.');
+                    }
+                    return;
+                }
+                
+                const modal = new bootstrap.Modal(document.getElementById('confirmSaveTargetsModal'));
+                modal.show();
+            });
+            
+            // Remove error border on input
+            document.addEventListener('input', function(e) {
+                if (e.target.classList.contains('border-danger')) {
+                    e.target.classList.remove('border-danger');
+                }
+            });
+        }
+
         function getHeaderCategoryName(catName) {
             if (!catName) return '';
             if (catName.includes('Instruction') || catName.includes('Strategic')) {
@@ -1023,10 +1073,10 @@
                 subtitle.textContent = window.isWaiting ? '(Resubmitted for Approval)' : '(You may adjust quantities and add remarks per item)';
             }
 
-            // Reject button is always visible unless decided or already rejected
+            // Reject button is hidden when decided/approved or disabled when already rejected
             const btnReject = document.getElementById('btnReject');
             if (btnReject) {
-                btnReject.style.display = '';
+                btnReject.style.display = decided ? 'none' : '';
                 btnReject.disabled = decided || data.overall_status === 'Rejected';
             }
 
@@ -1545,10 +1595,16 @@
                                             onclick="openFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
                                             <i class="bi bi-eye-fill me-1"></i>View Evidences
                                         </button>
+                                        {% if fac.is_submitted_to_dean %}
+                                        <button type="button" class="btn btn-secondary btn-sm px-3 py-2 rounded-pill fw-bold opacity-75" disabled title="Already submitted to Dean for final verification">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Submitted to Dean
+                                        </button>
+                                        {% else %}
                                         <button type="button" class="btn btn-success btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
-                                            onclick="alert('Submit to Dean feature coming soon.'); return false;">
+                                            onclick="submitFacultyEvidenceToDean({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
                                             <i class="bi bi-send-fill me-1"></i>Submit to Dean
                                         </button>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -1838,7 +1894,7 @@ function openEvidenceViewer(evidenceList) {
                         </div>
                     </div>
                     ${commentHtml}
-                    <div class="d-flex justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none;"' : ''}>
+                    <div class="${isDecided ? 'd-none' : 'd-flex'} justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none !important;"' : ''}>
                         <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                 onclick="returnEvidence(${ev.evidence_id})">
                             <i class="bi bi-arrow-counterclockwise me-1"></i>Return
@@ -1860,6 +1916,14 @@ function openEvidenceViewer(evidenceList) {
 let pendingReturnEvidenceId = null;
 
 function returnEvidence(evidenceId) {
+    for (const tid in EVIDENCE_BY_TARGET) {
+        const list = EVIDENCE_BY_TARGET[tid] || [];
+        const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+        if (item && item.verification_status === 'Approved') {
+            alert('Approved evidence cannot be returned.');
+            return;
+        }
+    }
     pendingReturnEvidenceId = evidenceId;
     document.getElementById('returnEvidenceReasonInput').value = '';
     document.getElementById('returnEvidenceReasonError').style.display = 'none';
@@ -1918,7 +1982,11 @@ function verifyEvidence(evidenceId, status, comment) {
                 ? '<span class="badge bg-success rounded-pill">Approved</span>'
                 : '<span class="badge bg-danger rounded-pill">Returned</span>';
         }
-        if (actions) actions.style.display = 'none';
+        if (actions) {
+            actions.classList.remove('d-flex');
+            actions.classList.add('d-none');
+            actions.style.setProperty('display', 'none', 'important');
+        }
 
         // Real-time update of memory and main modal target row badge
         let targetIdFound = null;
@@ -1949,6 +2017,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+window.submitFacultyEvidenceToDean = function(empId, facultyName) {
+        showCustomConfirm({
+            title: "Submit Evidence to Dean?",
+            mainText: `Are you sure you want to submit <strong>${facultyName}</strong>'s approved evidence package to the Dean for final verification?`,
+            subText: "This will forward all verified evidence items to the Dean.",
+            confirmText: "Submit to Dean",
+            confirmClass: "btn-success",
+            iconClass: "bi-send-fill",
+            onConfirm: () => {
+                fetch('/prog_chair/submit_to_dean', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ emp_id: empId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(err => alert('Error submitting to Dean: ' + err));
+            }
+        });
+    };
 </script>
 
 <!-- Evidence Viewer Modal (Left-Side Portrait Panel) -->

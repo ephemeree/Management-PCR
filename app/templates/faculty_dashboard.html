@@ -21,6 +21,12 @@
     <span class="nav-text">Evidence Gathering</span>
 </button>
 {% endif %}
+{% if has_final_ipcr %}
+<button class="nav-item" data-section="nav-print-ipcr" onclick="showSection('nav-print-ipcr')">
+    <i class="bi bi-printer-fill"></i>
+    <span class="nav-text">Print IPCR</span>
+</button>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -501,6 +507,23 @@
         </span>
     </div>
 
+    {# ── Returned Evidence Notification Alert ──────────────── #}
+    {% if evidence_readiness and evidence_readiness.has_returned_evidence %}
+    <div class="alert border-0 shadow-sm mb-4" role="alert"
+        style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border-left: 5px solid #dc3545 !important; border-radius: 10px;">
+        <div class="d-flex align-items-start gap-3">
+            <i class="bi bi-arrow-counterclockwise text-danger fs-4 mt-1"></i>
+            <div>
+                <h6 class="fw-bold mb-1 text-danger">Action Required: Evidence Submission Returned</h6>
+                <p class="mb-0 text-dark" style="font-size: 0.92rem;">
+                    Your Program Chair or RET Chair has returned one or more of your evidence submissions for revision.
+                    Please click <strong>"Add/View Evidence"</strong> on the affected target(s) marked in red below, delete or replace the returned file, and then click <strong>"Resubmit Evidences"</strong>.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row g-4">
         <!-- Accomplishments Column -->
         <div class="col-lg-12">
@@ -526,6 +549,7 @@
                             </thead>
                             <tbody>
                                 {% for target in assigned_targets %}
+                                {% set target_has_returned = target.evidence_list and (target.evidence_list | selectattr('verification_status', 'in', ['Returned', 'Rejected']) | list | length > 0) %}
                                 <tr>
                                     <td class="ps-4 py-4">
                                         {% if target.category_name == 'A. Instructions' %}
@@ -534,6 +558,9 @@
                                         <span class="badge bg-light text-dark border mb-1">Support</span>
                                         {% else %}
                                         <span class="badge bg-light text-dark border mb-1">{{ target.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}</span>
+                                        {% endif %}
+                                        {% if target_has_returned %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 mb-1" style="font-size:0.7rem;"><i class="bi bi-arrow-counterclockwise me-1"></i>Evidence Returned</span>
                                         {% endif %}
                                         <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}</p>
                                     </td>
@@ -638,7 +665,7 @@
 
             {% if evidence_readiness %}
             <div class="mt-3 text-end">
-                {% if evidence_readiness.evidence_submitted %}
+                {% if evidence_readiness.evidence_submitted and not evidence_readiness.has_returned_evidence %}
                 <span class="badge bg-success px-4 py-3 fs-6 shadow-sm rounded-pill">
                     <i class="bi bi-check-circle-fill me-2"></i>Evidences Submitted for Verification
                 </span>
@@ -646,13 +673,125 @@
                 <form id="submitEvidenceForm" action="{{ url_for('faculty.faculty_submit_evidence') }}" method="POST" class="d-inline">
                     <button type="button" id="submitEvidenceBtn"
                         class="btn {% if evidence_readiness.all_evidence_ready %}btn-success shadow-lg{% else %}btn-secondary opacity-75{% endif %} btn-lg px-5 fw-bold rounded-pill transition-all"
-                        {% if not evidence_readiness.all_evidence_ready %}disabled title="Upload evidence to all targets and reach target quantities to unlock"{% endif %}>
-                        <i class="bi bi-send-check-fill me-2"></i>Submit Evidences
+                        {% if not evidence_readiness.all_evidence_ready %}disabled title="Upload valid evidence to all targets and reach target quantities to unlock"{% endif %}>
+                        {% if evidence_readiness.has_returned_evidence %}
+                        <i class="bi bi-send-check-fill me-2"></i>Resubmit Evidences for Verification
+                        {% else %}
+                        <i class="bi bi-send-check-fill me-2"></i>Submit Evidences for Verification
+                        {% endif %}
                     </button>
                 </form>
                 {% endif %}
             </div>
             {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if has_final_ipcr %}
+<div id="nav-print-ipcr" class="dashboard-section">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-printer-fill me-2 text-primary"></i>Finalized IPCR Details</h2>
+            <p class="text-muted mb-0">Your IPCR has been finalized and verified by the Dean. You may now review and print the final document.</p>
+        </div>
+        <button class="btn btn-primary px-4 fw-bold rounded-pill shadow-sm" onclick="alert('Print IPCR feature coming soon.');">
+            <i class="bi bi-printer me-2"></i>Print IPCR
+        </button>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Targets Table -->
+        <div class="col-xxl-8 col-xl-7">
+            <div class="table-responsive mb-4 shadow-sm bg-white" style="border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+                <table class="table table-hover mb-0 align-middle" style="font-size: 0.9rem;">
+                    <thead style="background-color: #f8fafc;">
+                        <tr>
+                            <th rowspan="2" width="15%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">MFO/PAP</th>
+                            <th rowspan="2" width="30%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Success Indicator<br>(Target + Measure)</th>
+                            <th rowspan="2" width="25%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Actual Accomplishments</th>
+                            <th colspan="4" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Rating</th>
+                            <th rowspan="2" width="10%" class="text-center align-middle border-bottom text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Remarks</th>
+                        </tr>
+                        <tr>
+                            <th width="5%" title="Quality" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">Q</th>
+                            <th width="5%" title="Efficiency" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">E</th>
+                            <th width="5%" title="Timeliness" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">T</th>
+                            <th width="5%" title="Average" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">A</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set current_category = namespace(name='') %}
+                        {% for t in assigned_targets %}
+                            {% set cat_name = t.category_name or 'General' %}
+                            {% if cat_name != current_category.name %}
+                                <tr style="background-color: #f1f5f9;">
+                                    <td colspan="8" class="text-start fw-bold py-3 px-4" style="color: #334155; font-size: 0.95rem;">{{ cat_name }}</td>
+                                </tr>
+                                {% set current_category.name = cat_name %}
+                            {% endif %}
+                            <tr>
+                                <td class="text-start px-4 text-muted border-end" style="font-size: 0.85rem;">{{ cat_name }}</td>
+                                <td class="text-start px-4 border-end" style="color: #475569;">{{ t.indicator_description }}</td>
+                                <td class="text-start px-4 border-end" style="color: #64748b;">{{ t.actual_accomplishment or '' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.q if t.rating and t.rating.q is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.e if t.rating and t.rating.e is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.t if t.rating and t.rating.t is not none else '-' }}</td>
+                                <td class="text-center fw-bold border-end" style="background-color: #f8fafc; color: #1e293b;">{{ t.rating.average if t.rating and t.rating.average is not none else '-' }}</td>
+                                <td class="text-start px-3"></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right Column: Summary Table -->
+        <div class="col-xxl-4 col-xl-5">
+            <div class="table-responsive shadow-sm bg-white w-100" style="border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+                <table class="table table-hover mb-0 align-middle" style="font-size: 0.9rem;">
+                    <thead style="background-color: #f8fafc;">
+                        <tr>
+                            <th rowspan="2" width="45%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Category</th>
+                            <th rowspan="2" width="15%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Weight (%)</th>
+                            <th colspan="2" class="text-center align-middle border-bottom text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Rating</th>
+                        </tr>
+                        <tr>
+                            <th width="20%" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">Average</th>
+                            <th width="20%" class="text-center align-middle border-bottom text-secondary" style="font-size: 0.8rem; font-weight: 700;">Weighted</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if ipcr_score and ipcr_score.breakdown %}
+                            {% for b in ipcr_score.breakdown %}
+                            <tr>
+                                <td class="text-start px-4 fw-medium border-end" style="color: #334155;">{{ b.category_name }}</td>
+                                <td class="text-center text-muted border-end">{{ b.weight_pct }}%</td>
+                                <td class="text-center fw-semibold text-dark border-end">{{ b.raw_avg if b.raw_avg is not none else '-' }}</td>
+                                <td class="text-center fw-bold text-primary">{{ b.weighted_value if b.weighted_value is not none else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr style="background-color: #f8fafc;">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #475569;">Total Overall Rating</td>
+                                <td colspan="2" class="text-center fw-bold fs-6 py-3" style="color: #0f172a;">{{ ipcr_score.total_overall_rating if ipcr_score.total_overall_rating is not none else '-' }}</td>
+                            </tr>
+                            <tr style="background-color: #f1f5f9;">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #334155;">Final Weighted Rating</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">{{ ipcr_score.final_weighted_rating if ipcr_score.final_weighted_rating is not none else '-' }}</td>
+                            </tr>
+                            <tr style="background-color: #ecfdf5;">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #065f46;">Adjectival Rating</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: #059669;">{{ ipcr_score.adjectival_rating or '-' }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-5">Summary data not available.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -957,7 +1096,6 @@
                     const modalEl = document.getElementById('evidenceGatheringModal');
                     const modalInstance = bootstrap.Modal.getInstance(modalEl);
                     if (modalInstance) modalInstance.hide();
-                    window.location.reload();
                 }
             }
         })
@@ -977,18 +1115,24 @@
     // Once evidences are submitted for verification the faculty can still view their
     // uploads, but cannot add more until a verifier returns one.
     const EVIDENCE_SUBMITTED = {{ 'true' if (evidence_readiness and evidence_readiness.evidence_submitted) else 'false' }};
+    const HAS_RETURNED_EVIDENCE = {{ 'true' if (evidence_readiness and evidence_readiness.has_returned_evidence) else 'false' }};
+    window.evidenceModalHasChanges = false;
 
     function applyEvidenceLock() {
         const form = document.getElementById('uploadEvidenceForm');
         const notice = document.getElementById('uploadLockedNotice');
         const footerSubmitBtn = document.getElementById('submitAccomplishmentBtn');
         if (!form) return;
+
+        const targetMeta = TARGET_META[String(currentTargetId)] || {};
+        const isLocked = EVIDENCE_SUBMITTED && !HAS_RETURNED_EVIDENCE && !targetMeta.hasReturned;
+
         form.querySelectorAll('input, button, select, textarea').forEach(el => {
-            el.disabled = EVIDENCE_SUBMITTED;
+            el.disabled = isLocked;
         });
-        if (notice) notice.style.display = EVIDENCE_SUBMITTED ? '' : 'none';
-        form.style.display = EVIDENCE_SUBMITTED ? 'none' : '';
-        if (footerSubmitBtn) footerSubmitBtn.disabled = EVIDENCE_SUBMITTED;
+        if (notice) notice.style.display = isLocked ? '' : 'none';
+        form.style.display = isLocked ? 'none' : '';
+        if (footerSubmitBtn) footerSubmitBtn.disabled = isLocked;
     }
 
     // Per-target metadata backing the Accomplishment Details panel (Timeliness / Efficiency).
@@ -1005,7 +1149,8 @@
             ratingQ: {{ target.rating.q if target.rating and target.rating.q is not none else 'null' }},
             ratingE: {{ target.rating.e if target.rating and target.rating.e is not none else 'null' }},
             ratingT: {{ target.rating.t if target.rating and target.rating.t is not none else 'null' }},
-            ratingAvg: {{ target.rating.average if target.rating and target.rating.average is not none else 'null' }}
+            ratingAvg: {{ target.rating.average if target.rating and target.rating.average is not none else 'null' }},
+            hasReturned: {{ 'true' if (target.evidence_list and target.evidence_list | selectattr('verification_status', 'in', ['Returned', 'Rejected']) | list | length > 0) else 'false' }}
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     };
@@ -1023,9 +1168,12 @@
             .then(data => {
                 submissionsContainer.innerHTML = '';
                 let totalQty = 0;
+                let hasReturned = false;
                 if (data.success && data.evidence_list.length > 0) {
                     data.evidence_list.forEach(ev => {
-                        if (ev.verification_status !== 'Returned' && ev.verification_status !== 'Rejected') {
+                        if (ev.verification_status === 'Returned' || ev.verification_status === 'Rejected') {
+                            hasReturned = true;
+                        } else {
                             totalQty += (parseInt(ev.actual_qty_Q, 10) || 0);
                         }
                         const parts = ev.file_path.split('/');
@@ -1042,25 +1190,18 @@
                         }
 
                         let actionHtml = '';
-                        if (ev.verification_status === 'Pending') {
+                        if (ev.verification_status !== 'Approved') {
                             if (ev.is_co_authored) {
                                 actionHtml = `
-                                    <form action="/faculty/unclaim_evidence" method="POST" class="m-0 d-inline">
-                                        <input type="hidden" name="co_author_id" value="${ev.co_author_id}">
-                                        <input type="hidden" name="target_id" value="${currentTargetId}">
-                                        <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Unlink Co-authored paper">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" onclick="unclaimEvidence(${ev.co_author_id}, ${currentTargetId})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Unlink Co-authored paper">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
                                 `;
                             } else {
                                 actionHtml = `
-                                    <form action="/faculty/delete_evidence" method="POST" class="m-0 d-inline">
-                                        <input type="hidden" name="evidence_id" value="${ev.evidence_id}">
-                                        <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
                                 `;
                             }
                         }
@@ -1091,11 +1232,88 @@
                     submissionsContainer.innerHTML = '<div class="text-center text-muted py-4 small">No evidence uploaded yet.</div>';
                 }
                 document.getElementById('evidenceActualQty').textContent = totalQty;
+                if (TARGET_META[String(currentTargetId)]) {
+                    TARGET_META[String(currentTargetId)].hasReturned = hasReturned;
+                }
+                applyEvidenceLock();
             })
             .catch(err => {
                 submissionsContainer.innerHTML = `<div class="text-center text-danger py-3 small">Error loading submissions: ${err.message}</div>`;
             });
     };
+
+    window.deleteEvidence = function(evidenceId) {
+        showCustomConfirm({
+            title: "Remove Evidence File?",
+            mainText: "Are you sure you want to remove this evidence file?",
+            subText: "This will delete the file and update your accomplished quantity.",
+            confirmText: "Yes, Remove",
+            confirmClass: "btn-danger",
+            iconClass: "bi-trash-fill",
+            onConfirm: () => {
+                const formData = new FormData();
+                formData.append('evidence_id', evidenceId);
+
+                fetch('/faculty/delete_evidence', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        window.evidenceModalHasChanges = true;
+                        reloadEvidenceModalSubmissions();
+                    } else {
+                        alert(data.message || 'Error deleting evidence.');
+                    }
+                })
+                .catch(err => alert('Delete error: ' + err));
+            }
+        });
+    };
+
+    window.unclaimEvidence = function(coAuthorId, targetId) {
+        showCustomConfirm({
+            title: "Unlink Co-authored Evidence?",
+            mainText: "Are you sure you want to unlink this co-authored evidence?",
+            subText: "This will remove the paper from your evidence checklist.",
+            confirmText: "Yes, Unlink",
+            confirmClass: "btn-danger",
+            iconClass: "bi-trash-fill",
+            onConfirm: () => {
+                const formData = new FormData();
+                formData.append('co_author_id', coAuthorId);
+                formData.append('target_id', targetId);
+
+                fetch('/faculty/unclaim_evidence', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        window.evidenceModalHasChanges = true;
+                        reloadEvidenceModalSubmissions();
+                    } else {
+                        alert(data.message || 'Error unlinking evidence.');
+                    }
+                })
+                .catch(err => alert('Unclaim error: ' + err));
+            }
+        });
+    };
+
+    // Modal close event listener to refresh page if evidence was uploaded/deleted
+    const evModalEl = document.getElementById('evidenceGatheringModal');
+    if (evModalEl) {
+        evModalEl.addEventListener('hidden.bs.modal', function () {
+            if (window.evidenceModalHasChanges) {
+                window.location.reload();
+            }
+        });
+    }
 
     // Process 6 Modal helpers
     window.openEvidenceModal = function (targetId, indicatorId, isResearch, description, targetQty, actualQty) {
@@ -1168,6 +1386,7 @@
                 if (submitBtn) submitBtn.disabled = false;
                 if (data.success) {
                     document.getElementById('evidenceFile').value = '';
+                    window.evidenceModalHasChanges = true;
                     reloadEvidenceModalSubmissions();
                 } else {
                     alert(data.message || 'Error uploading evidence.');
@@ -1361,7 +1580,7 @@
                     data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary fw-semibold px-4 rounded-pill"
                     id="submitAccomplishmentBtn" onclick="saveAccomplishmentDetails(true)">
-                    <i class="bi bi-check-circle-fill me-1"></i>Submit
+                    <i class="bi bi-check-circle-fill me-1"></i>Save &amp; Close
                 </button>
             </div>
         </div>

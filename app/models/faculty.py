@@ -788,6 +788,7 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
         return {
             'all_evidence_ready': False,
             'evidence_submitted': False,
+            'has_returned_evidence': False,
             'total_targets': 0,
             'targets_with_evidence': 0,
             'targets_met_qty': 0
@@ -797,6 +798,7 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
     targets_with_evidence = 0
     targets_met_qty = 0
     submitted_count = 0
+    has_returned_evidence = False
 
     for t in assigned_targets:
         ev_list = t.get('evidence_list')
@@ -804,23 +806,28 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
             ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             t['evidence_list'] = ev_list
 
-        if len(ev_list) > 0:
+        valid_evs = [e for e in ev_list if e.get('verification_status') not in ('Returned', 'Rejected')]
+        if len(valid_evs) > 0:
             targets_with_evidence += 1
+
+        if any(e.get('verification_status') in ('Returned', 'Rejected') for e in ev_list):
+            has_returned_evidence = True
 
         actual_q = t.get('actual_quantity') or 0
         assigned_q = t.get('assigned_quantity') or 0
         if actual_q >= assigned_q and assigned_q > 0:
             targets_met_qty += 1
 
-        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified'):
+        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified') and not any(e.get('verification_status') in ('Returned', 'Rejected') for e in ev_list):
             submitted_count += 1
 
     all_ready = (total_targets > 0) and (targets_with_evidence == total_targets) and (targets_met_qty == total_targets)
-    evidence_submitted = (submitted_count == total_targets) and (total_targets > 0)
+    evidence_submitted = (submitted_count == total_targets) and (total_targets > 0) and not has_returned_evidence
 
     return {
         'all_evidence_ready': all_ready,
         'evidence_submitted': evidence_submitted,
+        'has_returned_evidence': has_returned_evidence,
         'total_targets': total_targets,
         'targets_with_evidence': targets_with_evidence,
         'targets_met_qty': targets_met_qty
@@ -926,7 +933,8 @@ def enrich_faculty_verification_status(cursor, faculty_dict, term_id):
         SELECT 
             tc.category_name,
             er.evidence_id,
-            er.verification_status
+            er.verification_status,
+            ct.status
         FROM tbl_committed_targets ct
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
@@ -942,8 +950,9 @@ def enrich_faculty_verification_status(cursor, faculty_dict, term_id):
     ret_targets_has_ev = False
     ret_all_approved = True
     ret_has_targets = False
+    is_submitted_to_dean = any(r[3] in ('Submitted to Dean', 'Dean Approved') for r in rows) if rows else False
 
-    for cat_name, ev_id, ev_status in rows:
+    for cat_name, ev_id, ev_status, ct_status in rows:
         cat_str = (cat_name or '')
         is_ret = ('Research' in cat_str or 'Extension' in cat_str)
         if is_ret:
@@ -989,6 +998,7 @@ def enrich_faculty_verification_status(cursor, faculty_dict, term_id):
     faculty_dict['is_both_approved'] = is_both_approved
     faculty_dict['chair_finished'] = chair_finished
     faculty_dict['ret_finished'] = ret_finished
+    faculty_dict['is_submitted_to_dean'] = is_submitted_to_dean
     return faculty_dict
 
 

@@ -78,6 +78,9 @@ def dean_dashboard():
             college_wide_allocations[ind_id] = []
         college_wide_allocations[ind_id].append(alloc)
 
+    from app.models.dean import get_dean_evidence_faculty
+    pending_dean_evidence_list, approved_dean_evidence_list = get_dean_evidence_faculty(cursor, term_id)
+
     departments = get_departments(cursor)
 
     cursor.close()
@@ -97,7 +100,9 @@ def dean_dashboard():
                            college_wide_quotas=college_wide_quotas,
                            designated_faculty_list=designated_faculty_list,
                            designated_assignments=designated_assignments,
-                           college_wide_allocations=college_wide_allocations)
+                           college_wide_allocations=college_wide_allocations,
+                           pending_dean_evidence_list=pending_dean_evidence_list,
+                           approved_dean_evidence_list=approved_dean_evidence_list)
 
 
 @dean_bp.route('/cascade_quotas', methods=['POST'])
@@ -706,3 +711,130 @@ def assign_designated_target():
         conn.close()
 
     return redirect(url_for('dean.dean_dashboard'))
+
+
+# ──────────────────────────────────────────────
+# Dean Final Evidence Verification
+# ──────────────────────────────────────────────
+
+@dean_bp.route('/faculty_evidence_details/<int:emp_id>')
+@role_required('DEAN')
+def dean_faculty_evidence_details(emp_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models import get_all_terms
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active term.'}), 400
+        term_id = active_term['term_id']
+
+        from app.models.faculty import get_faculty_committed_targets
+        from app.models.scoring import compute_ipcr_score
+        targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+        ipcr_summary = compute_ipcr_score(cursor, emp_id, term_id)
+
+        cursor.execute("SELECT CONCAT(first_name, ' ', last_name), academic_rank, assigned_program FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        fac = cursor.fetchone()
+        fac_name = f"{fac[0]}" if fac else f"Employee #{emp_id}"
+        rank = fac[1] if fac else ''
+        prog = fac[2] if fac else ''
+
+        return jsonify({
+            'success': True,
+            'faculty_name': fac_name,
+            'academic_rank': rank,
+            'department': prog,
+            'targets': targets,
+            'ipcr_summary': ipcr_summary
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@dean_bp.route('/verify_evidence', methods=['POST'])
+@role_required('DEAN')
+def dean_verify_evidence():
+    data = request.get_json(silent=True) or request.form
+    evidence_id = data.get('evidence_id')
+    status = (data.get('status') or '').strip()
+    comment = data.get('comment') or ''
+    if not evidence_id:
+        return jsonify({'success': False, 'message': 'Missing evidence_id.'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models.dean import set_dean_evidence_verification
+        success, msg = set_dean_evidence_verification(conn, cursor, int(evidence_id), status, comment)
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@dean_bp.route('/approve_package', methods=['POST'])
+@role_required('DEAN')
+def dean_approve_package():
+    data = request.get_json(silent=True) or request.form
+    emp_id = data.get('emp_id')
+    if not emp_id:
+        return jsonify({'success': False, 'message': 'Missing emp_id.'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models import get_all_terms
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active term.'}), 400
+            
+        term_id = active_term['term_id']
+        cursor.execute("""
+            UPDATE tbl_committed_targets ct
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            SET ct.status = 'Dean Approved'
+            WHERE ct.emp_id = %s AND mi.term_id = %s AND ct.status = 'Submitted to Dean'
+        """, (emp_id, term_id))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Evidence package successfully approved!'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@dean_bp.route('/return_to_faculty/<int:emp_id>', methods=['POST'])
+@role_required('DEAN')
+def dean_return_to_faculty(emp_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models import get_all_terms
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active term.'}), 400
+            
+        term_id = active_term['term_id']
+        cursor.execute("""
+            UPDATE tbl_committed_targets ct
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            SET ct.status = 'Returned to Faculty'
+            WHERE ct.emp_id = %s AND mi.term_id = %s AND ct.status = 'Dean Approved'
+        """, (emp_id, term_id))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'IPCR successfully returned to faculty for printing!'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()

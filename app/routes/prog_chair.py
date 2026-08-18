@@ -118,6 +118,34 @@ def prog_chair_dashboard():
         conn.close()
 
 
+@prog_chair_bp.route('/submit_to_dean', methods=['POST'])
+@role_required('PROGRAM_CHAIR')
+def prog_chair_submit_to_dean():
+    data = request.get_json(silent=True) or request.form
+    emp_id = data.get('emp_id')
+    if not emp_id:
+        return jsonify({'success': False, 'message': 'Missing faculty emp_id.'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models import get_all_terms
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active academic term found.'}), 400
+
+        term_id = active_term['term_id']
+        from app.models.prog_chair import submit_evidence_package_to_dean
+        success, msg = submit_evidence_package_to_dean(conn, cursor, int(emp_id), term_id)
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @prog_chair_bp.route('/verify_evidence', methods=['POST'])
 @role_required('PROGRAM_CHAIR')
 def prog_chair_verify_evidence():

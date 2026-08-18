@@ -78,10 +78,12 @@ def faculty_dashboard():
 
         evidence_readiness = None
         ipcr_score = None
+        has_final_ipcr = False
         if is_locked:
             has_submitted = True
             from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target, check_faculty_evidence_readiness
             assigned_targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+            has_final_ipcr = any(t.get('status') == 'Dean Approved' for t in assigned_targets)
             # Fetch evidence for each target
             for target in assigned_targets:
                 target['evidence_list'] = get_evidence_by_target(cursor, target['target_id'], emp_id, target['indicator_id'])
@@ -108,7 +110,8 @@ def faculty_dashboard():
                            ret_review=ret_review,
                            ipcr_status=ipcr_status,
                            evidence_readiness=evidence_readiness,
-                           ipcr_score=ipcr_score)
+                           ipcr_score=ipcr_score,
+                           has_final_ipcr=has_final_ipcr)
 
 
 
@@ -371,7 +374,10 @@ def faculty_upload_evidence():
 @role_required('FACULTY')
 def faculty_delete_evidence():
     evidence_id = request.form.get('evidence_id')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
     if not evidence_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid evidence ID.'}), 400
         flash("Invalid evidence ID.", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
@@ -382,11 +388,17 @@ def faculty_delete_evidence():
         success = delete_evidence_item(cursor, int(evidence_id))
         if success:
             conn.commit()
+            if is_ajax:
+                return jsonify({'success': True, 'message': 'Evidence removed successfully.'})
             flash("Evidence removed successfully.", "success")
         else:
+            if is_ajax:
+                return jsonify({'success': False, 'message': 'Evidence item not found.'}), 44
             flash("Evidence item not found.", "danger")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': str(e)}), 500
         flash(f"Error deleting evidence: {str(e)}", "danger")
     finally:
         cursor.close()
@@ -477,7 +489,10 @@ def faculty_claim_evidence():
 def faculty_unclaim_evidence():
     co_author_id = request.form.get('co_author_id')
     target_id = request.form.get('target_id')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
     if not co_author_id or not target_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid claim payload.'}), 400
         flash("Invalid claim payload.", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
@@ -487,9 +502,13 @@ def faculty_unclaim_evidence():
         from app.models.faculty import unclaim_co_authored_evidence
         unclaim_co_authored_evidence(cursor, int(co_author_id), int(target_id))
         conn.commit()
+        if is_ajax:
+            return jsonify({'success': True, 'message': 'Co-authored evidence unlinked successfully.'})
         flash("Co-authored evidence unlinked successfully.", "success")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': str(e)}), 500
         flash(f"Error unlinking co-authored evidence: {str(e)}", "danger")
     finally:
         cursor.close()

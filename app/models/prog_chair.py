@@ -610,17 +610,36 @@ def get_program_chair_evidence_faculty(cursor, specialization, term_id):
         SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization,
                COUNT(DISTINCT ct.target_id) as total_targets,
                SUM(CASE WHEN ct.actual_quantity >= ct.assigned_quantity AND ct.assigned_quantity > 0 THEN 1 ELSE 0 END) as met_targets,
-               MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified') THEN 1 ELSE 0 END) as has_submitted
+               MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified', 'Approved', 'Submitted to Dean') THEN 1 ELSE 0 END) as has_submitted
         FROM tbl_employee_profiles ep
         JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         WHERE ep.specialization = %s AND mi.term_id = %s
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization
-        HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified') THEN 1 ELSE 0 END) = 1
+        HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified', 'Approved', 'Submitted to Dean') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name
     """
     rows = timed_query(cursor, query, (specialization, term_id), label="get_program_chair_evidence_faculty")
     for r in rows:
         enrich_faculty_verification_status(cursor, r, term_id)
     return rows
+
+
+def submit_evidence_package_to_dean(conn, cursor, emp_id, term_id):
+    """
+    Submits a fully approved evidence package for a faculty member to the Dean for final verification.
+    """
+    try:
+        query = """
+            UPDATE tbl_committed_targets ct
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            SET ct.status = 'Submitted to Dean'
+            WHERE ct.emp_id = %s AND mi.term_id = %s
+        """
+        cursor.execute(query, (emp_id, term_id))
+        conn.commit()
+        return True, "Evidence submission package successfully forwarded to the Dean for final verification."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
 

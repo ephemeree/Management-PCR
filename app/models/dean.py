@@ -493,3 +493,116 @@ def get_college_wide_allocations_tracker(cursor, term_id):
         ORDER BY ep.last_name, ep.first_name
     """
     return timed_query(cursor, query, (term_id,), label="get_college_wide_allocations_tracker")
+
+
+def get_dean_evidence_faculty(cursor, term_id):
+    """
+    Returns faculty members submitted to the Dean for final evidence verification,
+    categorized into pending_evidence_faculty_list and approved_evidence_faculty_list.
+    """
+    from app.models.connection import timed_query
+    from app.models.faculty import enrich_faculty_verification_status
+
+    query = """
+        SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program,
+               COUNT(DISTINCT ct.target_id) as total_targets,
+               SUM(CASE WHEN ct.actual_quantity >= ct.assigned_quantity AND ct.assigned_quantity > 0 THEN 1 ELSE 0 END) as met_targets,
+               MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) as is_dean_context
+        FROM tbl_employee_profiles ep
+        JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
+        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+        WHERE mi.term_id = %s
+        GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program
+        HAVING MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
+        ORDER BY ep.last_name, ep.first_name
+    """
+    rows = timed_query(cursor, query, (term_id,), label="get_dean_evidence_faculty")
+    
+    pending_list = []
+    approved_list = []
+
+    for r in rows:
+        enrich_faculty_verification_status(cursor, r, term_id)
+        # Check if all committed targets for this faculty member are marked 'Dean Approved'
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM tbl_committed_targets ct
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            WHERE ct.emp_id = %s AND mi.term_id = %s AND ct.status != 'Dean Approved'
+        """, (r['emp_id'], term_id))
+        non_approved_count = cursor.fetchone()[0]
+        
+        is_dean_approved = (non_approved_count == 0)
+        r['is_dean_approved'] = is_dean_approved
+
+        if is_dean_approved:
+            approved_list.append(r)
+        else:
+            pending_list.append(r)
+
+    return pending_list, approved_list
+
+
+def get_dean_faculty_evidence_details(cursor, emp_id, term_id):
+    """
+    Fetches ALL committed targets and uploaded evidence files for a faculty member for the Dean.
+    """
+    from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
+    targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+    for t in targets:
+        ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+        t['evidence_list'] = ev_list
+    return targets
+
+
+def set_dean_evidence_verification(conn, cursor, evidence_id, status, comment=None):
+    """
+    Approve or return an evidence file as Dean.
+    Returning sets verification_status = 'Returned', records comment, and re-opens target for faculty.
+    Approving all files updates target status to 'Dean Approved'.
+    """
+    from app.models.faculty import set_evidence_verification
+    success, msg = set_evidence_verification(conn, cursor, evidence_id, status, comment)
+    if not success:
+        return False, msg
+
+    try:
+        cursor.execute("""
+            SELECT ct.emp_id, mi.term_id
+            FROM tbl_evidence_repo er
+            JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            WHERE er.evidence_id = %s
+        """, (evidence_id,))
+        row = cursor.fetchone()
+        if row:
+            emp_id, term_id = row
+            if status == 'Approved':
+                cursor.execute("""
+                    SELECT er.verification_status
+                    FROM tbl_committed_targets ct
+                    JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+                    JOIN tbl_evidence_repo er ON er.target_id = ct.target_id
+                    WHERE ct.emp_id = %s AND mi.term_id = %s
+                """, (emp_id, term_id))
+                all_evs = cursor.fetchall()
+                if all_evs and all(ev_st == 'Approved' for (ev_st,) in all_evs):
+                    cursor.execute("""
+                        UPDATE tbl_committed_targets ct
+                        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+                        SET ct.status = 'Dean Approved'
+                        WHERE ct.emp_id = %s AND mi.term_id = %s
+                    """, (emp_id, term_id))
+                    conn.commit()
+            elif status == 'Returned':
+                cursor.execute("""
+                    UPDATE tbl_committed_targets ct
+                    JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+                    SET ct.status = 'Returned'
+                    WHERE ct.emp_id = %s AND mi.term_id = %s
+                """, (emp_id, term_id))
+                conn.commit()
+        return True, msg
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)

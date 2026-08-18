@@ -26,6 +26,10 @@
     <i class="bi bi-person-plus-fill"></i>
     <span class="nav-text">Target Assignment</span>
 </button>
+<button class="nav-item" data-section="nav-final-verification" onclick="showSection('nav-final-verification')">
+    <i class="bi bi-file-earmark-diff-fill"></i>
+    <span class="nav-text">Final Verification</span>
+</button>
 {% endblock %}
 
 {% block content %}
@@ -817,10 +821,520 @@
     {% endif %}
 </div>
 
+<!-- ──────────────────────────────────────────────
+     Final Verification (Dean Evidence Verification)
+     ────────────────────────────────────────────── -->
+<div id="nav-final-verification" class="dashboard-section">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-diff-fill text-primary me-2"></i>Final Evidence Verification</h2>
+            <p class="text-muted mb-0">Review and verify evidence packages submitted by Program Chairs across all categories.</p>
+        </div>
+    </div>
+
+    <!-- Table 1: Pending Final Verification -->
+    <div class="card shadow-sm border-0 mb-4" style="border-radius: 14px; overflow: hidden;">
+        <div class="card-header bg-white border-0 pt-4 pb-3 px-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-clock-history text-warning me-2"></i>Pending Final Verification
+                </h5>
+                <small class="text-muted">Faculty evidence packages submitted by Program Chair awaiting Dean verification.</small>
+            </div>
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill fw-bold">
+                {{ pending_dean_evidence_list | length }} Pending
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-start">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Program / Dept</th>
+                            <th class="text-center">Committed Targets</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if pending_dean_evidence_list %}
+                            {% for fac in pending_dean_evidence_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                    <small class="text-muted">{{ fac.specialization or 'Regular Faculty' }}</small>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.assigned_program or 'CIT' }}</span></td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-xs"><i class="bi bi-clock-history me-1"></i>Awaiting Final Verification</span>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                        onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                        <i class="bi bi-eye-fill me-1"></i>View &amp; Verify Evidences
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No pending evidence submissions for final verification.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table 2: Approved Final Verifications -->
+    <div class="card shadow-sm border-0 mb-4" style="border-radius: 14px; overflow: hidden;">
+        <div class="card-header bg-white border-0 pt-4 pb-3 px-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-patch-check-fill text-success me-2"></i>Approved Final Verifications
+                </h5>
+                <small class="text-muted">Faculty evidence packages fully approved by the Dean.</small>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-bold">
+                {{ approved_dean_evidence_list | length }} Approved
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-start">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Program / Dept</th>
+                            <th class="text-center">Committed Targets</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if approved_dean_evidence_list %}
+                            {% for fac in approved_dean_evidence_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                    <small class="text-muted">{{ fac.specialization or 'Regular Faculty' }}</small>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.assigned_program or 'CIT' }}</span></td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success px-3 py-2 rounded-pill shadow-xs"><i class="bi bi-patch-check-fill me-1"></i>Dean Approved</span>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <div class="d-inline-flex gap-2 align-items-center justify-content-center">
+                                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                            onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                            <i class="bi bi-file-earmark-text-fill me-1"></i>View IPCR
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No fully approved evidence submissions yet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ──────────────────────────────────────────────
+     Dean Evidence Verification Modals
+     ────────────────────────────────────────────── -->
+<div class="modal fade" id="deanEvidenceModal" tabindex="-1" aria-hidden="true" style="z-index: 1055;">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-primary text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold fs-6">
+                    <i class="bi bi-file-earmark-check-fill me-2"></i>IPCR Final Approval: <span id="deanEvidenceModalFacultyName"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center" id="deanEvidenceModalContainer">
+                <!-- Loaded dynamically -->
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-between align-items-center w-100" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-success fw-bold px-4 rounded-pill shadow-sm" id="btnDeanApproveIPCR" style="display: none;">
+                    <i class="bi bi-check-all me-1"></i>Approve IPCR
+                </button>
+                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill ms-auto" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deanReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-arrow-counterclockwise me-2"></i>Reject &amp; Return Evidence to Faculty</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-start">
+                <label for="deanReturnEvidenceReasonInput" class="form-label fw-bold small">Reason for Returning to Faculty (Required)</label>
+                <textarea class="form-control" id="deanReturnEvidenceReasonInput" rows="3" placeholder="Explain why this evidence is being rejected/returned so the faculty member can fix it..."></textarea>
+                <div id="deanReturnEvidenceReasonError" class="text-danger small mt-2" style="display:none;">A reason is required before returning evidence.</div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger fw-bold px-4 rounded-pill" onclick="confirmDeanReturnEvidence()">Confirm Return</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deanEvidenceViewerModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header text-white border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-file-earmark-text me-2"></i><span id="deanEvidenceViewerTitle">Evidence File</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0 text-center bg-light" id="deanEvidenceViewerBody" style="min-height: 500px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <!-- Embedded PDF or Image -->
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+    let deanCurrentPendingEvidenceId = null;
+    let deanCurrentPendingEmpId = null;
+    let deanEvidenceVerificationChanged = false;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalEl = document.getElementById('deanEvidenceModal');
+        if (modalEl) {
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                if (deanEvidenceVerificationChanged) {
+                    window.location.reload();
+                }
+            });
+        }
+    });
+
+    window.openDeanEvidenceModal = function(empId, facultyName) {
+        document.getElementById('deanEvidenceModalFacultyName').textContent = facultyName;
+        const container = document.getElementById('deanEvidenceModalContainer');
+        container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">Loading evidence details...</div></div>';
+        
+        deanEvidenceVerificationChanged = false;
+        const modalEl = document.getElementById('deanEvidenceModal');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+
+        fetch(`/dean/faculty_evidence_details/${empId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    container.innerHTML = `<div class="alert alert-danger mb-0">${data.message}</div>`;
+                    return;
+                }
+                renderDeanEvidenceDetails(data, empId);
+            })
+            .catch(err => {
+                container.innerHTML = `<div class="alert alert-danger mb-0">Error: ${err}</div>`;
+            });
+    };
+
+    function renderDeanEvidenceDetails(data, empId) {
+        const container = document.getElementById('deanEvidenceModalContainer');
+        const targets = data.targets;
+        const summary = data.ipcr_summary;
+
+        if (!targets || targets.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-4">No committed targets found for this faculty member.</div>';
+            return;
+        }
+
+        // Table 1: IPCR Targets
+        let targetsHtml = `
+            <div class="table-responsive mb-4 shadow-sm rounded-3 border">
+                <table class="table table-bordered table-hover mb-0 align-middle bg-white" style="font-size: 0.85rem;">
+                    <thead class="table-light text-center align-middle border-bottom">
+                        <tr>
+                            <th rowspan="2" width="15%" class="bg-light">MFO/PAP</th>
+                            <th rowspan="2" width="30%" class="bg-light">Success Indicator<br>(Target + Measure)</th>
+                            <th rowspan="2" width="25%" class="bg-light">Actual Accomplishments</th>
+                            <th colspan="4" class="bg-light border-bottom-0">Rating</th>
+                            <th rowspan="2" width="10%" class="bg-light">Remarks</th>
+                        </tr>
+                        <tr>
+                            <th width="5%" title="Quality" class="bg-light">Q</th>
+                            <th width="5%" title="Efficiency" class="bg-light">E</th>
+                            <th width="5%" title="Timeliness" class="bg-light">T</th>
+                            <th width="5%" title="Average" class="bg-light">A</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        let currentCategory = '';
+        targets.forEach(t => {
+            const catName = t.category_name || 'General';
+            if (catName !== currentCategory) {
+                targetsHtml += `
+                    <tr class="table-secondary">
+                        <td colspan="8" class="text-start fw-bold text-dark py-2 px-3">${catName}</td>
+                    </tr>
+                `;
+                currentCategory = catName;
+            }
+
+            const q = t.rating && t.rating.q !== null ? t.rating.q : '-';
+            const e = t.rating && t.rating.e !== null ? t.rating.e : '-';
+            const tim = t.rating && t.rating.t !== null ? t.rating.t : '-';
+            const avg = t.rating && t.rating.average !== null ? t.rating.average : '-';
+
+            targetsHtml += `
+                <tr>
+                    <td class="text-start px-3 text-muted" style="font-size: 0.8rem;">${catName}</td>
+                    <td class="text-start px-3">${t.indicator_description}</td>
+                    <td class="text-start px-3 text-secondary">${t.actual_accomplishment || ''}</td>
+                    <td class="text-center fw-semibold text-primary">${q}</td>
+                    <td class="text-center fw-semibold text-primary">${e}</td>
+                    <td class="text-center fw-semibold text-primary">${tim}</td>
+                    <td class="text-center fw-bold bg-light text-dark">${avg}</td>
+                    <td class="text-start px-2"></td>
+                </tr>
+            `;
+        });
+
+        targetsHtml += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Table 2: IPCR Summary
+        let summaryHtml = '';
+        if (summary && summary.breakdown && summary.breakdown.length > 0) {
+            summaryHtml += `
+                <div class="d-flex justify-content-center">
+                    <div class="table-responsive shadow-sm rounded-3 border" style="width: 100%; max-width: 600px;">
+                        <table class="table table-bordered mb-0 align-middle bg-white" style="font-size: 0.85rem;">
+                            <thead class="table-light text-center align-middle">
+                                <tr>
+                                    <th rowspan="2" width="45%" class="bg-light">Category</th>
+                                    <th rowspan="2" width="15%" class="bg-light">Weight (%)</th>
+                                    <th colspan="2" class="bg-light border-bottom-0">Rating</th>
+                                </tr>
+                                <tr>
+                                    <th width="20%" class="bg-light">Average</th>
+                                    <th width="20%" class="bg-light">Weighted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            summary.breakdown.forEach(b => {
+                summaryHtml += `
+                                <tr>
+                                    <td class="text-start px-3 fw-medium">${b.category_name}</td>
+                                    <td class="text-center text-muted">${b.weight_pct}%</td>
+                                    <td class="text-center fw-semibold text-dark">${b.raw_avg !== null ? b.raw_avg : '-'}</td>
+                                    <td class="text-center fw-bold text-primary">${b.weighted_value !== null ? b.weighted_value : '-'}</td>
+                                </tr>
+                `;
+            });
+
+            summaryHtml += `
+                                <tr>
+                                    <td colspan="2" class="text-end fw-bold px-3 py-3">Total Overall Rating</td>
+                                    <td colspan="2" class="text-center fw-bold fs-6 text-dark py-3">${summary.total_overall_rating !== null ? summary.total_overall_rating : '-'}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" class="text-end fw-bold px-3 py-3">Final Weighted Rating</td>
+                                    <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">${summary.final_weighted_rating !== null ? summary.final_weighted_rating : '-'}</td>
+                                </tr>
+                                <tr class="table-success">
+                                    <td colspan="2" class="text-end fw-bold px-3 py-3 text-success">Adjectival Rating</td>
+                                    <td colspan="2" class="text-center fw-bold fs-5 text-success py-3">${summary.adjectival_rating || '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        } else {
+            summaryHtml = '<div class="alert alert-warning text-center mt-3">Rating summary calculation is not available. Please ensure weights are configured for this faculty designation.</div>';
+        }
+
+        container.innerHTML = targetsHtml + summaryHtml;
+        
+        const btnApproveIPCR = document.getElementById('btnDeanApproveIPCR');
+        if (btnApproveIPCR) {
+            const hasPending = targets.some(t => t.status === 'Submitted to Dean');
+            if (hasPending) {
+                btnApproveIPCR.style.display = 'block';
+                const facName = document.getElementById('deanEvidenceModalFacultyName').textContent;
+                btnApproveIPCR.onclick = () => window.approveDeanEvidencePackage(empId, facName);
+            } else {
+                btnApproveIPCR.style.display = 'none';
+            }
+        }
+    }
+
+    window.approveDeanEvidencePackage = function(empId, facultyName) {
+        showCustomConfirm({
+            title: "Approve IPCR?",
+            mainText: `Are you sure you want to grant final approval to <strong>${facultyName}</strong>'s IPCR?`,
+            subText: "This action finalizes the IPCR ratings for this term.",
+            confirmText: "Approve IPCR",
+            confirmClass: "btn-success",
+            iconClass: "bi-check-all",
+            onConfirm: submitDeanApproval
+        });
+
+        function submitDeanApproval() {
+            fetch('/dean/approve_package', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ emp_id: empId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(err => alert('Error: ' + err));
+        }
+    };
+
+    window.returnToFaculty = function(empId, facultyName) {
+        showCustomConfirm({
+            title: "Return to Faculty?",
+            mainText: `Are you sure you want to return the finalized IPCR to <strong>${facultyName}</strong>?`,
+            subText: "This will allow the faculty to view and print their final IPCR.",
+            confirmText: "Return IPCR",
+            confirmClass: "btn-danger",
+            iconClass: "bi-arrow-counterclockwise",
+            onConfirm: submitReturn
+        });
+        
+        function submitReturn() {
+            fetch(`/dean/return_to_faculty/${empId}`, {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('success', data.message);
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showToast('danger', data.message || 'Error returning IPCR.');
+                }
+            })
+            .catch(err => {
+                showToast('danger', 'Network error.');
+            });
+        }
+    };
+
+    window.openDeanEvidenceViewer = function(url, filename) {
+        document.getElementById('deanEvidenceViewerTitle').textContent = filename;
+        const body = document.getElementById('deanEvidenceViewerBody');
+        const ext = filename.split('.').pop().toLowerCase();
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+        const isPdf = ext === 'pdf';
+        
+        if (isImage) {
+            body.innerHTML = `<img src="${url}" class="img-fluid m-3" style="max-height: 80vh; object-fit: contain;" alt="${filename}">`;
+        } else if (isPdf) {
+            body.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="600px" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">`;
+        } else {
+            body.innerHTML = `<div class="p-5">
+                <i class="bi bi-file-earmark-arrow-down fs-1 text-muted"></i>
+                <h5 class="mt-3 text-secondary">File preview not available for this format</h5>
+                <a href="${url}" target="_blank" class="btn btn-primary rounded-pill mt-3 px-4 fw-semibold"><i class="bi bi-download me-1"></i>Download File</a>
+            </div>`;
+        }
+        
+        const viewerModal = new bootstrap.Modal(document.getElementById('deanEvidenceViewerModal'));
+        viewerModal.show();
+    };
+
+    window.verifyDeanEvidence = function(evidenceId, status, empId, comment = '') {
+        fetch('/dean/verify_evidence', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ evidence_id: evidenceId, status: status, comment: comment })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                deanEvidenceVerificationChanged = true;
+                const badge = document.getElementById(`dean-ev-badge-${evidenceId}`);
+                const buttons = document.getElementById(`dean-ev-buttons-${evidenceId}`);
+                if (status === 'Approved') {
+                    if (badge) {
+                        badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-2 py-1';
+                        badge.textContent = 'Approved';
+                    }
+                    if (buttons) {
+                        buttons.classList.remove('d-flex');
+                        buttons.classList.add('d-none');
+                    }
+                } else {
+                    if (badge) {
+                        badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1';
+                        badge.textContent = 'Returned';
+                    }
+                }
+            } else {
+                alert(data.message || 'Error updating evidence verification.');
+            }
+        })
+        .catch(err => alert('Verification error: ' + err));
+    };
+
+    window.returnDeanEvidence = function(evidenceId, empId) {
+        deanCurrentPendingEvidenceId = evidenceId;
+        deanCurrentPendingEmpId = empId;
+        document.getElementById('deanReturnEvidenceReasonInput').value = '';
+        document.getElementById('deanReturnEvidenceReasonError').style.display = 'none';
+        const modal = new bootstrap.Modal(document.getElementById('deanReturnEvidenceReasonModal'));
+        modal.show();
+    };
+
+    window.confirmDeanReturnEvidence = function() {
+        const reason = document.getElementById('deanReturnEvidenceReasonInput').value.trim();
+        if (!reason) {
+            document.getElementById('deanReturnEvidenceReasonError').style.display = 'block';
+            return;
+        }
+        const modalEl = document.getElementById('deanReturnEvidenceReasonModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+
+        verifyDeanEvidence(deanCurrentPendingEvidenceId, 'Returned', deanCurrentPendingEmpId, reason);
+    };
+
     function updateTotals() {
         console.log('Quota values updated');
     }
@@ -1490,6 +2004,35 @@
         setTimeout(() => div.remove(), 5000);
     }
 
+    // Helper to show custom confirmation modal
+    window.showCustomConfirm = function ({ title, mainText, subText, confirmText, confirmClass, iconClass, onConfirm }) {
+        const modal = new bootstrap.Modal(document.getElementById('customConfirmModal'));
+
+        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('confirmModalTextMain').innerHTML = mainText;
+        document.getElementById('confirmModalTextSub').textContent = subText;
+
+        const confirmBtn = document.getElementById('confirmModalConfirmBtn');
+        confirmBtn.className = `btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2 ${confirmClass}`;
+
+        const confirmTextSpan = document.getElementById('confirmModalConfirmText');
+        confirmTextSpan.textContent = confirmText;
+
+        const icon = document.getElementById('confirmModalIcon');
+        icon.className = iconClass;
+
+        // Reset any existing click handlers
+        const newBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+
+        newBtn.addEventListener('click', function () {
+            modal.hide();
+            if (onConfirm) onConfirm();
+        });
+
+        modal.show();
+    };
+
     function generateSummary() {
         // This would trigger PDF generation
         alert('Generating Summary of Ratings for VPAA...');
@@ -1501,6 +2044,48 @@
         console.log('Dean Dashboard loaded successfully');
     });
 
-
 </script>
+
+<!-- Custom Confirmation Modal -->
+<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="font-size: 0.85rem; opacity: 0.6;"></button>
+            </div>
+            <div class="modal-body text-center px-4 pb-4 pt-1">
+                <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle"
+                    style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
+                <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain"
+                    style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
+                <p class="text-muted small px-3 mb-0" id="confirmModalTextSub"
+                    style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
+                <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
+                    id="confirmModalCancelBtn"
+                    style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                <button type="button"
+                    class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
+                    id="confirmModalConfirmBtn"
+                    style="border-radius: 10px; font-size: 0.9rem; min-width: 140px; transition: all 0.2s;">
+                    <i class="" id="confirmModalIcon"></i>
+                    <span id="confirmModalConfirmText">Confirm</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #customConfirmModal .btn-close:focus {
+        box-shadow: none;
+    }
+
+    #customConfirmModal .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12) !important;
+    }
+</style>
 {% endblock %}

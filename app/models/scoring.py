@@ -297,8 +297,16 @@ def compute_ipcr_score(cursor, emp_id, term_id):
         "SELECT designation, academic_rank FROM tbl_employee_profiles WHERE emp_id = %s",
         (emp_id,))
     row = cursor.fetchone()
-    designation = (row[0] if row else None) or 'Regular Faculty'
-    academic_rank = row[1] if row else None
+    if row:
+        if isinstance(row, dict):
+            designation = row.get('designation') or 'Regular Faculty'
+            academic_rank = row.get('academic_rank')
+        else:
+            designation = row[0] or 'Regular Faculty'
+            academic_rank = row[1]
+    else:
+        designation = 'Regular Faculty'
+        academic_rank = None
 
     targets = get_faculty_committed_targets(cursor, emp_id, term_id)
     weights = get_applicable_weights(cursor, term_id, designation, academic_rank)

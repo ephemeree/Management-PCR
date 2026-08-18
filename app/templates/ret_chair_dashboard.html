@@ -1315,6 +1315,7 @@ function openAssignmentEditor(empId) {
         const isDecided = data.overall_status === 'Approved' || data.overall_status === 'Rejected';
         document.getElementById('btnRetApprove').disabled = isDecided;
         document.getElementById('btnRetReject').disabled = isDecided;
+        document.getElementById('btnRetReject').style.display = (data.overall_status === 'Approved' || isDecided) ? 'none' : '';
         document.getElementById('retOverallRemarks').disabled = isDecided;
 
         // Render both tables
@@ -2060,7 +2061,7 @@ function openEvidenceViewer(evidenceList) {
                         </div>
                     </div>
                     ${commentHtml}
-                    <div class="d-flex justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none;"' : ''}>
+                    <div class="${isDecided ? 'd-none' : 'd-flex'} justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none !important;"' : ''}>
                         <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                 onclick="returnEvidence(${ev.evidence_id})">
                             <i class="bi bi-arrow-counterclockwise me-1"></i>Return
@@ -2082,6 +2083,14 @@ function openEvidenceViewer(evidenceList) {
 let pendingReturnEvidenceId = null;
 
 function returnEvidence(evidenceId) {
+    for (const tid in EVIDENCE_BY_TARGET) {
+        const list = EVIDENCE_BY_TARGET[tid] || [];
+        const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+        if (item && item.verification_status === 'Approved') {
+            alert('Approved evidence cannot be returned.');
+            return;
+        }
+    }
     pendingReturnEvidenceId = evidenceId;
     document.getElementById('returnEvidenceReasonInput').value = '';
     document.getElementById('returnEvidenceReasonError').style.display = 'none';
@@ -2140,7 +2149,11 @@ function verifyEvidence(evidenceId, status, comment) {
                 ? '<span class="badge bg-success rounded-pill">Approved</span>'
                 : '<span class="badge bg-danger rounded-pill">Returned</span>';
         }
-        if (actions) actions.style.display = 'none';
+        if (actions) {
+            actions.classList.remove('d-flex');
+            actions.classList.add('d-none');
+            actions.style.setProperty('display', 'none', 'important');
+        }
 
         // Real-time update of memory and main modal target row badge
         let targetIdFound = null;
