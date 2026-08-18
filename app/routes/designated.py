@@ -310,6 +310,40 @@ def designated_dashboard():
                            ipcr_score=ipcr_score)
 
 
+@designated_bp.route('/save_accomplishment', methods=['POST'])
+@role_required('DESIGNATED_FACULTY')
+def designated_save_accomplishment():
+    """AJAX — save Timeliness (and client-satisfaction Efficiency) inputs for one target."""
+    emp_id = session.get('user_id')
+    data = request.get_json(silent=True) or request.form
+    target_id = data.get('target_id')
+    if not target_id:
+        return jsonify({'success': False, 'message': 'Missing target_id.'}), 400
+
+    def _int_or_none(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models.faculty import save_accomplishment_details
+        success, msg = save_accomplishment_details(
+            conn, cursor, emp_id, int(target_id),
+            _int_or_none(data.get('actual_duration_value')),
+            (data.get('completion_status') or '').strip() or None,
+            _int_or_none(data.get('efficiency_rating_E')),
+        )
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @designated_bp.route('/submit_evidence', methods=['POST'])
 @role_required('DESIGNATED_FACULTY')
 def designated_submit_evidence():

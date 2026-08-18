@@ -356,8 +356,9 @@ function openAssignmentEditor(empId) {
                     <h5 class="fw-bold mb-0 text-warning">
                         <i class="bi bi-tools me-2"></i>Distribute Extension Targets to All Faculty
                     </h5>
-                    <small class="text-muted">Extension targets are distributed equally to every regular faculty across
-                        all specializations. This is a one-time action and locks once distributed.</small>
+                    <small class="text-muted">All Extension targets are distributed equally to every regular
+                        faculty across all specializations. Set the per-faculty quantity, description and
+                        duration for each. This is a one-time action and locks once distributed.</small>
                 </div>
                 {% if extension_locked %}
                 <span class="badge bg-secondary px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Distributed &amp; Locked</span>
@@ -372,11 +373,10 @@ function openAssignmentEditor(empId) {
                 {% if extension_distribution %}
                 <div class="list-group mb-3">
                     {% for ext in extension_distribution %}
-                    <div class="list-group-item {% if extension_locked and not ext.is_distributed %}opacity-50{% endif %}">
+                    <div class="list-group-item">
                         <div class="d-flex align-items-center gap-2">
-                            <input class="form-check-input m-0" type="checkbox" name="ext_indicator_ids[]"
-                                   value="{{ ext.indicator_id }}" {% if ext.is_distributed %}checked{% endif %}
-                                   {% if extension_locked %}disabled{% endif %}>
+                            <input type="hidden" name="ext_indicator_ids[]" value="{{ ext.indicator_id }}">
+                            <i class="bi bi-broadcast text-warning"></i>
                             <span class="flex-grow-1 fw-semibold small">{{ ext.indicator_description }}
                                 {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
                             </span>
@@ -1860,7 +1860,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
                     let evHtml = '';
                     if (t.evidence_list && t.evidence_list.length > 0) {
                         evHtml = `<button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold shadow-xs"
-                            onclick='openEvidenceViewer(${JSON.stringify(t.evidence_list)})'>
+                            onclick="openEvidenceViewerFor(${t.target_id})">
                             <i class="bi bi-folder2-open me-1"></i>View Uploaded Evidence (${t.evidence_list.length})
                         </button>`;
                     } else {
@@ -1887,6 +1887,12 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
         .catch(err => {
             tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
         });
+}
+
+const EVIDENCE_BY_TARGET = {};
+
+function openEvidenceViewerFor(targetId) {
+    openEvidenceViewer(EVIDENCE_BY_TARGET[targetId] || []);
 }
 
 function openEvidenceViewer(evidenceList) {
@@ -1920,23 +1926,39 @@ function openEvidenceViewer(evidenceList) {
                     </div>`;
             }
 
-            const statusBadge = ev.verification_status === 'Verified'
-                ? '<span class="badge bg-success rounded-pill">Verified</span>'
-                : ev.verification_status === 'Rejected'
-                ? '<span class="badge bg-danger rounded-pill">Rejected</span>'
+            const statusBadge = ev.verification_status === 'Approved'
+                ? '<span class="badge bg-success rounded-pill">Approved</span>'
+                : ev.verification_status === 'Returned'
+                ? '<span class="badge bg-danger rounded-pill">Returned</span>'
                 : '<span class="badge bg-warning text-dark rounded-pill">Pending</span>';
 
+            const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
+            const commentHtml = ev.supervisor_comment
+                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="bi bi-chat-left-text me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                : '';
+
             html += `
-                <div class="evidence-item mb-3 p-3 border rounded-3 bg-white shadow-sm">
+                <div class="evidence-item mb-3 p-3 border rounded-3 bg-white shadow-sm" id="evidence-item-${ev.evidence_id}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="text-truncate me-2">
                             <span class="fw-semibold small text-dark">${fileName}</span>
-                            <span class="ms-2">${statusBadge}</span>
+                            <span class="ms-2" id="evidence-status-${ev.evidence_id}">${statusBadge}</span>
                         </div>
                         <div class="small text-muted flex-shrink-0">
                             <span><i class="bi bi-check-circle me-1"></i>Qty: ${ev.actual_qty_Q}</span>
                             ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="bi bi-people-fill me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
                         </div>
+                    </div>
+                    ${commentHtml}
+                    <div class="d-flex justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none;"' : ''}>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                onclick="returnEvidence(${ev.evidence_id})">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Return
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3"
+                                onclick="verifyEvidence(${ev.evidence_id}, 'Approved')">
+                            <i class="bi bi-check-circle-fill me-1"></i>Approve
+                        </button>
                     </div>
                     ${previewHtml}
                 </div>
@@ -1946,10 +1968,43 @@ function openEvidenceViewer(evidenceList) {
     }
     new bootstrap.Modal(document.getElementById('evidenceViewerModal')).show();
 }
+
+// Returning requires a reason, which is shown back to the faculty member.
+function returnEvidence(evidenceId) {
+    const reason = prompt('Reason for returning this evidence (required):');
+    if (reason === null) return;                 // cancelled
+    if (!reason.trim()) {
+        alert('A reason is required when returning evidence.');
+        return;
+    }
+    verifyEvidence(evidenceId, 'Returned', reason.trim());
+}
+
+function verifyEvidence(evidenceId, status, comment) {
+    fetch("{{ url_for('ret_chair.ret_chair_verify_evidence') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evidence_id: evidenceId, status: status, comment: comment || '' })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+        const badge = document.getElementById('evidence-status-' + evidenceId);
+        const actions = document.getElementById('evidence-actions-' + evidenceId);
+        if (badge) {
+            badge.innerHTML = status === 'Approved'
+                ? '<span class="badge bg-success rounded-pill">Approved</span>'
+                : '<span class="badge bg-danger rounded-pill">Returned</span>';
+        }
+        if (actions) actions.style.display = 'none';
+    })
+    .catch(err => alert('Error: ' + err));
+}
 </script>
 
 <div class="modal fade" id="evidenceViewerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
+    <!-- Full-width so PDF/image evidence is readable while verifying. -->
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
                 <h5 class="modal-title fw-bold fs-6"><i class="bi bi-file-earmark-pdf-fill me-2"></i>Uploaded Evidence</h5>

@@ -929,11 +929,26 @@
                     </div>
 
                     <div class="text-end">
-                        <button type="submit" class="btn btn-primary fw-bold">
+                        {% set is_saved = grid | length > 0 %}
+                        <button type="button" class="btn btn-outline-secondary fw-bold me-2"
+                                id="tlEditBtn_{{ tslug }}" onclick="unlockTeachingLoad('{{ tslug }}')"
+                                {% if not is_saved %}style="display:none;"{% endif %}>
+                            <i class="bi bi-pencil-fill me-1"></i>Edit
+                        </button>
+                        <button type="submit" class="btn btn-primary fw-bold" id="tlSaveBtn_{{ tslug }}"
+                                {% if is_saved %}style="display:none;"{% endif %}>
                             <i class="bi bi-floppy-fill me-1"></i>Save {{ dt }} Teaching Load
                         </button>
                     </div>
                 </form>
+                <script>
+                (function () {
+                    // Lock the saved configuration until Edit is pressed.
+                    if ({{ 'true' if (grid | length > 0) else 'false' }}) {
+                        setTeachingLoadLocked('{{ tslug }}', true);
+                    }
+                })();
+                </script>
             </div>
             {% endfor %}
             {% endif %}
@@ -1000,6 +1015,21 @@
         const btn = document.getElementById('tlTabBtn_' + slug);
         if (panel) panel.style.display = '';
         if (btn) { btn.classList.remove('btn-outline-primary'); btn.classList.add('btn-primary'); }
+    }
+    function setTeachingLoadLocked(slug, locked) {
+        const panel = document.getElementById('tlTabPanel_' + slug);
+        if (!panel) return;
+        panel.querySelectorAll('input, select').forEach(function (el) {
+            if (el.type === 'hidden') return;
+            el.disabled = locked;
+        });
+        const editBtn = document.getElementById('tlEditBtn_' + slug);
+        const saveBtn = document.getElementById('tlSaveBtn_' + slug);
+        if (editBtn) editBtn.style.display = locked ? '' : 'none';
+        if (saveBtn) saveBtn.style.display = locked ? 'none' : '';
+    }
+    function unlockTeachingLoad(slug) {
+        setTeachingLoadLocked(slug, false);
     }
     function setTlMode(slug, mode) {
         const hidden = document.getElementById('tlMode_' + slug);

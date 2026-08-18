@@ -15,6 +15,18 @@ several steps depend on them matching.
 > Passwords are bcrypt-hashed. If you don't know one, log in as ADMIN →
 > System Security → Reset Password.
 
+### 🔁 Changed since the last run — retest these first
+
+| Where | What changed |
+|---|---|
+| **A3** | Teaching load now **locks after saving**; an **Edit** button unlocks it |
+| **D3** | Extension **checkbox removed** — all extension targets distribute |
+| **H** | Evidence viewer is now **truly full-width** (an old `50vw` rule was overriding it) |
+| **H** | **RET Chair now has Approve / Return buttons** (they were missing entirely) |
+| **H** | Approve/Return no longer embed evidence data in an HTML attribute — this was the likely cause of the **Approve button error**. If it still errors, capture the browser console message. |
+| **I** | Designated **Evidence Gathering now has Accomplishment Details** (Completed in, Client Satisfaction, Q·E·T) |
+| **I** | Selection table **column widths rebalanced** (description 40%, deadline 220px) |
+
 ---
 
 ## Phase A — Admin setup
@@ -44,6 +56,8 @@ Same panel → *Teaching Load*.
 - [ ] Switch Regular to **Per academic rank**, fill Instructor only → Save → reopen,
       confirm it is in per-rank mode and the "all ranks" row is gone.
 - [ ] Switch back to **Same for all ranks**, set `21` / `6` months, Save. *(Leave it here.)*
+- [ ] After saving, the fields are **locked** — an **Edit** button appears and the Save
+      button hides. Pressing **Edit** unlocks them and brings Save back. *(fixed)*
 
 ### A4. Criteria (target types)
 Admin → **Criteria**.
@@ -149,9 +163,9 @@ RET Chair → **Target Assignment** → *Assign Research Targets to Faculty*.
 ### D3. Extension distribution — ⚠ one-time
 Same panel → *Distribute Extension Targets to All Faculty*.
 
-- [ ] Each extension target now has a **description** and **duration + unit** field.
-- [ ] Tick 1–2, set qty (e.g. `1`), description, and duration (e.g. `6 months`) →
-      **Distribute** → confirm.
+- [ ] There is **no checkbox** — every extension target is distributed. *(fixed)*
+- [ ] Each extension target has qty / faculty, a **description**, and a **duration + unit**.
+- [ ] Fill them in (e.g. qty `1`, `6 months`) → **Distribute** → confirm.
 - [ ] Card flips to **Distributed & Locked**; inputs disabled; button gone.
 - [ ] Refresh → still locked. *(Cannot be undone — see Reset appendix.)*
 
@@ -278,10 +292,15 @@ Program Chair → faculty evidence details modal.
       Satisfaction rating where applicable, and Q · E · T · Avg badges.
 - [ ] The **actual accomplishment sentence** shows under each target description.
 - [ ] New **Status** column shows Approved / n Pending / n Returned / No evidence.
-- [ ] **View Uploaded Evidence** opens **full-screen**.
+- [ ] **View Uploaded Evidence** opens **truly full-screen** (not half-width). *(fixed)*
 - [ ] Each file has **Approve** and **Return** buttons.
 - [ ] **Return** without a reason is refused; with a reason it saves and the reason displays.
 - [ ] After returning, the file badge reads **Returned** and the buttons disappear.
+
+**RET Chair — same controls** *(new)*:
+- [ ] RET Chair → evidence details → **View Uploaded Evidence** is full-screen.
+- [ ] Each research/extension file has **Approve** and **Return** buttons.
+- [ ] Return requires a reason; the reason then displays on the item.
 
 **Back as the Faculty:**
 - [ ] The returned file shows **Returned** with the reason on hover.
@@ -292,12 +311,17 @@ Program Chair → faculty evidence details modal.
 
 ## Phase I — Designated Faculty
 
+- [ ] Selection table columns are readable — the description no longer squeezes
+      Target Qty and Deadline into squares. *(fixed)*
 - [ ] Their selection form uses **duration number + unit**.
 - [ ] "Add custom target" modal has **Target Duration** value + unit.
 - [ ] The **Teaching Load** target shows the Designated hours from A3 (e.g. 10).
 - [ ] Submit → **Dean** approves → targets committed with durations intact.
 - [ ] Evidence Gathering shows the **Summary of Ratings** using the **Designated** weights
       (Strategic Priorities/Support Functions 75 · Core Functions 25) — *not* 50/40/10.
+- [ ] The evidence modal has the **Accomplishment Details** card — composed sentence,
+      "Completed in", completion status, and **Computed Rating** badges. *(fixed)*
+- [ ] Saving those details persists and the badges update.
 
 ---
 
@@ -308,6 +332,8 @@ Program Chair → faculty evidence details modal.
 3. **Legacy targets** set before the duration work score as un-timed (`T = —`).
 4. The **return-reason prompt** is a plain browser dialog, not a styled modal.
 5. `Adjectival` efficiency type is available but nothing uses it by default.
+6. **Not yet covered by any run:** the faculty-side return checks in Phase H and the
+   G6 SQL verification — worth picking up once returns are confirmed working.
 
 ## Appendix — Reset for a re-run
 
@@ -347,3 +373,5 @@ DELETE da FROM tbl_draft_allocation da
 
 > Departments, criteria and IPCR categories are **not** term-scoped, so the reset leaves
 > them intact — that is intentional.
+
+
