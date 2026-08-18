@@ -850,11 +850,13 @@ def set_evidence_verification(conn, cursor, evidence_id, status, comment=None):
         return False, "A reason is required when returning evidence."
 
     try:
-        cursor.execute("SELECT target_id FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
+        cursor.execute("SELECT target_id, verification_status FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
         row = cursor.fetchone()
         if not row:
             return False, "Evidence not found."
-        target_id = row[0]
+        target_id, current_status = row[0], row[1]
+        if current_status == EVIDENCE_APPROVED and status == EVIDENCE_RETURNED:
+            return False, "Approved evidence cannot be returned."
 
         cursor.execute("""
             UPDATE tbl_evidence_repo
@@ -907,5 +909,87 @@ def submit_faculty_evidences(conn, cursor, emp_id, term_id):
     except Exception as e:
         conn.rollback()
         return False, f"Error submitting evidences: {str(e)}"
+
+
+def enrich_faculty_verification_status(cursor, faculty_dict, term_id):
+    """
+    Computes the verification status for a faculty member across Program Chair (CHAIR) and RET Chair (RET).
+    Sets:
+      - verification_status_code: 'APPROVED', 'WAITING_CHAIR', 'WAITING_RET', 'SUBMITTED'
+      - evidence_status: Human-readable status label
+      - is_both_approved: True if both Program Chair and RET Chair have approved all respective evidence items
+      - chair_finished: True if Program Chair target evidences are all approved (or no Chair targets exist)
+      - ret_finished: True if RET target evidences are all approved (or no RET targets exist)
+    """
+    emp_id = faculty_dict['emp_id']
+    cursor.execute("""
+        SELECT 
+            tc.category_name,
+            er.evidence_id,
+            er.verification_status
+        FROM tbl_committed_targets ct
+        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        LEFT JOIN tbl_evidence_repo er ON er.target_id = ct.target_id
+        WHERE ct.emp_id = %s AND mi.term_id = %s
+    """, (emp_id, term_id))
+    rows = cursor.fetchall()
+
+    chair_targets_has_ev = False
+    chair_all_approved = True
+    chair_has_targets = False
+
+    ret_targets_has_ev = False
+    ret_all_approved = True
+    ret_has_targets = False
+
+    for cat_name, ev_id, ev_status in rows:
+        cat_str = (cat_name or '')
+        is_ret = ('Research' in cat_str or 'Extension' in cat_str)
+        if is_ret:
+            ret_has_targets = True
+            if ev_id is not None:
+                ret_targets_has_ev = True
+                if ev_status != 'Approved':
+                    ret_all_approved = False
+        else:
+            chair_has_targets = True
+            if ev_id is not None:
+                chair_targets_has_ev = True
+                if ev_status != 'Approved':
+                    chair_all_approved = False
+
+    if not chair_has_targets:
+        chair_finished = True
+    else:
+        chair_finished = chair_targets_has_ev and chair_all_approved
+
+    if not ret_has_targets:
+        ret_finished = True
+    else:
+        ret_finished = ret_targets_has_ev and ret_all_approved
+
+    is_both_approved = chair_finished and ret_finished and (chair_has_targets or ret_has_targets)
+
+    if is_both_approved:
+        status_code = 'APPROVED'
+        status_label = 'Approved'
+    elif ret_finished and not chair_finished:
+        status_code = 'WAITING_CHAIR'
+        status_label = 'Waiting for Program Chair Approval'
+    elif chair_finished and not ret_finished:
+        status_code = 'WAITING_RET'
+        status_label = 'Waiting for RET Chair Approval'
+    else:
+        status_code = 'SUBMITTED'
+        status_label = 'Evidences Submitted'
+
+    faculty_dict['verification_status_code'] = status_code
+    faculty_dict['evidence_status'] = status_label
+    faculty_dict['is_both_approved'] = is_both_approved
+    faculty_dict['chair_finished'] = chair_finished
+    faculty_dict['ret_finished'] = ret_finished
+    return faculty_dict
+
 
 

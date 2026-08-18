@@ -897,14 +897,19 @@
         if (!isCompleted) input.value = '';
     };
 
-    window.saveAccomplishmentDetails = function () {
+    window.saveAccomplishmentDetails = function (closeModalOnSuccess = false) {
         const targetId = document.getElementById('evidenceTargetId').value;
         const status = (document.querySelector('input[name="completionStatus"]:checked') || {}).value || 'COMPLETED';
         const durationRaw = document.getElementById('evidenceCompletedIn').value;
         const effRaw = document.getElementById('evidenceEfficiency').value;
         const msg = document.getElementById('accomplishmentSaveMsg');
-        msg.className = 'small me-2 text-muted';
-        msg.textContent = 'Saving...';
+        if (msg) {
+            msg.className = 'small me-2 text-muted';
+            msg.textContent = 'Saving...';
+        }
+
+        const footerSubmitBtn = document.getElementById('submitAccomplishmentBtn');
+        if (footerSubmitBtn) footerSubmitBtn.disabled = true;
 
         fetch("{{ url_for('designated.designated_save_accomplishment') }}", {
             method: 'POST',
@@ -918,13 +923,32 @@
         })
         .then(r => r.json())
         .then(data => {
-            msg.className = 'small me-2 ' + (data.success ? 'text-success' : 'text-danger');
-            msg.textContent = data.message || (data.success ? 'Saved.' : 'Failed to save.');
-            if (data.success) setTimeout(() => window.location.reload(), 700);
+            if (footerSubmitBtn) footerSubmitBtn.disabled = false;
+            if (msg) {
+                msg.className = 'small me-2 ' + (data.success ? 'text-success' : 'text-danger');
+                msg.textContent = data.message || (data.success ? 'Saved.' : 'Failed to save.');
+            }
+            if (data.success) {
+                const meta = TARGET_META[String(targetId)];
+                if (meta) {
+                    meta.actualDurationValue = durationRaw === '' ? null : parseInt(durationRaw, 10);
+                    meta.completionStatus = status;
+                    meta.efficiencyRating = effRaw === '' ? null : parseInt(effRaw, 10);
+                }
+                if (closeModalOnSuccess) {
+                    const modalEl = document.getElementById('evidenceGatheringModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                    window.location.reload();
+                }
+            }
         })
         .catch(err => {
-            msg.className = 'small me-2 text-danger';
-            msg.textContent = 'Error: ' + err;
+            if (footerSubmitBtn) footerSubmitBtn.disabled = false;
+            if (msg) {
+                msg.className = 'small me-2 text-danger';
+                msg.textContent = 'Error: ' + err;
+            }
         });
     };
 
@@ -1185,8 +1209,7 @@
                                     </div>
                                     <div class="text-start mt-2">
                                         <button type="submit"
-                                            class="btn btn-primary fw-semibold px-4 rounded-pill">Upload &
-                                            Submit</button>
+                                            class="btn btn-primary fw-semibold px-4 rounded-pill"><i class="bi bi-cloud-upload me-1"></i>Upload</button>
                                     </div>
                                 </form>
                             </div>
@@ -1211,10 +1234,14 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 p-3 bg-light"
+            <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-end gap-2"
                 style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
                 <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill"
                     data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary fw-semibold px-4 rounded-pill"
+                    id="submitAccomplishmentBtn" onclick="saveAccomplishmentDetails(true)">
+                    <i class="bi bi-check-circle-fill me-1"></i>Submit
+                </button>
             </div>
         </div>
     </div>

@@ -704,6 +704,7 @@ def save_ret_review_items(cursor, conn, review_id, items):
 
 def get_ret_chair_evidence_faculty(cursor, term_id):
     from app.models.connection import timed_query
+    from app.models.faculty import enrich_faculty_verification_status
     query = """
         SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization,
                COUNT(DISTINCT ct.target_id) as total_targets,
@@ -720,5 +721,5 @@ def get_ret_chair_evidence_faculty(cursor, term_id):
     """
     rows = timed_query(cursor, query, (term_id,), label="get_ret_chair_evidence_faculty")
     for r in rows:
-        r['evidence_status'] = 'Submitted'
+        enrich_faculty_verification_status(cursor, r, term_id)
     return rows

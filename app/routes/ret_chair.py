@@ -43,6 +43,8 @@ def ret_chair_dashboard():
                 draft['ipcr_status'] = get_overall_ipcr_status(cursor, draft['emp_id'], term_id)
             pending_ret_count = sum(1 for d in pending_ret_drafts if d['ipcr_status'] in ('waiting_for_ret_chair_review', 'pending_ret_review'))
             evidence_faculty_list = get_ret_chair_evidence_faculty(cursor, term_id)
+            pending_evidence_faculty_list = [f for f in evidence_faculty_list if not f.get('is_both_approved')]
+            approved_evidence_faculty_list = [f for f in evidence_faculty_list if f.get('is_both_approved')]
 
         return render_template('ret_chair_dashboard.html',
                                active_term=active_term,
@@ -55,7 +57,9 @@ def ret_chair_dashboard():
                                extension_distribution=extension_distribution,
                                extension_locked=extension_locked,
                                pending_ret_count=pending_ret_count,
-                               evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [])
+                               evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [],
+                               pending_evidence_faculty_list=pending_evidence_faculty_list if 'pending_evidence_faculty_list' in locals() else [],
+                               approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else [])
     finally:
         cursor.close()
         conn.close()

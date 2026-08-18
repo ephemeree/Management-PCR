@@ -348,89 +348,7 @@ function openAssignmentEditor(empId) {
     }
     </script>
 
-    <!-- Distribute Extension Targets to all regular faculty -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #fd7e14 !important;">
-        <form action="{{ url_for('ret_chair.save_extension_distribution') }}" method="POST">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-start">
-                <div>
-                    <h5 class="fw-bold mb-0 text-warning">
-                        <i class="bi bi-tools me-2"></i>Distribute Extension Targets to All Faculty
-                    </h5>
-                    <small class="text-muted">All Extension targets are distributed equally to every regular
-                        faculty across all specializations. Set the per-faculty quantity, description and
-                        duration for each. This is a one-time action and locks once distributed.</small>
-                </div>
-                {% if extension_locked %}
-                <span class="badge bg-secondary px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Distributed &amp; Locked</span>
-                {% endif %}
-            </div>
-            <div class="card-body">
-                {% if extension_locked %}
-                <div class="alert alert-secondary border-0 small py-2 mb-3">
-                    <i class="bi bi-info-circle me-1"></i>Extension has been distributed for this term and can no longer be changed.
-                </div>
-                {% endif %}
-                {% if extension_distribution %}
-                <div class="list-group mb-3">
-                    {% for ext in extension_distribution %}
-                    <div class="list-group-item">
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="hidden" name="ext_indicator_ids[]" value="{{ ext.indicator_id }}">
-                            <i class="bi bi-broadcast text-warning"></i>
-                            <span class="flex-grow-1 fw-semibold small">{{ ext.indicator_description }}
-                                {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
-                            </span>
-                            <span class="text-muted small">Qty / faculty</span>
-                            <input type="number" min="1" class="form-control form-control-sm" style="width: 90px;"
-                                   name="ext_quantity_{{ ext.indicator_id }}"
-                                   value="{{ ext.distributed_quantity if ext.distributed_quantity > 0 else 1 }}"
-                                   {% if extension_locked %}disabled{% endif %}>
-                        </div>
-                        {# Description + duration, matching how the Program Chair allocates —
-                           the duration is what makes this target scorable for Timeliness. #}
-                        <div class="row g-2 mt-2 ps-4">
-                            <div class="col-md-7">
-                                <input type="text" class="form-control form-control-sm"
-                                       name="ext_description_{{ ext.indicator_id }}"
-                                       placeholder="IPCR target description"
-                                       value="{{ ext.target_description or '' }}"
-                                       {% if extension_locked %}disabled{% endif %}>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="d-flex gap-1">
-                                    <input type="number" min="1" class="form-control form-control-sm text-center"
-                                           name="ext_dur_value_{{ ext.indicator_id }}" placeholder="Duration"
-                                           value="{{ ext.target_duration_value or '' }}"
-                                           {% if extension_locked %}disabled{% endif %}>
-                                    <select class="form-select form-select-sm"
-                                            name="ext_dur_unit_{{ ext.indicator_id }}"
-                                            {% if extension_locked %}disabled{% endif %}>
-                                        {% for u in ['days', 'weeks', 'months', 'semesters'] %}
-                                        <option value="{{ u }}" {% if ext.target_duration_unit == u %}selected{% elif not ext.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% if not extension_locked %}
-                <div class="text-end">
-                    <button type="submit" class="btn btn-warning fw-bold"
-                            onclick="return confirm('Distribute these Extension targets to ALL regular faculty? This is a one-time action and cannot be changed afterward.');">
-                        <i class="bi bi-broadcast me-1"></i>Distribute to All Faculty
-                    </button>
-                </div>
-                {% endif %}
-                {% else %}
-                <div class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>No Extension indicators configured for this term.
-                </div>
-                {% endif %}
-            </div>
-        </form>
-    </div>
+
 
     <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #10B981 !important;">
         <div class="card-header bg-white border-0 py-3">
@@ -564,6 +482,119 @@ function openAssignmentEditor(empId) {
         <h2>Phase 2: Research Menu Configuration</h2>
         <p>Map the cascaded targets to specific academic ranks to create dynamic faculty menus.</p>
     </div>
+
+    <!-- Distribute Extension Targets to all regular faculty -->
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #fd7e14 !important;">
+        <form action="{{ url_for('ret_chair.save_extension_distribution') }}" method="POST">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="fw-bold mb-0 text-warning">
+                        <i class="bi bi-tools me-2"></i>Distribute Extension Targets to All Faculty
+                    </h5>
+                    <small class="text-muted">All Extension targets are distributed equally to every regular
+                        faculty across all specializations. Set the per-faculty quantity, description and
+                        duration for each. This is a one-time action and locks once distributed.</small>
+                </div>
+                {% if extension_locked %}
+                <span class="badge bg-secondary px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Distributed &amp; Locked</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if extension_locked %}
+                <div class="alert alert-secondary border-0 small py-2 mb-3">
+                    <i class="bi bi-info-circle me-1"></i>Extension has been distributed for this term and can no longer be changed.
+                </div>
+                {% endif %}
+                {% if extension_distribution %}
+                <div class="list-group mb-3">
+                    {% for ext in extension_distribution %}
+                    <div class="list-group-item">
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="hidden" name="ext_indicator_ids[]" value="{{ ext.indicator_id }}">
+                            <i class="bi bi-broadcast text-warning"></i>
+                            <span class="flex-grow-1 fw-semibold small">{{ ext.indicator_description }}
+                                {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
+                            </span>
+                            <span class="text-muted small">Qty / faculty</span>
+                            <input type="number" min="1" class="form-control form-control-sm" style="width: 90px;"
+                                   name="ext_quantity_{{ ext.indicator_id }}"
+                                   value="{{ ext.distributed_quantity if ext.distributed_quantity > 0 else 1 }}"
+                                   {% if extension_locked %}disabled{% endif %}>
+                        </div>
+                        {# Description + duration, matching how the Program Chair allocates —
+                           the duration is what makes this target scorable for Timeliness. #}
+                        <div class="row g-2 mt-2 ps-4">
+                            <div class="col-md-7">
+                                <input type="text" class="form-control form-control-sm"
+                                       name="ext_description_{{ ext.indicator_id }}"
+                                       placeholder="IPCR target description"
+                                       value="{{ ext.target_description or '' }}"
+                                       {% if extension_locked %}disabled{% endif %}>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="d-flex gap-1">
+                                    <input type="number" min="1" class="form-control form-control-sm text-center"
+                                           name="ext_dur_value_{{ ext.indicator_id }}" placeholder="Duration"
+                                           value="{{ ext.target_duration_value or '' }}"
+                                           {% if extension_locked %}disabled{% endif %}>
+                                    <select class="form-select form-select-sm"
+                                            name="ext_dur_unit_{{ ext.indicator_id }}"
+                                            {% if extension_locked %}disabled{% endif %}>
+                                        {% for u in ['days', 'weeks', 'months', 'semesters'] %}
+                                        <option value="{{ u }}" {% if ext.target_duration_unit == u %}selected{% elif not ext.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if not extension_locked %}
+                <div class="text-end">
+                    <button type="button" class="btn btn-warning fw-bold" onclick="showConfirmExtDistModal()">
+                        <i class="bi bi-broadcast me-1"></i>Distribute to All Faculty
+                    </button>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>No Extension indicators configured for this term.
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Confirm Extension Distribution Modal -->
+    <div class="modal fade" id="confirmExtDistModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header bg-warning text-dark border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Extension Distribution</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <i class="bi bi-broadcast text-warning display-3 d-block mb-3"></i>
+                    <h6 class="fw-bold text-dark mb-2" style="font-size: 1.1rem;">Distribute Extension Targets to ALL Faculty?</h6>
+                    <p class="text-secondary small mb-0">This is a <strong>one-time action</strong> for the active term. Once distributed, extension targets are locked and cannot be edited or redistributed.</p>
+                </div>
+                <div class="modal-footer border-0 p-3 justify-content-center bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning fw-bold px-4 rounded-pill" onclick="submitExtDistForm()">Confirm &amp; Distribute</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    function showConfirmExtDistModal() {
+        new bootstrap.Modal(document.getElementById('confirmExtDistModal')).show();
+    }
+    function submitExtDistForm() {
+        const form = document.querySelector('form[action="{{ url_for('ret_chair.save_extension_distribution') }}"]');
+        if (form) form.submit();
+    }
+    </script>
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
@@ -738,6 +769,8 @@ function openAssignmentEditor(empId) {
             </div>
         </div>
     </div>
+
+
 </div>
 </div>
 
@@ -1690,7 +1723,7 @@ function openAssignmentEditor(empId) {
         </span>
     </div>
 
-    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-journal-check me-2 text-primary"></i>Faculty RET Evidence Submissions</h5>
         </div>
@@ -1709,8 +1742,8 @@ function openAssignmentEditor(empId) {
                         </tr>
                     </thead>
                     <tbody>
-                        {% if evidence_faculty_list %}
-                            {% for fac in evidence_faculty_list %}
+                        {% if pending_evidence_faculty_list %}
+                            {% for fac in pending_evidence_faculty_list %}
                             <tr>
                                 <td class="ps-4 py-3">
                                     <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
@@ -1720,10 +1753,12 @@ function openAssignmentEditor(empId) {
                                 <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
                                 <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
                                 <td class="text-center">
-                                    {% if fac.evidence_status == 'Submitted' %}
-                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Evidences Submitted</span>
+                                    {% if fac.verification_status_code == 'WAITING_CHAIR' %}
+                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Waiting for Program Chair Approval</span>
+                                    {% elif fac.verification_status_code == 'WAITING_RET' %}
+                                        <span class="badge bg-info text-dark px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Waiting for RET Chair Approval</span>
                                     {% else %}
-                                        <span class="badge bg-secondary px-3 py-2 rounded-pill"><i class="bi bi-pencil-square me-1"></i>In Progress</span>
+                                        <span class="badge bg-secondary px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Evidences Submitted</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-center pe-4">
@@ -1737,7 +1772,61 @@ function openAssignmentEditor(empId) {
                         {% else %}
                             <tr>
                                 <td colspan="7" class="text-center py-4 text-muted">
-                                    No faculty Research &amp; Extension evidence submissions found for this academic term.
+                                    No pending faculty Research &amp; Extension evidence submissions found for this academic term.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved RET Evidence Submissions Table -->
+    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-check-circle-fill me-2 text-success"></i>Approved RET Evidence Submissions</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Department / Specialization</th>
+                            <th class="text-center">RET Targets Committed</th>
+                            <th class="text-center">RET Targets Met</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if approved_evidence_faculty_list %}
+                            {% for fac in approved_evidence_faculty_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center">{{ fac.specialization or 'Department Faculty' }}</td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-all me-1"></i>Approved</span>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                        onclick="openRetFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                        <i class="bi bi-eye-fill me-1"></i>View Evidences
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    No fully approved Research &amp; Extension evidence submissions yet.
                                 </td>
                             </tr>
                         {% endif %}
@@ -1771,10 +1860,11 @@ function openAssignmentEditor(empId) {
                     <table class="table align-middle border mb-0" style="border-radius: 10px; overflow: hidden;">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3" width="40%">Research &amp; Extension Indicator</th>
+                                <th class="ps-3" width="35%">Research &amp; Extension Indicator</th>
                                 <th class="text-center" width="12%">Target Qty</th>
                                 <th class="text-center" width="15%">Accomplished Qty</th>
-                                <th class="ps-3" width="33%">Uploaded Evidences</th>
+                                <th class="text-center" width="15%">Status</th>
+                                <th class="ps-3" width="23%">Uploaded Evidences</th>
                             </tr>
                         </thead>
                         <tbody id="modalRetEvidenceTableBody">
@@ -1795,7 +1885,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
     document.getElementById('modalRetFacultyName').innerText = facultyName;
     document.getElementById('modalRetFacultyRank').innerText = 'Loading details...';
     const tbody = document.getElementById('modalRetEvidenceTableBody');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading RET evidence files...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading RET evidence files...</td></tr>';
 
     const modal = new bootstrap.Modal(document.getElementById('retFacultyEvidenceVerificationModal'));
     modal.show();
@@ -1804,7 +1894,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
         .then(res => res.json())
         .then(data => {
             if (!data.success) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error: ${data.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Error: ${data.message}</td></tr>`;
                 return;
             }
 
@@ -1812,7 +1902,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
             tbody.innerHTML = '';
 
             if (!data.targets || data.targets.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No committed Research & Extension targets found for this faculty member.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No committed Research & Extension targets found for this faculty member.</td></tr>';
                 return;
             }
 
@@ -1848,7 +1938,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-light fw-bold';
                 headerTr.innerHTML = `
-                    <td colspan="4" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: #f1f3f5; border-top: 2px solid #dee2e6;">
+                    <td colspan="5" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: #f1f3f5; border-top: 2px solid #dee2e6;">
                         <i class="bi bi-folder-fill me-2 text-primary"></i>${group.title}
                     </td>
                 `;
@@ -1874,6 +1964,22 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
                         ? `<span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>${t.actual_quantity}</span>`
                         : `<span class="badge bg-secondary px-3 py-2 rounded-pill">${t.actual_quantity || 0}</span>`;
 
+                    let verifyHtml;
+                    const evs = t.evidence_list || [];
+                    if (evs.length === 0) {
+                        verifyHtml = '<span class="badge bg-light text-muted border small">No evidence</span>';
+                    } else {
+                        const returned = evs.filter(e => e.verification_status === 'Returned').length;
+                        const approved = evs.filter(e => e.verification_status === 'Approved').length;
+                        if (returned > 0) {
+                            verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
+                        } else if (approved === evs.length) {
+                            verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>';
+                        } else {
+                            verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
+                        }
+                    }
+
                     tr.innerHTML = `
                         <td class="ps-3 py-3">
                             <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Research & Extension'}</span>
@@ -1881,6 +1987,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
                         </td>
                         <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                         <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
+                        <td class="text-center" id="target-verify-status-${t.target_id}">${verifyHtml}</td>
                         <td class="ps-3 py-3">${evHtml}</td>
                     `;
                     tbody.appendChild(tr);
@@ -1888,7 +1995,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
             });
         })
         .catch(err => {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
         });
 }
 
@@ -1972,15 +2079,48 @@ function openEvidenceViewer(evidenceList) {
     new bootstrap.Modal(document.getElementById('evidenceViewerModal')).show();
 }
 
-// Returning requires a reason, which is shown back to the faculty member.
+let pendingReturnEvidenceId = null;
+
 function returnEvidence(evidenceId) {
-    const reason = prompt('Reason for returning this evidence (required):');
-    if (reason === null) return;                 // cancelled
-    if (!reason.trim()) {
-        alert('A reason is required when returning evidence.');
+    pendingReturnEvidenceId = evidenceId;
+    document.getElementById('returnEvidenceReasonInput').value = '';
+    document.getElementById('returnEvidenceReasonError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('returnEvidenceReasonModal')).show();
+}
+
+function confirmReturnEvidence() {
+    const reason = document.getElementById('returnEvidenceReasonInput').value.trim();
+    if (!reason) {
+        document.getElementById('returnEvidenceReasonError').style.display = '';
         return;
     }
-    verifyEvidence(evidenceId, 'Returned', reason.trim());
+    const modalEl = document.getElementById('returnEvidenceReasonModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    if (pendingReturnEvidenceId) {
+        verifyEvidence(pendingReturnEvidenceId, 'Returned', reason);
+    }
+}
+
+let evidenceVerificationChanged = false;
+
+function updateTargetStatusBadge(targetId) {
+    const evs = EVIDENCE_BY_TARGET[targetId] || [];
+    if (evs.length === 0) return;
+    const returned = evs.filter(e => e.verification_status === 'Returned').length;
+    const approved = evs.filter(e => e.verification_status === 'Approved').length;
+    let verifyHtml = '';
+    if (returned > 0) {
+        verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
+    } else if (approved === evs.length) {
+        verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>';
+    } else {
+        verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
+    }
+    const targetStatusEl = document.getElementById('target-verify-status-' + targetId);
+    if (targetStatusEl) {
+        targetStatusEl.innerHTML = verifyHtml;
+    }
 }
 
 function verifyEvidence(evidenceId, status, comment) {
@@ -1992,6 +2132,7 @@ function verifyEvidence(evidenceId, status, comment) {
     .then(r => r.json())
     .then(data => {
         if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+        evidenceVerificationChanged = true;
         const badge = document.getElementById('evidence-status-' + evidenceId);
         const actions = document.getElementById('evidence-actions-' + evidenceId);
         if (badge) {
@@ -2000,9 +2141,36 @@ function verifyEvidence(evidenceId, status, comment) {
                 : '<span class="badge bg-danger rounded-pill">Returned</span>';
         }
         if (actions) actions.style.display = 'none';
+
+        // Real-time update of memory and main modal target row badge
+        let targetIdFound = null;
+        for (const tid in EVIDENCE_BY_TARGET) {
+            const list = EVIDENCE_BY_TARGET[tid];
+            const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+            if (item) {
+                item.verification_status = status;
+                if (comment) item.supervisor_comment = comment;
+                targetIdFound = tid;
+                break;
+            }
+        }
+        if (targetIdFound) {
+            updateTargetStatusBadge(targetIdFound);
+        }
     })
     .catch(err => alert('Error: ' + err));
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const el = document.getElementById('retFacultyEvidenceVerificationModal');
+    if (el) {
+        el.addEventListener('hidden.bs.modal', function() {
+            if (evidenceVerificationChanged) {
+                window.location.reload();
+            }
+        });
+    }
+});
 </script>
 
 <div class="modal fade" id="evidenceViewerModal" tabindex="-1" aria-hidden="true">
@@ -2016,6 +2184,27 @@ function verifyEvidence(evidenceId, status, comment) {
             <div class="modal-body p-3" id="evidenceViewerBody"></div>
             <div class="modal-footer border-0 p-3 bg-light">
                 <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Return Evidence Reason Modal -->
+<div class="modal fade" id="returnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-arrow-counterclockwise me-2"></i>Return Evidence to Faculty</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-start">
+                <label for="returnEvidenceReasonInput" class="form-label fw-bold small">Reason for Returning (Required)</label>
+                <textarea class="form-control" id="returnEvidenceReasonInput" rows="3" placeholder="Explain why this evidence is being returned so the faculty member can fix it..."></textarea>
+                <div id="returnEvidenceReasonError" class="text-danger small mt-2" style="display:none;">A reason is required before returning evidence.</div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger fw-bold px-4 rounded-pill" onclick="confirmReturnEvidence()">Submit Return</button>
             </div>
         </div>
     </div>

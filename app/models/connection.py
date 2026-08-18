@@ -126,13 +126,17 @@ def get_overall_ipcr_status(cursor, emp_id, term_id):
         if ret_status == 'Rejected':
             return 'draft'
         elif ret_status == 'Approved':
-            # RET has approved, now waiting for Program Chair review
+            # RET has approved
             if chair_row:
                 chair_status = chair_row[0]
                 if chair_status == 'Rejected':
                     return 'draft'
+                elif chair_status == 'Approved':
+                    return 'approved_by_program_chair'
             return 'waiting_for_program_chair_review'
         elif ret_status == 'Pending':
+            if chair_row and chair_row[0] == 'Approved':
+                return 'waiting_for_ret_chair_review'
             return 'pending_ret_review'
     else:
         # No RET review record exists yet, but targets are submitted

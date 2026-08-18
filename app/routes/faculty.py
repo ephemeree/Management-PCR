@@ -294,8 +294,12 @@ def faculty_upload_evidence():
     target_id = request.form.get('target_id')
     quantity = request.form.get('quantity', '1')
     co_authors_raw = request.form.getlist('co_authors[]')
+    is_ajax = (request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+               'application/json' in request.headers.get('Accept', ''))
     
     if not target_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid target ID.'}), 400
         flash("Invalid target ID.", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
         
@@ -306,6 +310,8 @@ def faculty_upload_evidence():
 
     file = request.files.get('file')
     if not file or file.filename == '':
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Please select a file to upload.'}), 400
         flash("Please select a file to upload.", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
@@ -314,6 +320,8 @@ def faculty_upload_evidence():
     filename = file.filename
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
     if ext not in allowed_extensions:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Unsupported file format. Allowed format: .pdf'}), 400
         flash("Unsupported file format. Allowed format: .pdf", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
@@ -344,9 +352,13 @@ def faculty_upload_evidence():
             add_co_authors_to_evidence(cursor, evidence_id, co_author_ids)
             
         conn.commit()
+        if is_ajax:
+            return jsonify({'success': True, 'message': 'Evidence uploaded successfully!'})
         flash("Evidence uploaded successfully!", "success")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': f"Error uploading evidence: {str(e)}"}), 500
         flash(f"Error uploading evidence: {str(e)}", "danger")
     finally:
         cursor.close()

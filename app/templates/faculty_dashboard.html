@@ -914,14 +914,19 @@
         if (!isCompleted) input.value = '';
     };
 
-    window.saveAccomplishmentDetails = function () {
+    window.saveAccomplishmentDetails = function (closeModalOnSuccess = false) {
         const targetId = document.getElementById('evidenceTargetId').value;
         const status = (document.querySelector('input[name="completionStatus"]:checked') || {}).value || 'COMPLETED';
         const durationRaw = document.getElementById('evidenceCompletedIn').value;
         const effRaw = document.getElementById('evidenceEfficiency').value;
         const msg = document.getElementById('accomplishmentSaveMsg');
-        msg.className = 'small me-2 text-muted';
-        msg.textContent = 'Saving...';
+        if (msg) {
+            msg.className = 'small me-2 text-muted';
+            msg.textContent = 'Saving...';
+        }
+
+        const footerSubmitBtn = document.getElementById('submitAccomplishmentBtn');
+        if (footerSubmitBtn) footerSubmitBtn.disabled = true;
 
         fetch("{{ url_for('faculty.faculty_save_accomplishment') }}", {
             method: 'POST',
@@ -935,8 +940,11 @@
         })
         .then(r => r.json())
         .then(data => {
-            msg.className = 'small me-2 ' + (data.success ? 'text-success' : 'text-danger');
-            msg.textContent = data.message || (data.success ? 'Saved.' : 'Failed to save.');
+            if (footerSubmitBtn) footerSubmitBtn.disabled = false;
+            if (msg) {
+                msg.className = 'small me-2 ' + (data.success ? 'text-success' : 'text-danger');
+                msg.textContent = data.message || (data.success ? 'Saved.' : 'Failed to save.');
+            }
             if (data.success) {
                 // Keep the in-page map in sync so reopening shows the saved values.
                 const meta = TARGET_META[String(targetId)];
@@ -945,12 +953,20 @@
                     meta.completionStatus = status;
                     meta.efficiencyRating = effRaw === '' ? null : parseInt(effRaw, 10);
                 }
-                setTimeout(() => window.location.reload(), 700);
+                if (closeModalOnSuccess) {
+                    const modalEl = document.getElementById('evidenceGatheringModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                    window.location.reload();
+                }
             }
         })
         .catch(err => {
-            msg.className = 'small me-2 text-danger';
-            msg.textContent = 'Error: ' + err;
+            if (footerSubmitBtn) footerSubmitBtn.disabled = false;
+            if (msg) {
+                msg.className = 'small me-2 text-danger';
+                msg.textContent = 'Error: ' + err;
+            }
         });
     };
 
@@ -965,12 +981,14 @@
     function applyEvidenceLock() {
         const form = document.getElementById('uploadEvidenceForm');
         const notice = document.getElementById('uploadLockedNotice');
+        const footerSubmitBtn = document.getElementById('submitAccomplishmentBtn');
         if (!form) return;
         form.querySelectorAll('input, button, select, textarea').forEach(el => {
             el.disabled = EVIDENCE_SUBMITTED;
         });
         if (notice) notice.style.display = EVIDENCE_SUBMITTED ? '' : 'none';
         form.style.display = EVIDENCE_SUBMITTED ? 'none' : '';
+        if (footerSubmitBtn) footerSubmitBtn.disabled = EVIDENCE_SUBMITTED;
     }
 
     // Per-target metadata backing the Accomplishment Details panel (Timeliness / Efficiency).
@@ -992,8 +1010,97 @@
         {% endfor %}
     };
 
+    let currentTargetId = null;
+    let currentIndicatorId = null;
+
+    window.reloadEvidenceModalSubmissions = function() {
+        if (!currentTargetId) return;
+        const submissionsContainer = document.getElementById('submissionsListContainer');
+        submissionsContainer.innerHTML = '<div class="text-center text-muted py-3 small"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading submissions...</div>';
+
+        fetch(`/faculty/target_evidence/${currentTargetId}/${currentIndicatorId || 0}`)
+            .then(res => res.json())
+            .then(data => {
+                submissionsContainer.innerHTML = '';
+                let totalQty = 0;
+                if (data.success && data.evidence_list.length > 0) {
+                    data.evidence_list.forEach(ev => {
+                        if (ev.verification_status !== 'Returned' && ev.verification_status !== 'Rejected') {
+                            totalQty += (parseInt(ev.actual_qty_Q, 10) || 0);
+                        }
+                        const parts = ev.file_path.split('/');
+                        const cleanName = parts[parts.length - 1].substring(33);
+
+                        let badgeHtml = '';
+                        if (ev.verification_status === 'Approved') {
+                            badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.72rem;">Approved</span>`;
+                        } else if (ev.verification_status === 'Returned' || ev.verification_status === 'Rejected') {
+                            const remarks = ev.supervisor_comment || 'No comment';
+                            badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.72rem;" title="Reason: ${remarks}">Returned</span>`;
+                        } else {
+                            badgeHtml = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size: 0.72rem;">Pending</span>`;
+                        }
+
+                        let actionHtml = '';
+                        if (ev.verification_status === 'Pending') {
+                            if (ev.is_co_authored) {
+                                actionHtml = `
+                                    <form action="/faculty/unclaim_evidence" method="POST" class="m-0 d-inline">
+                                        <input type="hidden" name="co_author_id" value="${ev.co_author_id}">
+                                        <input type="hidden" name="target_id" value="${currentTargetId}">
+                                        <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Unlink Co-authored paper">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </form>
+                                `;
+                            } else {
+                                actionHtml = `
+                                    <form action="/faculty/delete_evidence" method="POST" class="m-0 d-inline">
+                                        <input type="hidden" name="evidence_id" value="${ev.evidence_id}">
+                                        <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </form>
+                                `;
+                            }
+                        }
+
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'p-3 border rounded bg-white shadow-xs d-flex align-items-center justify-content-between gap-3 text-start';
+                        itemDiv.style.borderRadius = '10px';
+                        itemDiv.innerHTML = `
+                            <div class="d-flex align-items-center gap-2 overflow-hidden text-start">
+                                <i class="bi bi-file-earmark-arrow-up-fill text-primary fs-4"></i>
+                                <div class="text-start text-truncate" style="max-width: 250px;">
+                                    <a href="/evidence_uploads/${ev.evidence_id}" target="_blank" class="small fw-semibold text-decoration-none text-dark" title="View/Download">${cleanName}</a>
+                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                        Qty: ${ev.actual_qty_Q}
+                                        ${ev.is_co_authored ? `&bull; <span class="text-purple">Co-authored (by ${ev.uploaded_by})</span>` : ''}
+                                    </div>
+                                    ${ev.supervisor_comment ? `<div class="text-danger small mt-1" style="font-size: 0.72rem;"><strong>Remark:</strong> ${ev.supervisor_comment}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                ${badgeHtml}
+                                ${actionHtml}
+                            </div>
+                        `;
+                        submissionsContainer.appendChild(itemDiv);
+                    });
+                } else {
+                    submissionsContainer.innerHTML = '<div class="text-center text-muted py-4 small">No evidence uploaded yet.</div>';
+                }
+                document.getElementById('evidenceActualQty').textContent = totalQty;
+            })
+            .catch(err => {
+                submissionsContainer.innerHTML = `<div class="text-center text-danger py-3 small">Error loading submissions: ${err.message}</div>`;
+            });
+    };
+
     // Process 6 Modal helpers
     window.openEvidenceModal = function (targetId, indicatorId, isResearch, description, targetQty, actualQty) {
+        currentTargetId = targetId;
+        currentIndicatorId = indicatorId;
         // Set standard elements
         document.getElementById('evidenceTargetId').value = targetId;
         document.getElementById('evidenceIndicatorDesc').textContent = description;
@@ -1034,100 +1141,44 @@
         toggleCompletedInState();
         applyEvidenceLock();
 
-        // Containers
-        const submissionsContainer = document.getElementById('submissionsListContainer');
-        submissionsContainer.innerHTML = '<div class="text-center text-muted py-3 small"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading submissions...</div>';
-
-        // Co-authoring (tag + claim) has been retired from the evidence modal. Existing
-        // co-authored evidence still displays in the submissions list below.
-
         // Fetch current submissions for the target
-        fetch(`/faculty/target_evidence/${targetId}/${indicatorId}`)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`Server returned ${res.status}: ${res.statusText}`);
-                }
-                return res.json();
-            })
-            .then(data => {
-                submissionsContainer.innerHTML = '';
-                if (data.success) {
-                    if (data.evidence_list.length > 0) {
-                        data.evidence_list.forEach(ev => {
-                            const parts = ev.file_path.split('/');
-                            const cleanName = parts[parts.length - 1].substring(33);
-
-                            let badgeHtml = '';
-                            if (ev.verification_status === 'Approved') {
-                                badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.72rem;">Approved</span>`;
-                            } else if (ev.verification_status === 'Returned' || ev.verification_status === 'Rejected') {
-                                const remarks = ev.supervisor_comment || 'No comment';
-                                badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.72rem;" title="Reason: ${remarks}">Returned</span>`;
-                            } else {
-                                badgeHtml = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size: 0.72rem;">Pending</span>`;
-                            }
-
-                            let actionHtml = '';
-                            if (ev.verification_status === 'Pending') {
-                                if (ev.is_co_authored) {
-                                    actionHtml = `
-                                        <form action="/faculty/unclaim_evidence" method="POST" class="m-0 d-inline">
-                                            <input type="hidden" name="co_author_id" value="${ev.co_author_id}">
-                                            <input type="hidden" name="target_id" value="${targetId}">
-                                            <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Unlink Co-authored paper">
-                                                <i class="bi bi-trash-fill"></i>
-                                            </button>
-                                        </form>
-                                    `;
-                                } else {
-                                    actionHtml = `
-                                        <form action="/faculty/delete_evidence" method="POST" class="m-0 d-inline">
-                                            <input type="hidden" name="evidence_id" value="${ev.evidence_id}">
-                                            <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
-                                                <i class="bi bi-trash-fill"></i>
-                                            </button>
-                                        </form>
-                                    `;
-                                }
-                            }
-
-                            const itemDiv = document.createElement('div');
-                            itemDiv.className = 'p-3 border rounded bg-white shadow-xs d-flex align-items-center justify-content-between gap-3 text-start';
-                            itemDiv.style.borderRadius = '10px';
-                            itemDiv.innerHTML = `
-                                <div class="d-flex align-items-center gap-2 overflow-hidden text-start">
-                                    <i class="bi bi-file-earmark-arrow-up-fill text-primary fs-4"></i>
-                                    <div class="text-start text-truncate" style="max-width: 250px;">
-                                        <a href="/evidence_uploads/${ev.evidence_id}" target="_blank" class="small fw-semibold text-decoration-none text-dark" title="View/Download">${cleanName}</a>
-                                        <div class="text-muted" style="font-size: 0.75rem;">
-                                            Qty: ${ev.actual_qty_Q}
-                                            ${ev.is_co_authored ? `&bull; <span class="text-purple">Co-authored (by ${ev.uploaded_by})</span>` : ''}
-                                        </div>
-                                        ${ev.supervisor_comment ? `<div class="text-danger small mt-1" style="font-size: 0.72rem;"><strong>Remark:</strong> ${ev.supervisor_comment}</div>` : ''}
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    ${badgeHtml}
-                                    ${actionHtml}
-                                </div>
-                            `;
-                            submissionsContainer.appendChild(itemDiv);
-                        });
-                    } else {
-                        submissionsContainer.innerHTML = '<div class="text-center text-muted py-4 small">No evidence uploaded yet.</div>';
-                    }
-                } else {
-                    submissionsContainer.innerHTML = `<div class="text-center text-danger py-3 small">Error: ${data.message || 'Failed to load submissions'}</div>`;
-                }
-            })
-            .catch(err => {
-                submissionsContainer.innerHTML = `<div class="text-center text-danger py-3 small">Error loading submissions: ${err.message}</div>`;
-            });
+        reloadEvidenceModalSubmissions();
 
         // Open Modal
         const myModal = new bootstrap.Modal(document.getElementById('evidenceGatheringModal'));
         myModal.show();
     };
+
+    // AJAX Form submit handler
+    const uploadForm = document.getElementById('uploadEvidenceForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(uploadForm);
+            const submitBtn = uploadForm.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            fetch('/faculty/upload_evidence', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (data.success) {
+                    document.getElementById('evidenceFile').value = '';
+                    reloadEvidenceModalSubmissions();
+                } else {
+                    alert(data.message || 'Error uploading evidence.');
+                }
+            })
+            .catch(err => {
+                if (submitBtn) submitBtn.disabled = false;
+                alert('Upload error: ' + err);
+            });
+        });
+    }
 
     // Initial check
     updateSelectionCount();
@@ -1278,8 +1329,7 @@
                                     </div>
                                     <div class="text-start mt-2">
                                         <button type="submit"
-                                            class="btn btn-primary fw-semibold px-4 rounded-pill">Upload &
-                                            Submit</button>
+                                            class="btn btn-primary fw-semibold px-4 rounded-pill"><i class="bi bi-cloud-upload me-1"></i>Upload</button>
                                     </div>
                                 </form>
                             </div>
@@ -1305,10 +1355,14 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 p-3 bg-light"
+            <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-end gap-2"
                 style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
                 <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill"
                     data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary fw-semibold px-4 rounded-pill"
+                    id="submitAccomplishmentBtn" onclick="saveAccomplishmentDetails(true)">
+                    <i class="bi bi-check-circle-fill me-1"></i>Submit
+                </button>
             </div>
         </div>
     </div>
