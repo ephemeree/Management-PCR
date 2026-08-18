@@ -11,7 +11,8 @@ Both are now data, so the system scales to new programs and to a change in the
 mandated teaching load without a code edit.
 """
 
-from app.models.criteria import DESIGNATION_TYPES, GENERAL_BAND, RANK_BANDS, rank_band
+from app.models.criteria import (DESIGNATION_TYPES, GENERAL_BAND, RANK_BANDS, rank_band,
+                                 resolve_designation_type)
 
 # Cascade targets that are not departments. The Dean assigns quotas to these
 # alongside the real programs.
@@ -152,7 +153,9 @@ def resolve_teaching_load(cursor, term_id, designation_type, academic_rank=None)
     Falls back to the previously hardcoded values when a term has no configuration,
     so the mandatory teaching-load target is never missing.
     """
-    designation_type = designation_type if designation_type in DESIGNATION_TYPES else 'Regular Faculty'
+    # Callers may pass a job title ('Program Chair') rather than a weight table, so resolve
+    # it the same way the scoring roll-up does.
+    designation_type = resolve_designation_type(designation_type) or 'Regular Faculty'
 
     cursor.execute("""
         SELECT hours, duration_value, duration_unit FROM tbl_teaching_load_config

@@ -1,13 +1,13 @@
 from flask import Blueprint, render_template, session, request, jsonify, redirect, url_for, flash
 from app.models import *
-from app.decorators import role_required
+from app.decorators import role_required, designated_ipcr_required
 from app.models.designated import get_designated_selectable_indicators, submit_designated_ipcr
 
 designated_bp = Blueprint('designated', __name__, url_prefix='/designated')
 
 
 @designated_bp.route('/')
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -206,6 +206,13 @@ def designated_dashboard():
                 t['target_duration_unit'] = _src.get('target_duration_unit') or _alloc.get('target_duration_unit')
                 dpcr_targets.append(t)
                 
+            # A chair answers for their department's (or RET's) whole cascaded quota as an
+            # administrative function. These are appended even when the same indicator is
+            # already listed above as their personal allocated work — the two rate under
+            # different IPCR categories, which is what is_admin_function distinguishes.
+            from app.models.designated import get_oversight_targets
+            dpcr_targets.extend(get_oversight_targets(cursor, emp_id, term_id))
+
             # Add custom targets from drafts
             for d in draft_targets:
                 if d['is_custom']:
@@ -311,7 +318,7 @@ def designated_dashboard():
 
 
 @designated_bp.route('/save_accomplishment', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_save_accomplishment():
     """AJAX — save Timeliness (and client-satisfaction Efficiency) inputs for one target."""
     emp_id = session.get('user_id')
@@ -345,7 +352,7 @@ def designated_save_accomplishment():
 
 
 @designated_bp.route('/submit_evidence', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_submit_evidence():
     emp_id = session.get('user_id')
     conn = get_db_connection()
@@ -376,7 +383,7 @@ def designated_submit_evidence():
 
 
 @designated_bp.route('/submit', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def submit_designated_ipcr_route():
     emp_id = session.get('user_id')
     term_id = request.form.get('term_id')
@@ -453,7 +460,7 @@ import os
 from werkzeug.utils import secure_filename
 
 @designated_bp.route('/target_evidence/<int:target_id>/<int:indicator_id>')
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_target_evidence(target_id, indicator_id):
     emp_id = session.get('user_id')
     conn = get_db_connection()
@@ -470,7 +477,7 @@ def designated_target_evidence(target_id, indicator_id):
 
 
 @designated_bp.route('/upload_evidence', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_upload_evidence():
     emp_id = session.get('user_id')
     target_id = request.form.get('target_id')
@@ -527,7 +534,7 @@ def designated_upload_evidence():
 
 
 @designated_bp.route('/delete_evidence', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_delete_evidence():
     evidence_id = request.form.get('evidence_id')
     if not evidence_id:

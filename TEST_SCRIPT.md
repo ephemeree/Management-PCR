@@ -12,20 +12,44 @@ into [`old MDS/POST_TEST_PLAN.md`](old%20MDS/POST_TEST_PLAN.md).
 DESIGNATED_FACULTY. Note the Faculty's **academic rank** and **specialization** —
 several steps depend on them matching.
 
+> **Two different fields, easy to confuse.** `system_role` decides which dashboard someone
+> logs into. `designation` (their job title, on the Admin roster) decides whether they have
+> an IPCR of their own and which weight table rates it. A Program Chair has both: role
+> `PROGRAM_CHAIR` *and* designation `Program Chair`. For Phase J, check the roster has the
+> right **designation** on each chair and on the Dean, or their My IPCR will not appear.
+
 > Passwords are bcrypt-hashed. If you don't know one, log in as ADMIN →
 > System Security → Reset Password.
 
 ### 🔁 Changed since the last run — retest these first
 
+**Fixes to what you reported:**
+
 | Where | What changed |
 |---|---|
-| **A3** | Teaching load now **locks after saving**; an **Edit** button unlocks it |
+| **A3** | Teaching load **locks after saving**; an **Edit** button unlocks it |
 | **D3** | Extension **checkbox removed** — all extension targets distribute |
-| **H** | Evidence viewer is now **truly full-width** (an old `50vw` rule was overriding it) |
-| **H** | **RET Chair now has Approve / Return buttons** (they were missing entirely) |
-| **H** | Approve/Return no longer embed evidence data in an HTML attribute — this was the likely cause of the **Approve button error**. If it still errors, capture the browser console message. |
-| **I** | Designated **Evidence Gathering now has Accomplishment Details** (Completed in, Client Satisfaction, Q·E·T) |
-| **I** | Selection table **column widths rebalanced** (description 40%, deadline 220px) |
+| **H** | Evidence viewer is now **truly full-width** in *both* Program Chair and RET Chair (each template had its own `50vw` rule) |
+| **H** | **RET Chair gained Approve / Return buttons** — they were missing entirely |
+| **H** | RET Chair's viewer said *"No evidence files available"* despite a count — the lookup table was declared but never filled |
+| **H** | Evidence data no longer sits inside an HTML attribute, where an apostrophe in a return reason broke the buttons |
+| **I** | Designated **Evidence Gathering** has the Accomplishment Details card |
+| **I** | Selection table column widths rebalanced |
+
+**New this round — Phase J:** Program Chair, RET Chair and Dean now have their own IPCR.
+
+| What | Detail |
+|---|---|
+| Own IPCR | Their **designation** (job title) decides they have one; previously only `system_role = DESIGNATED_FACULTY` could reach it, so chairs were locked out entirely |
+| Correct weights | `'Program Chair'` / `'RET Chair'` / `'Dean'` matched neither weight table, so their IPCR could not be scored at all. All now rate against **Designated Faculty (75/25)** |
+| Oversight targets | A chair's IPCR auto-fills with their department's (or RET's) cascaded quotas at **full quantity** |
+| Navigation | Opening My IPCR **keeps your own sidebar**; its items link back to the section you came from |
+| **Category fix** | A designated faculty's self-selected targets were being counted as **Core Functions**. Only the teaching load and Program-Chair-allocated instruction are Core; everything else is **Strategic Priorities/Support**. This is what made a 3-core/1-strategic IPCR read *4 core / 0 strategic → Poor* |
+
+> Needs [`old MDS/MIGRATION_group7.sql`](old%20MDS/MIGRATION_group7.sql): the `is_admin_function`
+> columns **and** the backfill that recategorises targets committed before the column existed.
+> Without the backfill, existing designated IPCRs keep the wrong split. The collation-repair
+> section of that file is optional cleanup and changes no behaviour.
 
 ---
 
@@ -126,8 +150,11 @@ Dean dashboard → cascade table.
 - [ ] A confirmation modal appears and **blocks submission**, listing the unassigned target.
 - [ ] Fill it in, press again → modal now shows the target count → **Confirm & Cascade**.
 
+- [ ] Note what you cascade to each department and to RET — Phase J checks those exact
+      numbers reappear on the matching chair's own IPCR.
+
 > Skipping this leaves the Program Chair's distribution table and the RET Chair's
-> Research/Extension lists empty.
+> Research/Extension lists empty — and leaves both chairs' own IPCRs empty too.
 
 ---
 
@@ -319,9 +346,74 @@ Program Chair → faculty evidence details modal.
 - [ ] Submit → **Dean** approves → targets committed with durations intact.
 - [ ] Evidence Gathering shows the **Summary of Ratings** using the **Designated** weights
       (Strategic Priorities/Support Functions 75 · Core Functions 25) — *not* 50/40/10.
+
+**Category split — the counts must match the two sections on My IPCR** *(fixed)*:
+- [ ] Count the targets in **1. Core Functions** and in **2. Strategic Priorities & Support
+      Functions** on the My IPCR page.
+- [ ] The **Summary of Ratings** shows those same two counts. A target sitting in section 2
+      must **not** be counted under Core Functions.
+- [ ] Only the **teaching load** and **Program-Chair-allocated instruction** are Core.
+      Anything selected from the pool, any custom item, and any oversight cascade is
+      Strategic Priorities/Support — *even when its target type is Instruction*.
+- [ ] Neither weighted category shows **0 targets** while the other holds them all.
+- [ ] The Adjectival Rating is believable — an IPCR with good ratings should not read *Poor*
+      because one category was left empty.
 - [ ] The evidence modal has the **Accomplishment Details** card — composed sentence,
       "Completed in", completion status, and **Computed Rating** badges. *(fixed)*
 - [ ] Saving those details persists and the badges update.
+
+---
+
+## Phase J — Chairs' and Dean's own IPCR *(new)*
+
+Everyone who is not Regular Faculty is rated as **Designated Faculty**, whichever dashboard
+they log into. Run this after Phase B so there are cascaded quotas to pick up.
+
+### J1. Access and navigation
+- [ ] As **PROGRAM_CHAIR**: sidebar shows **My Performance → My IPCR**.
+- [ ] Clicking it opens the IPCR page **with your Program Chair navigation still present**
+      (Target Allocation · Commitments · Grading Engine · Evidence Verification).
+- [ ] Clicking one of those returns you to your dashboard **on that exact section**.
+- [ ] Same for **RET_CHAIR** and **DEAN**, each showing their own items.
+- [ ] Regular **FACULTY** has **no** My IPCR item — they use their own dashboard.
+- [ ] **ADMIN** has none either, and visiting `/designated/` directly is refused.
+
+### J2. Oversight targets — Program Chair
+The chair answers for their department's whole cascaded number, while separately dividing
+that same number among their faculty.
+
+- [ ] Their **Strategic Priorities/Support Functions** section is pre-filled with **every**
+      target the Dean cascaded to their department — instruction, support, administrative alike.
+- [ ] Quantities are the **full quota**, not a share: cascade `Instruction 1 = 5` to WST in
+      Phase B and the WST chair's IPCR reads **5**.
+- [ ] Those rows are **editable**, not locked.
+- [ ] A chair whose department received nothing sees none.
+
+### J3. Oversight targets — RET Chair
+- [ ] Pre-filled with everything cascaded to **RET / Extension**, at full quantity.
+
+### J4. Dean
+- [ ] **No auto-selected targets at all** — the section starts empty.
+- [ ] Can still add targets from the selectable pool.
+
+### J5. Claimed targets are not selectable
+- [ ] A target cascaded to a department or to RET does **not** appear in the pool anyone can
+      select from — it already has an owner.
+- [ ] Another Designated Faculty sees only unclaimed instruction/support targets.
+- [ ] Compare: the pool should be visibly shorter than the full indicator list.
+
+### J6. The same indicator, both ways
+- [ ] A chair may hold one indicator **twice** — the oversight copy (full quota) and their
+      own allocated teaching work.
+- [ ] In **Summary of Ratings** the oversight copy sits under **Strategic Priorities/Support
+      Functions (75%)** and the personal copy under **Core Functions (25%)**.
+- [ ] The **Teaching Load** target shows the *Designated* hours from A3 (e.g. 10), not 21.
+- [ ] Run the **category split** checks from Phase I here too — the same rule decides which
+      of a chair's targets are Core and which are Strategic.
+
+### J7. Dean can see the chairs
+- [ ] Dean → **Target Assignment** lists Program Chairs and the RET Chair among designated
+      faculty. They were filtered out before, so the Dean could not assign to them at all.
 
 ---
 
@@ -334,6 +426,14 @@ Program Chair → faculty evidence details modal.
 5. `Adjectival` efficiency type is available but nothing uses it by default.
 6. **Not yet covered by any run:** the faculty-side return checks in Phase H and the
    G6 SQL verification — worth picking up once returns are confirmed working.
+7. **The Dean's own oversight set is intentionally empty** (J4). If the Dean should carry
+   College-Wide quotas on their own IPCR, that is not built.
+8. **A weighted category with no targets contributes nothing**, which deflates the final
+   rating rather than renormalising. The case that surfaced this turned out to be the
+   categorisation bug above, not a policy problem — so no gate was built. If a genuinely
+   empty category ever appears, that decision is still open.
+9. **Eight tables carry a different collation** from the original schema (a defect in the
+   earlier migrations). Harmless today; the repair is in `MIGRATION_group7.sql`.
 
 ## Appendix — Reset for a re-run
 
@@ -373,5 +473,9 @@ DELETE da FROM tbl_draft_allocation da
 
 > Departments, criteria and IPCR categories are **not** term-scoped, so the reset leaves
 > them intact — that is intentional.
+
+> Clearing `tbl_draft_targets` and `tbl_committed_targets` also clears the chairs' own IPCRs,
+> including their oversight rows. Those repopulate from `tbl_cascaded_quotas` as soon as the
+> chair reopens My IPCR, so re-running Phase B is not required.
 
 

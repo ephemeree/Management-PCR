@@ -30,6 +30,13 @@
     <i class="bi bi-file-earmark-diff-fill"></i>
     <span class="nav-text">Final Verification</span>
 </button>
+{% if has_own_ipcr %}
+<div class="nav-label">My Performance</div>
+<a class="nav-item text-decoration-none" href="{{ url_for('designated.designated_dashboard') }}">
+    <i class="bi bi-file-earmark-person-fill"></i>
+    <span class="nav-text">My IPCR</span>
+</a>
+{% endif %}
 {% endblock %}
 
 {% block content %}

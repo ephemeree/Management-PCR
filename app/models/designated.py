@@ -1,19 +1,143 @@
-def get_designated_selectable_indicators(cursor, term_id):
+def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True):
     """
-    Retrieves the standard baseline list of available Instruction and Support functions.
+    The Instruction and Support pool a designated faculty member can add targets from.
+
+    Indicators the Dean cascaded to a department or to RET are excluded: those are carried
+    automatically by that department's chair as an oversight accountability, so offering them
+    here would let a second person commit to work that already has an owner.
     """
     from app.models.connection import timed_query
     query = """
         SELECT mi.indicator_id, mi.indicator_description, tc.category_name
         FROM tbl_master_indicators mi
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-        WHERE mi.term_id = %s 
+        WHERE mi.term_id = %s
           AND mi.is_custom = 0
           AND mi.indicator_description NOT LIKE '%%Teaching Load%%'
           AND tc.review_lane = 'CHAIR' AND tc.is_core = 1
         ORDER BY tc.category_name, mi.indicator_id
     """
-    return timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators")
+    rows = timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators")
+    if exclude_claimed:
+        claimed = get_claimed_indicator_ids(cursor, term_id)
+        rows = [r for r in rows if r['indicator_id'] not in claimed]
+    return rows
+
+
+def get_oversight_cascade_role(cursor, emp_id):
+    """
+    Which cascade bucket this person is accountable for overseeing, or None.
+
+    A Program Chair oversees everything the Dean cascaded to their department; the RET Chair
+    oversees the RET / Extension bucket. Other designated faculty (and the Dean, pending a
+    decision on what the Dean's own oversight set should be) oversee nothing.
+    """
+    from app.models.institution import ROLE_RET
+    cursor.execute(
+        "SELECT designation, specialization FROM tbl_employee_profiles WHERE emp_id = %s",
+        (emp_id,))
+    row = cursor.fetchone()
+    if not row:
+        return None
+    designation, specialization = (row[0] or '').strip(), (row[1] or '').strip()
+
+    if designation == 'RET Chair':
+        return ROLE_RET
+    if designation == 'Program Chair' and specialization:
+        return specialization
+    return None
+
+
+def get_claimed_indicator_ids(cursor, term_id):
+    """
+    Indicators already spoken for by a chair's oversight accountability.
+
+    Anything the Dean cascaded to a department or to RET is automatically carried by that
+    chair, so it must not also be offered in the pool other designated faculty pick from.
+    College-Wide quotas are not claimed — the Dean assigns those explicitly.
+    """
+    from app.models.institution import ROLE_RET, get_departments
+
+    # Department names are read separately rather than joined: tbl_departments was created
+    # with a different collation from tbl_cascaded_quotas, so comparing the two columns
+    # directly raises "Illegal mix of collations". Binding them as parameters sidesteps it.
+    owners = [d['department_name'] for d in get_departments(cursor, active_only=False)]
+    owners.append(ROLE_RET)
+    if not owners:
+        return set()
+
+    placeholders = ','.join(['%s'] * len(owners))
+    cursor.execute(f"""
+        SELECT DISTINCT cq.indicator_id
+        FROM tbl_cascaded_quotas cq
+        JOIN tbl_master_indicators mi ON cq.indicator_id = mi.indicator_id
+        WHERE cq.term_id = %s
+          AND mi.term_id = %s
+          AND cq.total_target_value > 0
+          AND cq.assigned_to_role IN ({placeholders})
+    """, tuple([term_id, term_id] + owners))
+    return {r[0] for r in cursor.fetchall()}
+
+
+def get_oversight_targets(cursor, emp_id, term_id):
+    """
+    The cascaded quotas a chair carries on their own IPCR as an administrative function.
+
+    These are their department's (or RET's) numbers taken *whole*, not a share: the Dean
+    cascades 5 of "Instruction 1" to WST, the WST chair divides that 5 among their faculty,
+    and separately answers for the full 5 themselves. They rate under Strategic Priorities/
+    Support Functions rather than by target type, which is what is_admin_function records.
+
+    A chair may also hold the same indicator as their own allocated teaching work; that is a
+    separate row with the flag clear, rating under Core Functions.
+    """
+    from app.models.connection import timed_query
+    role = get_oversight_cascade_role(cursor, emp_id)
+    if not role:
+        return []
+
+    query = """
+        SELECT cq.indicator_id,
+               cq.total_target_value,
+               mi.indicator_description,
+               mi.efficiency_type,
+               tc.category_name,
+               tc.slug,
+               dt.draft_id,
+               dt.proposed_quantity,
+               dt.target_description,
+               dt.target_deadline,
+               dt.target_duration_value,
+               dt.target_duration_unit,
+               dt.review_status
+        FROM tbl_cascaded_quotas cq
+        JOIN tbl_master_indicators mi ON cq.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        LEFT JOIN tbl_draft_targets dt
+               ON dt.emp_id = %s AND dt.indicator_id = cq.indicator_id
+              AND dt.is_admin_function = 1
+        WHERE cq.term_id = %s
+          AND mi.term_id = %s
+          AND cq.assigned_to_role = %s
+          AND cq.total_target_value > 0
+        ORDER BY tc.display_order, mi.indicator_id
+    """
+    rows = timed_query(cursor, query, (emp_id, term_id, term_id, role),
+                       label="get_oversight_targets")
+
+    for r in rows:
+        # Pre-filled from the cascade; a saved draft value wins so an edit survives a reload.
+        r['total_target_value'] = r.get('proposed_quantity') or r['total_target_value']
+        r['target_description'] = r.get('target_description') or r['indicator_description']
+        r['target_deadline'] = r.get('target_deadline') or ''
+        r['status'] = r.get('review_status') or 'Draft'
+        r['is_admin_function'] = True
+        r['is_cascaded'] = True
+        r['is_selected'] = True
+        r['is_core'] = False
+        r['is_locked'] = False
+        r['is_custom'] = False
+    return rows
 
 
 def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, custom_targets):
@@ -40,17 +164,37 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
         # 1. Clear any prior unverified submissions for this profile to prevent key errors
         cursor.execute("DELETE FROM tbl_draft_targets WHERE emp_id = %s", (emp_id,))
 
+        # A designated faculty's Core Functions are only their personal teaching work: the
+        # mandatory teaching load plus whatever instruction the Program Chair allocated to
+        # them. Everything else they carry — targets picked from the pool, custom items, and
+        # a chair's oversight cascades — is a Strategic Priorities/Support Function.
+        #
+        # Derived here rather than taken from the form so the category cannot be spoofed or
+        # drift out of step with what the dashboard displayed.
+        cursor.execute("""
+            SELECT da.indicator_id
+            FROM tbl_draft_allocation da
+            JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
+              AND COALESCE(da.assigned_quantity, 0) > 0
+        """, (emp_id, term_id))
+        core_indicator_ids = {r[0] for r in cursor.fetchall()}
+
         # 2. Process Standard Baseline Selected Targets
         for target in selected_targets:
             desc = target.get('target_description') or None
             dead = target.get('target_deadline') or None
             dur_value = target.get('target_duration_value')
             dur_unit = target.get('target_duration_unit')
+            is_teaching_load = 'Teaching Load' in str(target.get('target_description') or '')
+            is_core = is_teaching_load or target['indicator_id'] in core_indicator_ids
+            is_admin = 0 if is_core else 1
             cursor.execute("""
                 INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
-                                               target_duration_value, target_duration_unit)
-                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s)
-            """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead, dur_value, dur_unit))
+                                               target_duration_value, target_duration_unit, is_admin_function)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, %s)
+            """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead, dur_value, dur_unit, is_admin))
 
         # Ensure the mandatory Teaching Load target is saved, using the Admin's configured
         # hours and duration for Designated faculty (previously hardcoded at 10 hours).
@@ -121,11 +265,13 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
                 """, (category_id, text_clean, term_id))
                 new_indicator_id = cursor.lastrowid
 
-            # Step C: Downstream projection into the unified draft staging table
+            # Step C: Downstream projection into the unified draft staging table.
+            # Custom ad-hoc items are never personal teaching work, so they always rate
+            # under Strategic Priorities/Support Functions.
             cursor.execute("""
                 INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
-                                               target_duration_value, target_duration_unit)
-                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s)
+                                               target_duration_value, target_duration_unit, is_admin_function)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1)
             """, (emp_id, new_indicator_id, qty, text_clean, dead, cust_dur_value, cust_dur_unit))
 
         conn.commit()
@@ -155,6 +301,7 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
                COALESCE(ct.target_duration_value, dt.target_duration_value) as target_duration_value,
                COALESCE(ct.target_duration_unit, dt.target_duration_unit) as target_duration_unit,
                ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
+               ct.is_admin_function,
                mi.efficiency_type,
                tc.category_name, tc.category_id, mi.is_custom
         FROM tbl_committed_targets ct

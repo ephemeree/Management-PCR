@@ -331,7 +331,7 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
                 # Fetch approved items with descriptions and deadlines
                 cursor.execute("""
                     SELECT dt.indicator_id, COALESCE(dri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline,
-                           dt.target_duration_value, dt.target_duration_unit
+                           dt.target_duration_value, dt.target_duration_unit, dt.is_admin_function
                     FROM tbl_draft_targets dt
                     JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
                     WHERE dri.review_id = %s
@@ -347,12 +347,12 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
                 """, (emp_id, term_id))
                 
                 # Insert into tbl_committed_targets with target_description and target_deadline
-                for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit in approved_items:
+                for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_admin in approved_items:
                     cursor.execute("""
                         INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, actual_quantity, target_description, target_deadline,
-                                                           target_duration_value, target_duration_unit)
-                        VALUES (%s, %s, %s, 'Approved', 0, %s, %s, %s, %s)
-                    """, (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit))
+                                                           target_duration_value, target_duration_unit, is_admin_function)
+                        VALUES (%s, %s, %s, 'Approved', 0, %s, %s, %s, %s, %s)
+                    """, (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_admin or 0))
 
 
         conn.commit()
@@ -367,16 +367,26 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
 # ──────────────────────────────────────────────
 
 def get_designated_faculty_list(cursor):
-    """Get all active designated faculty members via system_access role."""
+    """
+    Every active designated faculty member.
+
+    Keyed on designation, not system_role: a Program Chair, RET Chair or Dean is a designated
+    faculty member with an IPCR of their own, but logs in under their own role. Filtering by
+    system_role hid them from the Dean's assignment panel entirely.
+    """
     from app.models.connection import timed_query
-    query = """
+    from app.models.criteria import DESIGNATION_REGULAR, NON_FACULTY_DESIGNATIONS
+    excluded = [DESIGNATION_REGULAR] + sorted(NON_FACULTY_DESIGNATIONS)
+    placeholders = ','.join(['%s'] * len(excluded))
+    query = f"""
         SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.assigned_program, ep.specialization, ep.designation
         FROM tbl_employee_profiles ep
-        JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
-        WHERE sa.system_role = 'DESIGNATED_FACULTY' AND ep.leave_status = 'Active'
+        WHERE ep.leave_status = 'Active'
+          AND ep.designation IS NOT NULL AND ep.designation <> ''
+          AND ep.designation NOT IN ({placeholders})
         ORDER BY ep.last_name ASC, ep.first_name ASC
     """
-    return timed_query(cursor, query, label="get_designated_faculty_list")
+    return timed_query(cursor, query, tuple(excluded), label="get_designated_faculty_list")
 
 
 def get_college_wide_cascaded_quotas(cursor, term_id):
@@ -482,8 +492,8 @@ def get_college_wide_allocations_tracker(cursor, term_id):
             dt.review_status
         FROM tbl_draft_targets dt
         JOIN tbl_employee_profiles ep ON dt.emp_id = ep.emp_id
-        JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
-        WHERE sa.system_role = 'DESIGNATED_FACULTY'
+        WHERE ep.designation IS NOT NULL AND ep.designation <> ''
+          AND ep.designation NOT IN ('Regular Faculty', 'Admin')
           AND ep.leave_status = 'Active'
           AND dt.indicator_id IN (
               SELECT indicator_id 

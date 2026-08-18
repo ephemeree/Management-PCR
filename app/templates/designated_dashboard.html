@@ -5,13 +5,28 @@
 {% block role_display %}Designated Faculty{% endblock %}
 
 {% block sidebar_items %}
+{# Visitors who arrived from another dashboard (Program Chair, RET Chair, Dean) keep their
+   own navigation here as links back, so the shared IPCR page never strands them. #}
+{% if home_nav %}
+{% for group_label, items in home_nav.groups %}
+<div class="nav-label">{{ group_label }}</div>
+{% for section_id, text, icon in items %}
+<a class="nav-item text-decoration-none" href="{{ url_for(home_nav.endpoint) }}#{{ section_id }}">
+    <i class="bi {{ icon }}"></i>
+    <span class="nav-text">{{ text }}</span>
+</a>
+{% endfor %}
+{% endfor %}
+{% else %}
 <div class="nav-label">Dashboard</div>
-<button class="nav-item active" data-section="designated-overview" onclick="showSection('designated-overview')">
+<button class="nav-item" data-section="designated-overview" onclick="showSection('designated-overview')">
     <i class="bi bi-grid-1x2-fill"></i>
     <span class="nav-text">Overview</span>
 </button>
-<div class="nav-label">Performance</div>
-<button class="nav-item" data-section="designated-dpcr" onclick="showSection('designated-dpcr')">
+{% endif %}
+
+<div class="nav-label">My Performance</div>
+<button class="nav-item active" data-section="designated-dpcr" onclick="showSection('designated-dpcr')">
     <i class="bi bi-file-earmark-text-fill"></i>
     <span class="nav-text">My IPCR</span>
 </button>
@@ -24,9 +39,13 @@
 {% endblock %}
 
 {% block content %}
-<script>window.dashboardRole = 'designated';</script>
+<script>
+    // Namespaced per visiting role so a chair's remembered section here never collides
+    // with the section they had open on their own dashboard.
+    window.dashboardRole = 'designated_{{ (session.get('role') or 'self') | lower }}';
+</script>
 
-<div id="designated-overview" class="dashboard-section active">
+<div id="designated-overview" class="dashboard-section{% if not home_nav %} active{% endif %}">
     <div class="page-header">
         <h2>Designated Faculty Dashboard</h2>
         <p>Welcome back! Manage your Designated Performance Commitment and Review (DPCR) targets.</p>

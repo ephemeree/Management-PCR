@@ -60,6 +60,25 @@ from app.routes import register_blueprints
 register_blueprints(app)
 
 
+@app.context_processor
+def inject_own_ipcr_flag():
+    """
+    Exposes `has_own_ipcr` to every template so each dashboard can show a link into the
+    shared Designated Faculty IPCR flow. Driven by the session's designation (job title),
+    not by role — a Program Chair, RET Chair or Dean is a designated faculty member with
+    an IPCR of their own.
+    """
+    from flask import session
+    from app.models.criteria import is_designated
+    from app.navigation import home_nav_for
+    return {
+        'has_own_ipcr': is_designated(session.get('designation')),
+        # The visitor's home dashboard nav, so the shared IPCR page can show it as links
+        # instead of replacing their sidebar. None when they are already home.
+        'home_nav': home_nav_for(session.get('role')),
+    }
+
+
 @app.route('/evidence_uploads/<int:evidence_id>')
 def serve_evidence(evidence_id):
     from flask import session, redirect, url_for, send_from_directory, abort

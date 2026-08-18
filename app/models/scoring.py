@@ -291,7 +291,10 @@ def compute_ipcr_score(cursor, emp_id, term_id):
     call save_final_score() to record it.
     """
     from app.models.faculty import get_faculty_committed_targets
-    from app.models.criteria import get_applicable_weights, get_type_to_category, get_ipcr_categories
+    from app.models.criteria import (get_applicable_weights, get_type_to_category,
+                                     get_ipcr_categories, resolve_designation_type,
+                                     get_category_id, DESIGNATION_REGULAR,
+                                     SLUG_ADMINISTRATIVE)
 
     cursor.execute(
         "SELECT designation, academic_rank FROM tbl_employee_profiles WHERE emp_id = %s",
@@ -299,28 +302,45 @@ def compute_ipcr_score(cursor, emp_id, term_id):
     row = cursor.fetchone()
     if row:
         if isinstance(row, dict):
-            designation = row.get('designation') or 'Regular Faculty'
+            job_title = row.get('designation')
             academic_rank = row.get('academic_rank')
         else:
-            designation = row[0] or 'Regular Faculty'
+            job_title = row[0]
             academic_rank = row[1]
     else:
-        designation = 'Regular Faculty'
+        job_title = None
         academic_rank = None
+
+    # 'Program Chair', 'RET Chair', 'Dean' etc. are job titles, not weight tables — resolve
+    # to the table they are rated against before looking anything up.
+    designation = resolve_designation_type(job_title) or DESIGNATION_REGULAR
 
     targets = get_faculty_committed_targets(cursor, emp_id, term_id)
     weights = get_applicable_weights(cursor, term_id, designation, academic_rank)
 
     # Which weighted IPCR category each target type belongs to *for this designation*.
     type_to_category = get_type_to_category(cursor, designation)
-    category_names = {c['ipcr_category_id']: c['category_name']
-                      for c in get_ipcr_categories(cursor, designation)}
+    categories = get_ipcr_categories(cursor, designation)
+    category_names = {c['ipcr_category_id']: c['category_name'] for c in categories}
+
+    # A chair's oversight targets carry their department's whole cascaded quota and rate as
+    # an administrative function, regardless of the target's own type — the same indicator
+    # can sit under Core Functions as their personal teaching work at the same time. The
+    # administrative category is the one holding the Administrative Functions target type.
+    admin_category_id = None
+    if designation != DESIGNATION_REGULAR:
+        admin_type_id = get_category_id(cursor, SLUG_ADMINISTRATIVE)
+        if admin_type_id:
+            admin_category_id = type_to_category.get(admin_type_id)
 
     # Average each category's per-target ratings. Targets whose type isn't mapped to any
     # category (e.g. ad-hoc custom items) are excluded from the weighted summary.
     by_category = {}
     for t in targets:
-        cat_id = type_to_category.get(t.get('category_id'))
+        if t.get('is_admin_function') and admin_category_id:
+            cat_id = admin_category_id
+        else:
+            cat_id = type_to_category.get(t.get('category_id'))
         avg = (t.get('rating') or {}).get('average')
         if not cat_id or avg is None:
             continue

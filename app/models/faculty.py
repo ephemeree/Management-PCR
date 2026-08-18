@@ -578,6 +578,7 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
                COALESCE(ct.target_description, mi.indicator_description) as indicator_description,
                ct.target_deadline, ct.target_duration_value, ct.target_duration_unit,
                ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
+               ct.is_admin_function,
                mi.efficiency_type,
                tc.category_name, tc.category_id
         FROM tbl_committed_targets ct

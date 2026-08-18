@@ -935,13 +935,18 @@
             localStorage.setItem('activeSection_' + (window.dashboardRole || 'default'), sectionId);
         }
 
-        // Init: restore last active section or default to first
+        // Init: a section named in the URL hash wins, then the last active section,
+        // then the first nav item. The hash is how links from another dashboard (and
+        // post-save redirects) open a specific section on arrival.
         document.addEventListener('DOMContentLoaded', () => {
             const role = window.dashboardRole || 'default';
             const saved = localStorage.getItem('activeSection_' + role);
             const firstNav = document.querySelector('.sidebar-nav .nav-item[data-section]');
-            
-            if (saved && document.getElementById(saved)) {
+            const hash = (window.location.hash || '').replace(/^#/, '');
+
+            if (hash && document.getElementById(hash)) {
+                showSection(hash);
+            } else if (saved && document.getElementById(saved)) {
                 showSection(saved);
             } else if (firstNav) {
                 showSection(firstNav.dataset.section);
