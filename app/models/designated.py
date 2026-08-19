@@ -356,7 +356,7 @@ def check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets):
         if actual_q >= assigned_q and assigned_q > 0:
             targets_met_qty += 1
 
-        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified'):
+        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved'):
             submitted_count += 1
 
     all_ready = (total_targets > 0) and (targets_with_evidence == total_targets) and (targets_met_qty == total_targets)
@@ -384,9 +384,17 @@ def submit_designated_evidences(conn, cursor, emp_id, term_id):
         return False, "All targets must have uploaded evidence and meet target quantities before submitting."
 
     try:
-        update_sql = "UPDATE tbl_committed_targets ct JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id SET ct.status = 'Submitted' WHERE ct.emp_id = %s AND mi.term_id = %s"
-        cursor.execute(update_sql, (emp_id, term_id))
-        conn.commit()
+        target_ids = [t['target_id'] for t in dpcr_targets if t.get('target_id')]
+        if target_ids:
+            placeholders = ','.join(['%s'] * len(target_ids))
+            update_sql = f"UPDATE tbl_committed_targets SET status = 'Submitted' WHERE emp_id = %s AND target_id IN ({placeholders})"
+            cursor.execute(update_sql, [emp_id] + target_ids)
+            conn.commit()
+
+        from app.models.scoring import save_final_score
+        scored, score_msg, _ = save_final_score(conn, cursor, emp_id, term_id)
+        if scored:
+            return True, f"Evidences submitted successfully for verification. {score_msg}"
         return True, "Evidences submitted successfully for verification."
     except Exception as e:
         conn.rollback()

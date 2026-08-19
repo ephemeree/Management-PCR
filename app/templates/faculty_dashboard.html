@@ -589,11 +589,15 @@
                                     </td>
                                     <td class="text-center pe-4 py-4">
                                         <button type="button"
-                                            class="btn btn-primary btn-sm px-4 py-2 fw-bold rounded-pill shadow-sm transition-all hover-shadow"
-                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', {{ 'true' if 'Research' in target.category_name else 'false' }}, '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '
-                                            \\\"') }}', '{{ target.assigned_quantity }}'
-                                            , '{{ target.actual_quantity }}' )">
+                                            class="btn {% if has_final_ipcr %}btn-outline-secondary{% elif evidence_readiness and evidence_readiness.evidence_submitted and not evidence_readiness.has_returned_evidence %}btn-secondary{% else %}btn-primary{% endif %} btn-sm px-4 py-2 fw-bold rounded-pill shadow-sm transition-all hover-shadow"
+                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', {{ 'true' if 'Research' in target.category_name else 'false' }}, '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.assigned_quantity }}', '{{ target.actual_quantity }}')">
+                                            {% if has_final_ipcr %}
+                                            <i class="bi bi-eye-fill me-1"></i>View Evidences (Approved)
+                                            {% elif evidence_readiness and evidence_readiness.evidence_submitted and not evidence_readiness.has_returned_evidence %}
+                                            <i class="bi bi-eye-fill me-1"></i>View Evidences
+                                            {% else %}
                                             <i class="bi bi-folder-plus me-1"></i>Add/View Evidence
+                                            {% endif %}
                                         </button>
                                     </td>
                                 </tr>
@@ -665,7 +669,11 @@
 
             {% if evidence_readiness %}
             <div class="mt-3 text-end">
-                {% if evidence_readiness.evidence_submitted and not evidence_readiness.has_returned_evidence %}
+                {% if has_final_ipcr %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-4 py-3 rounded-pill fs-6 fw-bold shadow-sm">
+                    <i class="bi bi-shield-check me-2"></i>Final Verification Completed &amp; Approved by Dean
+                </span>
+                {% elif evidence_readiness.evidence_submitted and not evidence_readiness.has_returned_evidence %}
                 <span class="badge bg-success px-4 py-3 fs-6 shadow-sm rounded-pill">
                     <i class="bi bi-check-circle-fill me-2"></i>Evidences Submitted for Verification
                 </span>
@@ -1058,6 +1066,22 @@
         const status = (document.querySelector('input[name="completionStatus"]:checked') || {}).value || 'COMPLETED';
         const durationRaw = document.getElementById('evidenceCompletedIn').value;
         const effRaw = document.getElementById('evidenceEfficiency').value;
+        const effRow = document.getElementById('efficiencyRow');
+        const effSelect = document.getElementById('evidenceEfficiency');
+        const effErr = document.getElementById('efficiencyErrorMsg');
+        
+        if (effRow && effRow.style.display !== 'none' && !effRaw) {
+            if (effSelect) effSelect.classList.add('is-invalid');
+            if (effErr) effErr.style.display = 'block';
+            if (msg) {
+                msg.className = 'small me-2 text-danger';
+                msg.textContent = 'Please select a Client Satisfaction Rating.';
+            }
+            return;
+        }
+        if (effSelect) effSelect.classList.remove('is-invalid');
+        if (effErr) effErr.style.display = 'none';
+
         const msg = document.getElementById('accomplishmentSaveMsg');
         if (msg) {
             msg.className = 'small me-2 text-muted';
@@ -1117,23 +1141,45 @@
     // uploads, but cannot add more until a verifier returns one.
     const EVIDENCE_SUBMITTED = {{ 'true' if (evidence_readiness and evidence_readiness.evidence_submitted) else 'false' }};
     const HAS_RETURNED_EVIDENCE = {{ 'true' if (evidence_readiness and evidence_readiness.has_returned_evidence) else 'false' }};
+    const HAS_FINAL_IPCR = {{ 'true' if has_final_ipcr else 'false' }};
     window.evidenceModalHasChanges = false;
 
     function applyEvidenceLock() {
         const form = document.getElementById('uploadEvidenceForm');
         const notice = document.getElementById('uploadLockedNotice');
         const footerSubmitBtn = document.getElementById('submitAccomplishmentBtn');
+        const saveDetailsBtn = document.querySelector('button[onclick="saveAccomplishmentDetails()"]');
         if (!form) return;
 
         const targetMeta = TARGET_META[String(currentTargetId)] || {};
-        const isLocked = EVIDENCE_SUBMITTED && !HAS_RETURNED_EVIDENCE && !targetMeta.hasReturned;
+        const isLocked = HAS_FINAL_IPCR || (EVIDENCE_SUBMITTED && !HAS_RETURNED_EVIDENCE && !targetMeta.hasReturned);
 
         form.querySelectorAll('input, button, select, textarea').forEach(el => {
             el.disabled = isLocked;
         });
-        if (notice) notice.style.display = isLocked ? '' : 'none';
-        form.style.display = isLocked ? 'none' : '';
+
+        const completedIn = document.getElementById('evidenceCompletedIn');
+        if (completedIn) completedIn.disabled = isLocked;
+        document.querySelectorAll('input[name="completionStatus"]').forEach(el => { el.disabled = isLocked; });
+        const effSelect = document.getElementById('evidenceEfficiency');
+        if (effSelect) effSelect.disabled = isLocked;
+        const remarks = document.getElementById('evidenceRemarks');
+        if (remarks) remarks.disabled = isLocked;
+
+        if (saveDetailsBtn) saveDetailsBtn.disabled = isLocked;
         if (footerSubmitBtn) footerSubmitBtn.disabled = isLocked;
+
+        if (notice) {
+            notice.style.display = isLocked ? '' : 'none';
+            if (HAS_FINAL_IPCR) {
+                notice.className = 'alert alert-success border-0 small mb-0';
+                notice.innerHTML = '<i class="bi bi-shield-lock-fill me-2"></i>Your evidence submission has been fully verified and approved by the Dean. Evidence gathering is now locked.';
+            } else if (EVIDENCE_SUBMITTED && !HAS_RETURNED_EVIDENCE && !targetMeta.hasReturned) {
+                notice.className = 'alert alert-secondary border-0 small mb-0';
+                notice.innerHTML = '<i class="bi bi-lock-fill me-2"></i>Your evidences have been submitted for verification. Uploading is locked — you can still view your files below.';
+            }
+        }
+        form.style.display = isLocked ? 'none' : '';
     }
 
     // Per-target metadata backing the Accomplishment Details panel (Timeliness / Efficiency).
@@ -1192,7 +1238,7 @@
                         }
 
                         let actionHtml = '';
-                        if (ev.verification_status !== 'Approved') {
+                        if (ev.verification_status !== 'Approved' && !HAS_FINAL_IPCR) {
                             if (ev.is_co_authored) {
                                 actionHtml = `
                                     <button type="button" onclick="unclaimEvidence(${ev.co_author_id}, ${currentTargetId})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Unlink Co-authored paper">
@@ -1343,6 +1389,9 @@
         // Efficiency is only entered directly for client-satisfaction rated indicators.
         const effRow = document.getElementById('efficiencyRow');
         const effSelect = document.getElementById('evidenceEfficiency');
+        if (effSelect) effSelect.classList.remove('is-invalid');
+        const effErr = document.getElementById('efficiencyErrorMsg');
+        if (effErr) effErr.style.display = 'none';
         if ((meta.efficiencyType || '') === 'Client Satisfaction') {
             effRow.style.display = '';
             effSelect.value = meta.efficiencyRating != null ? String(meta.efficiencyRating) : '';
@@ -1409,7 +1458,7 @@
 
 <!-- Unified Evidence Gathering Modal -->
 <div class="modal fade" id="evidenceGatheringModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3"
                 style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
@@ -1441,95 +1490,12 @@
                     </div>
                 </div>
 
-                <!-- Accomplishment Details: Timeliness (T) and, where applicable, Efficiency (E) -->
-                <div class="mb-4 p-3 border border-light shadow-xs text-start" style="border-radius: 12px;">
-                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-stopwatch-fill me-2 text-primary"></i>Accomplishment Details</h6>
-                        <span class="small text-muted">Used to compute your Timeliness rating.</span>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold text-secondary small mb-1">Actual Accomplishment</label>
-                        <p id="evidenceActualAccomplishment" class="mb-0 small fst-italic text-secondary p-2 bg-light rounded"></p>
-                    </div>
-
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-5">
-                            <label for="evidenceCompletedIn" class="form-label fw-semibold text-secondary small">Completed in</label>
-                            <div class="d-flex gap-2 align-items-center">
-                                <input type="number" class="form-control" id="evidenceCompletedIn" min="0" style="max-width: 110px;">
-                                <span id="evidenceDurationUnit" class="text-muted small"></span>
-                            </div>
-                            <small class="text-muted" style="font-size: 0.72rem;">Target: <span id="evidenceTargetDuration">—</span></small>
-                        </div>
-                        <div class="col-md-7">
-                            <label class="form-label fw-semibold text-secondary small d-block">Completion Status</label>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="completionStatus" id="statusCompleted" value="COMPLETED" checked>
-                                <label class="form-check-label small" for="statusCompleted">Completed</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="completionStatus" id="statusPartial" value="PARTIAL_AT_DEADLINE">
-                                <label class="form-check-label small" for="statusPartial">Partially completed at deadline</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="completionStatus" id="statusNotBegun" value="NOT_BEGUN">
-                                <label class="form-check-label small" for="statusNotBegun">Not yet begun</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mt-1" id="efficiencyRow" style="display: none;">
-                        <div class="col-md-5">
-                            <label for="evidenceEfficiency" class="form-label fw-semibold text-secondary small">Client Satisfaction Rating</label>
-                            <select class="form-select" id="evidenceEfficiency">
-                                <option value="">— not yet rated —</option>
-                                {% for label, score in [('Excellent', 5), ('Very Satisfactory', 4), ('Satisfactory', 3), ('Unsatisfactory', 2), ('Poor', 1)] %}
-                                <option value="{{ score }}">{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Computed sub-ratings (read-only; derived from the values above) -->
-
-                    <div class="row g-3 mt-1">
-                        <div class="col-12">
-                            <label for="evidenceRemarks" class="form-label fw-semibold text-secondary small">
-                                Remarks <span class="text-muted fw-normal">(optional)</span>
-                            </label>
-                            <input type="text" class="form-control" id="evidenceRemarks" maxlength="255"
-                                   placeholder="Short note printed in the IPCR's Remarks column">
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-3 border-top">
-                        <label class="form-label fw-semibold text-secondary small mb-2">Computed Rating</label>
-                        <div class="d-flex gap-2 flex-wrap align-items-center">
-                            <span class="badge bg-light text-dark border px-3 py-2">Quantity <span id="ratingQ" class="fw-bold ms-1">—</span></span>
-                            <span class="badge bg-light text-dark border px-3 py-2">Efficiency <span id="ratingE" class="fw-bold ms-1">—</span></span>
-                            <span class="badge bg-light text-dark border px-3 py-2">Timeliness <span id="ratingT" class="fw-bold ms-1">—</span></span>
-                            <i class="bi bi-arrow-right text-muted"></i>
-                            <span class="badge bg-primary px-3 py-2">Average <span id="ratingAvg" class="fw-bold ms-1">—</span></span>
-                        </div>
-                        <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
-                            Computed automatically — Quantity from your evidence, Timeliness from the values above.
-                        </small>
-                    </div>
-
-                    <div class="text-end mt-3">
-                        <span id="accomplishmentSaveMsg" class="small me-2"></span>
-                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-4"
-                                onclick="saveAccomplishmentDetails()">
-                            <i class="bi bi-save me-1"></i>Save Details
-                        </button>
-                    </div>
-                </div>
-
-                <div class="row g-4">
+                <!-- Upload New Evidence & Submissions Row -->
+                <div class="row g-4 mb-4">
                     <!-- Left Column: Actions (Upload & Claims) -->
                     <div class="col-lg-6">
                         <!-- Upload Form -->
-                        <div class="card border border-light shadow-xs mb-4"
+                        <div class="card border border-light shadow-xs mb-0 h-100"
                             style="border-radius: 12px; overflow: hidden;">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i
@@ -1579,11 +1545,98 @@
                             </div>
                             <div class="card-body">
                                 <div id="submissionsListContainer" class="d-flex flex-column gap-2"
-                                    style="max-height: 480px; overflow-y: auto;">
+                                    style="max-height: 280px; overflow-y: auto;">
                                     <!-- Populated dynamically -->
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Accomplishment Details: Timeliness (T) and, where applicable, Efficiency (E) -->
+                <div class="p-3 border border-light shadow-xs text-start" style="border-radius: 12px;">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-stopwatch-fill me-2 text-primary"></i>Accomplishment Details</h6>
+                        <span class="small text-muted">Used to compute your Timeliness rating.</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small mb-1">Actual Accomplishment</label>
+                        <p id="evidenceActualAccomplishment" class="mb-0 small fst-italic text-secondary p-2 bg-light rounded"></p>
+                    </div>
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label for="evidenceCompletedIn" class="form-label fw-semibold text-secondary small">Completed in</label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="number" class="form-control" id="evidenceCompletedIn" min="0" style="max-width: 110px;">
+                                <span id="evidenceDurationUnit" class="text-muted small"></span>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.72rem;">Target: <span id="evidenceTargetDuration">—</span></small>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold text-secondary small d-block">Completion Status</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusCompleted" value="COMPLETED" checked>
+                                <label class="form-check-label small" for="statusCompleted">Completed</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusPartial" value="PARTIAL_AT_DEADLINE">
+                                <label class="form-check-label small" for="statusPartial">Partially completed at deadline</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusNotBegun" value="NOT_BEGUN">
+                                <label class="form-check-label small" for="statusNotBegun">Not yet begun</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1" id="efficiencyRow" style="display: none;">
+                        <div class="col-md-5">
+                            <label for="evidenceEfficiency" class="form-label fw-semibold text-secondary small">Client Satisfaction Rating</label>
+                            <select class="form-select" id="evidenceEfficiency" onchange="this.classList.remove('is-invalid'); const err = document.getElementById('efficiencyErrorMsg'); if(err) err.style.display='none';">
+                                <option value="">— not yet rated —</option>
+                                {% for label, score in [('Excellent', 5), ('Very Satisfactory', 4), ('Satisfactory', 3), ('Unsatisfactory', 2), ('Poor', 1)] %}
+                                <option value="{{ score }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-danger mt-1 d-block" id="efficiencyErrorMsg" style="display: none; font-size: 0.75rem;">
+                                Client Satisfaction Rating is required.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Computed sub-ratings (read-only; derived from the values above) -->
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-12">
+                            <label for="evidenceRemarks" class="form-label fw-semibold text-secondary small">
+                                Remarks <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            <input type="text" class="form-control" id="evidenceRemarks" maxlength="255"
+                                   placeholder="Short note printed in the IPCR's Remarks column">
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-top">
+                        <label class="form-label fw-semibold text-secondary small mb-2">Computed Rating</label>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="badge bg-light text-dark border px-3 py-2">Quantity <span id="ratingQ" class="fw-bold ms-1">—</span></span>
+                            <span class="badge bg-light text-dark border px-3 py-2">Efficiency <span id="ratingE" class="fw-bold ms-1">—</span></span>
+                            <span class="badge bg-light text-dark border px-3 py-2">Timeliness <span id="ratingT" class="fw-bold ms-1">—</span></span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-primary px-3 py-2">Average <span id="ratingAvg" class="fw-bold ms-1">—</span></span>
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                            Computed automatically — Quantity from your evidence, Timeliness from the values above.
+                        </small>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <span id="accomplishmentSaveMsg" class="small me-2"></span>
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-4"
+                                onclick="saveAccomplishmentDetails()">
+                            <i class="bi bi-save me-1"></i>Save Details
+                        </button>
                     </div>
                 </div>
             </div>

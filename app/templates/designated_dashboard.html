@@ -36,11 +36,11 @@
     <span class="nav-text">Evidence Gathering</span>
 </button>
 {% endif %}
-{% if has_submitted %}
-<a class="nav-item text-decoration-none" href="{{ url_for('designated.designated_print_ipcr') }}" target="_blank">
+{% if has_final_ipcr %}
+<button class="nav-item" data-section="nav-print-ipcr" onclick="showSection('nav-print-ipcr')">
     <i class="bi bi-printer-fill"></i>
     <span class="nav-text">Print IPCR</span>
-</a>
+</button>
 {% endif %}
 {% endblock %}
 
@@ -566,11 +566,15 @@
                                     </td>
                                     <td class="text-center pe-4 py-4">
                                         <button type="button"
-                                            class="btn btn-primary btn-sm px-4 py-2 fw-bold rounded-pill shadow-sm transition-all hover-shadow"
-                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '
-                                            \\\"') }}', '{{ target.total_target_value or 0 }}'
-                                            , '{{ target.actual_quantity or 0 }}' )">
+                                            class="btn {% if has_final_ipcr %}btn-outline-secondary{% elif evidence_readiness and evidence_readiness.evidence_submitted %}btn-secondary{% else %}btn-primary{% endif %} btn-sm px-4 py-2 fw-bold rounded-pill shadow-sm transition-all hover-shadow"
+                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.total_target_value or 0 }}', '{{ target.actual_quantity or 0 }}')">
+                                            {% if has_final_ipcr %}
+                                            <i class="bi bi-eye-fill me-1"></i>View Evidences (Approved)
+                                            {% elif evidence_readiness and evidence_readiness.evidence_submitted %}
+                                            <i class="bi bi-eye-fill me-1"></i>View Evidences
+                                            {% else %}
                                             <i class="bi bi-folder-plus me-1"></i>Add/View Evidence
+                                            {% endif %}
                                         </button>
                                     </td>
                                 </tr>
@@ -643,8 +647,12 @@
 
             {% if evidence_readiness %}
             <div class="mt-3 text-end">
-                {% if evidence_readiness.evidence_submitted %}
-                <span class="badge bg-success px-4 py-3 fs-6 shadow-sm rounded-pill">
+                {% if has_final_ipcr %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-4 py-3 rounded-pill fs-6 fw-bold shadow-sm">
+                    <i class="bi bi-shield-check me-2"></i>Final Verification Completed &amp; Approved by Dean
+                </span>
+                {% elif evidence_readiness.evidence_submitted %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-4 py-3 rounded-pill fs-6 fw-bold shadow-sm">
                     <i class="bi bi-check-circle-fill me-2"></i>Evidences Submitted for Verification
                 </span>
                 {% else %}
@@ -658,6 +666,114 @@
                 {% endif %}
             </div>
             {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if has_final_ipcr %}
+<div id="nav-print-ipcr" class="dashboard-section">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-printer-fill me-2 text-primary"></i>Finalized IPCR Details</h2>
+            <p class="text-muted mb-0">Your IPCR has been finalized and verified by the Dean. You may now review and print the final document.</p>
+        </div>
+        <button class="btn btn-primary px-4 fw-bold rounded-pill shadow-sm" onclick="window.open('{{ url_for('designated.designated_print_ipcr') }}', '_blank');">
+            <i class="bi bi-printer me-2"></i>Print IPCR
+        </button>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Targets Table -->
+        <div class="col-xxl-8 col-xl-7">
+            <div class="table-responsive mb-4 shadow-sm bg-white" style="border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+                <table class="table table-hover mb-0 align-middle" style="font-size: 0.9rem;">
+                    <thead style="background-color: #f8fafc;">
+                        <tr>
+                            <th rowspan="2" width="15%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Output / MFO</th>
+                            <th rowspan="2" width="30%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Success Indicator<br>(Target + Measure)</th>
+                            <th rowspan="2" width="25%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Actual Accomplishments</th>
+                            <th colspan="4" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Rating</th>
+                            <th rowspan="2" width="10%" class="text-center align-middle border-bottom text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Remarks</th>
+                        </tr>
+                        <tr>
+                            <th width="5%" title="Quality" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">Q</th>
+                            <th width="5%" title="Efficiency" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">E</th>
+                            <th width="5%" title="Timeliness" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">T</th>
+                            <th width="5%" title="Average" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">A</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set current_category = namespace(name='') %}
+                        {% for t in dpcr_targets %}
+                            {% set cat_name = t.category_name or 'General' %}
+                            {% if cat_name != current_category.name %}
+                                <tr style="background-color: #f1f5f9;">
+                                    <td colspan="8" class="text-start fw-bold py-3 px-4" style="color: #334155; font-size: 0.95rem;">{{ cat_name }}</td>
+                                </tr>
+                                {% set current_category.name = cat_name %}
+                            {% endif %}
+                            <tr>
+                                <td class="text-start px-4 text-muted border-end" style="font-size: 0.85rem;">{{ cat_name }}</td>
+                                <td class="text-start px-4 border-end" style="color: #475569;">{{ t.indicator_description }}</td>
+                                <td class="text-start px-4 border-end" style="color: #64748b;">{{ t.actual_accomplishment or '' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.q if t.rating and t.rating.q is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.e if t.rating and t.rating.e is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.t if t.rating and t.rating.t is not none else '-' }}</td>
+                                <td class="text-center fw-bold border-end" style="background-color: #f8fafc; color: #1e293b;">{{ t.rating.average if t.rating and t.rating.average is not none else '-' }}</td>
+                                <td class="text-start px-3"></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right Column: Summary Table -->
+        <div class="col-xxl-4 col-xl-5">
+            <div class="table-responsive shadow-sm bg-white w-100" style="border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+                <table class="table table-hover mb-0 align-middle" style="font-size: 0.9rem;">
+                    <thead style="background-color: #f8fafc;">
+                        <tr>
+                            <th rowspan="2" width="45%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Category</th>
+                            <th rowspan="2" width="15%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Weight (%)</th>
+                            <th colspan="2" class="text-center align-middle border-bottom text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Rating</th>
+                        </tr>
+                        <tr>
+                            <th width="20%" class="text-center align-middle border-bottom border-end text-secondary" style="font-size: 0.8rem; font-weight: 700;">Average</th>
+                            <th width="20%" class="text-center align-middle border-bottom text-secondary" style="font-size: 0.8rem; font-weight: 700;">Weighted</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if ipcr_score and ipcr_score.breakdown %}
+                            {% for b in ipcr_score.breakdown %}
+                            <tr>
+                                <td class="text-start px-4 fw-medium border-end" style="color: #334155;">{{ b.category_name }}</td>
+                                <td class="text-center text-muted border-end">{{ b.weight_pct }}%</td>
+                                <td class="text-center fw-semibold text-dark border-end">{{ b.raw_avg if b.raw_avg is not none else '-' }}</td>
+                                <td class="text-center fw-bold text-primary">{{ b.weighted_value if b.weighted_value is not none else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr style="background-color: #f8fafc;">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #475569;">Total Overall Rating</td>
+                                <td colspan="2" class="text-center fw-bold fs-6 py-3" style="color: #0f172a;">{{ ipcr_score.total_overall_rating if ipcr_score.total_overall_rating is not none else '-' }}</td>
+                            </tr>
+                            <tr style="background-color: #f1f5f9;">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #334155;">Final Weighted Rating</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">{{ ipcr_score.final_weighted_rating if ipcr_score.final_weighted_rating is not none else '-' }}</td>
+                            </tr>
+                            <tr style="background-color: #ecfdf5;">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #065f46;">Adjectival Rating</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: #059669;">{{ ipcr_score.adjectival_rating or '-' }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-5">Summary data not available.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -928,6 +1044,22 @@
         const status = (document.querySelector('input[name="completionStatus"]:checked') || {}).value || 'COMPLETED';
         const durationRaw = document.getElementById('evidenceCompletedIn').value;
         const effRaw = document.getElementById('evidenceEfficiency').value;
+        const effRow = document.getElementById('efficiencyRow');
+        const effSelect = document.getElementById('evidenceEfficiency');
+        const effErr = document.getElementById('efficiencyErrorMsg');
+        
+        if (effRow && effRow.style.display !== 'none' && !effRaw) {
+            if (effSelect) effSelect.classList.add('is-invalid');
+            if (effErr) effErr.style.display = 'block';
+            if (msg) {
+                msg.className = 'small me-2 text-danger';
+                msg.textContent = 'Please select a Client Satisfaction Rating.';
+            }
+            return;
+        }
+        if (effSelect) effSelect.classList.remove('is-invalid');
+        if (effErr) effErr.style.display = 'none';
+
         const msg = document.getElementById('accomplishmentSaveMsg');
         if (msg) {
             msg.className = 'small me-2 text-muted';
@@ -983,7 +1115,50 @@
         if (e.target && e.target.name === 'completionStatus') toggleCompletedInState();
     });
 
+    const EVIDENCE_SUBMITTED = {{ 'true' if (evidence_readiness and evidence_readiness.evidence_submitted) else 'false' }};
+    const HAS_FINAL_IPCR = {{ 'true' if has_final_ipcr else 'false' }};
+    window.evidenceModalHasChanges = false;
+
+    function applyEvidenceLock() {
+        const form = document.getElementById('uploadEvidenceForm');
+        const notice = document.getElementById('uploadLockedNotice');
+        const footerSubmitBtn = document.getElementById('submitAccomplishmentBtn');
+        const saveDetailsBtn = document.querySelector('button[onclick="saveAccomplishmentDetails()"]');
+        if (!form) return;
+
+        const isLocked = HAS_FINAL_IPCR || EVIDENCE_SUBMITTED;
+
+        form.querySelectorAll('input, button, select, textarea').forEach(el => {
+            el.disabled = isLocked;
+        });
+
+        const completedIn = document.getElementById('evidenceCompletedIn');
+        if (completedIn) completedIn.disabled = isLocked;
+        document.querySelectorAll('input[name="completionStatus"]').forEach(el => { el.disabled = isLocked; });
+        const effSelect = document.getElementById('evidenceEfficiency');
+        if (effSelect) effSelect.disabled = isLocked;
+        const remarks = document.getElementById('evidenceRemarks');
+        if (remarks) remarks.disabled = isLocked;
+
+        if (saveDetailsBtn) saveDetailsBtn.disabled = isLocked;
+        if (footerSubmitBtn) footerSubmitBtn.disabled = isLocked;
+
+        if (notice) {
+            notice.style.display = isLocked ? '' : 'none';
+            if (HAS_FINAL_IPCR) {
+                notice.className = 'alert alert-success border-0 small mb-0';
+                notice.innerHTML = '<i class="bi bi-shield-lock-fill me-2"></i>Your evidence submission has been fully verified and approved by the Dean. Evidence gathering is now locked.';
+            } else if (EVIDENCE_SUBMITTED) {
+                notice.className = 'alert alert-secondary border-0 small mb-0';
+                notice.innerHTML = '<i class="bi bi-lock-fill me-2"></i>Your evidences have been submitted for verification. Uploading is locked — you can still view your files below.';
+            }
+        }
+        form.style.display = isLocked ? 'none' : '';
+    }
+
     window.openEvidenceModal = function (targetId, indicatorId, description, targetQty, actualQty) {
+        window.currentTargetId = targetId;
+        window.currentIndicatorId = indicatorId;
         // Set standard elements
         document.getElementById('evidenceTargetId').value = targetId;
         document.getElementById('evidenceIndicatorDesc').textContent = description;
@@ -1005,6 +1180,9 @@
 
         const effRow = document.getElementById('efficiencyRow');
         const effSelect = document.getElementById('evidenceEfficiency');
+        if (effSelect) effSelect.classList.remove('is-invalid');
+        const effErr = document.getElementById('efficiencyErrorMsg');
+        if (effErr) effErr.style.display = 'none';
         if ((meta.efficiencyType || '') === 'Client Satisfaction') {
             effRow.style.display = '';
             effSelect.value = meta.efficiencyRating != null ? String(meta.efficiencyRating) : '';
@@ -1022,17 +1200,23 @@
         document.getElementById('evidenceRemarks').value = meta.printRemarks || '';
         document.getElementById('accomplishmentSaveMsg').textContent = '';
         toggleCompletedInState();
+        applyEvidenceLock();
 
-        // Containers
-        const submissionsContainer = document.getElementById('submissionsListContainer');
-        submissionsContainer.innerHTML = '<div class="text-center text-muted py-3 small"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading submissions...</div>';
+        // Reload submissions
+        reloadEvidenceModalSubmissions();
 
         // Show the modal
         const myModal = new bootstrap.Modal(document.getElementById('evidenceGatheringModal'));
         myModal.show();
+    };
 
-        // Fetch current submissions for the target
-        fetch(`/designated/target_evidence/${targetId}/${indicatorId}`)
+    window.reloadEvidenceModalSubmissions = function () {
+        const submissionsContainer = document.getElementById('submissionsListContainer');
+        if (!submissionsContainer || !currentTargetId || !currentIndicatorId) return;
+
+        submissionsContainer.innerHTML = '<div class="text-center text-muted py-3 small"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading submissions...</div>';
+
+        fetch(`/designated/target_evidence/${currentTargetId}/${currentIndicatorId}`)
             .then(res => {
                 if (!res.ok) {
                     throw new Error(`Server returned ${res.status}: ${res.statusText}`);
@@ -1050,22 +1234,19 @@
                             let badgeHtml = '';
                             if (ev.verification_status === 'Approved') {
                                 badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.72rem;">Approved</span>`;
-                            } else if (ev.verification_status === 'Rejected') {
+                            } else if (ev.verification_status === 'Rejected' || ev.verification_status === 'Returned') {
                                 const remarks = ev.supervisor_comment || 'No comment';
-                                badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.72rem;" title="Remarks: ${remarks}">Rejected</span>`;
+                                badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.72rem;" title="Remarks: ${remarks}">Returned</span>`;
                             } else {
                                 badgeHtml = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size: 0.72rem;">Pending</span>`;
                             }
 
                             let actionHtml = '';
-                            if (ev.verification_status === 'Pending') {
+                            if (ev.verification_status !== 'Approved' && !HAS_FINAL_IPCR) {
                                 actionHtml = `
-                                    <form action="/designated/delete_evidence" method="POST" class="m-0 d-inline" onsubmit="return confirm('Are you sure you want to delete this evidence?');">
-                                        <input type="hidden" name="evidence_id" value="${ev.evidence_id}">
-                                        <button type="submit" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
                                 `;
                             }
 
@@ -1101,11 +1282,86 @@
                 submissionsContainer.innerHTML = `<div class="text-center text-danger py-3 small">Connection error loading evidence: ${err.message || err}</div>`;
             });
     };
+
+    window.deleteEvidence = function(evidenceId) {
+        showCustomConfirm({
+            title: "Remove Evidence File?",
+            mainText: "Are you sure you want to remove this evidence file?",
+            subText: "This will delete the file and update your accomplished quantity.",
+            confirmText: "Yes, Remove",
+            confirmClass: "btn-danger",
+            iconClass: "bi-trash-fill",
+            onConfirm: () => {
+                const formData = new FormData();
+                formData.append('evidence_id', evidenceId);
+
+                fetch('/designated/delete_evidence', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        window.evidenceModalHasChanges = true;
+                        reloadEvidenceModalSubmissions();
+                    } else {
+                        alert(data.message || 'Error deleting evidence.');
+                    }
+                })
+                .catch(err => {
+                    alert('Error deleting evidence: ' + err);
+                });
+            }
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const uploadForm = document.getElementById('uploadEvidenceForm');
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(uploadForm);
+                const submitBtn = uploadForm.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.disabled = true;
+
+                fetch('/designated/upload_evidence', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (data.success) {
+                        document.getElementById('evidenceFile').value = '';
+                        window.evidenceModalHasChanges = true;
+                        reloadEvidenceModalSubmissions();
+                    } else {
+                        alert(data.message || 'Error uploading evidence.');
+                    }
+                })
+                .catch(err => {
+                    if (submitBtn) submitBtn.disabled = false;
+                    alert('Upload error: ' + err);
+                });
+            });
+        }
+
+        const evidenceModalEl = document.getElementById('evidenceGatheringModal');
+        if (evidenceModalEl) {
+            evidenceModalEl.addEventListener('hidden.bs.modal', function () {
+                if (window.evidenceModalHasChanges) {
+                    location.reload();
+                }
+            });
+        }
+    });
 </script>
 
 <!-- Unified Evidence Gathering Modal -->
 <div class="modal fade" id="evidenceGatheringModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3"
                 style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
@@ -1137,91 +1393,12 @@
                     </div>
                 </div>
 
-                <!-- Accomplishment Details: Timeliness (T) and, where applicable, Efficiency (E) -->
-                <div class="mb-4 p-3 border border-light shadow-xs text-start" style="border-radius: 12px;">
-                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-stopwatch-fill me-2 text-primary"></i>Accomplishment Details</h6>
-                        <span class="small text-muted">Used to compute your Timeliness rating.</span>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold text-secondary small mb-1">Actual Accomplishment</label>
-                        <p id="evidenceActualAccomplishment" class="mb-0 small fst-italic text-secondary p-2 bg-light rounded"></p>
-                    </div>
-
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-5">
-                            <label for="evidenceCompletedIn" class="form-label fw-semibold text-secondary small">Completed in</label>
-                            <div class="d-flex gap-2 align-items-center">
-                                <input type="number" class="form-control" id="evidenceCompletedIn" min="0" style="max-width: 110px;">
-                                <span id="evidenceDurationUnit" class="text-muted small"></span>
-                            </div>
-                            <small class="text-muted" style="font-size: 0.72rem;">Target: <span id="evidenceTargetDuration">—</span></small>
-                        </div>
-                        <div class="col-md-7">
-                            <label class="form-label fw-semibold text-secondary small d-block">Completion Status</label>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="completionStatus" id="statusCompleted" value="COMPLETED" checked>
-                                <label class="form-check-label small" for="statusCompleted">Completed</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="completionStatus" id="statusPartial" value="PARTIAL_AT_DEADLINE">
-                                <label class="form-check-label small" for="statusPartial">Partially completed at deadline</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="completionStatus" id="statusNotBegun" value="NOT_BEGUN">
-                                <label class="form-check-label small" for="statusNotBegun">Not yet begun</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mt-1" id="efficiencyRow" style="display: none;">
-                        <div class="col-md-5">
-                            <label for="evidenceEfficiency" class="form-label fw-semibold text-secondary small">Client Satisfaction Rating</label>
-                            <select class="form-select" id="evidenceEfficiency">
-                                <option value="">— not yet rated —</option>
-                                {% for label, score in [('Excellent', 5), ('Very Satisfactory', 4), ('Satisfactory', 3), ('Unsatisfactory', 2), ('Poor', 1)] %}
-                                <option value="{{ score }}">{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
-
-                    <div class="row g-3 mt-1">
-                        <div class="col-12">
-                            <label for="evidenceRemarks" class="form-label fw-semibold text-secondary small">
-                                Remarks <span class="text-muted fw-normal">(optional)</span>
-                            </label>
-                            <input type="text" class="form-control" id="evidenceRemarks" maxlength="255"
-                                   placeholder="Short note printed in the IPCR's Remarks column">
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-3 border-top">
-                        <label class="form-label fw-semibold text-secondary small mb-2">Computed Rating</label>
-                        <div class="d-flex gap-2 flex-wrap align-items-center">
-                            <span class="badge bg-light text-dark border px-3 py-2">Quantity <span id="ratingQ" class="fw-bold ms-1">—</span></span>
-                            <span class="badge bg-light text-dark border px-3 py-2">Efficiency <span id="ratingE" class="fw-bold ms-1">—</span></span>
-                            <span class="badge bg-light text-dark border px-3 py-2">Timeliness <span id="ratingT" class="fw-bold ms-1">—</span></span>
-                            <i class="bi bi-arrow-right text-muted"></i>
-                            <span class="badge bg-primary px-3 py-2">Average <span id="ratingAvg" class="fw-bold ms-1">—</span></span>
-                        </div>
-                    </div>
-
-                    <div class="text-end mt-3">
-                        <span id="accomplishmentSaveMsg" class="small me-2"></span>
-                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-4"
-                                onclick="saveAccomplishmentDetails()">
-                            <i class="bi bi-save me-1"></i>Save Details
-                        </button>
-                    </div>
-                </div>
-
-                <div class="row g-4">
+                <!-- Upload New Evidence & Submissions Row -->
+                <div class="row g-4 mb-4">
                     <!-- Left Column: Actions (Upload) -->
                     <div class="col-lg-6">
                         <!-- Upload Form -->
-                        <div class="card border border-light shadow-xs mb-4"
+                        <div class="card border border-light shadow-xs mb-0 h-100"
                             style="border-radius: 12px; overflow: hidden;">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i
@@ -1264,11 +1441,94 @@
                             </div>
                             <div class="card-body">
                                 <div id="submissionsListContainer" class="d-flex flex-column gap-2"
-                                    style="max-height: 480px; overflow-y: auto;">
+                                    style="max-height: 280px; overflow-y: auto;">
                                     <!-- Populated dynamically -->
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Accomplishment Details: Timeliness (T) and, where applicable, Efficiency (E) -->
+                <div class="p-3 border border-light shadow-xs text-start" style="border-radius: 12px;">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-stopwatch-fill me-2 text-primary"></i>Accomplishment Details</h6>
+                        <span class="small text-muted">Used to compute your Timeliness rating.</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small mb-1">Actual Accomplishment</label>
+                        <p id="evidenceActualAccomplishment" class="mb-0 small fst-italic text-secondary p-2 bg-light rounded"></p>
+                    </div>
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label for="evidenceCompletedIn" class="form-label fw-semibold text-secondary small">Completed in</label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="number" class="form-control" id="evidenceCompletedIn" min="0" style="max-width: 110px;">
+                                <span id="evidenceDurationUnit" class="text-muted small"></span>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.72rem;">Target: <span id="evidenceTargetDuration">—</span></small>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold text-secondary small d-block">Completion Status</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusCompleted" value="COMPLETED" checked>
+                                <label class="form-check-label small" for="statusCompleted">Completed</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusPartial" value="PARTIAL_AT_DEADLINE">
+                                <label class="form-check-label small" for="statusPartial">Partially completed at deadline</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="completionStatus" id="statusNotBegun" value="NOT_BEGUN">
+                                <label class="form-check-label small" for="statusNotBegun">Not yet begun</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1" id="efficiencyRow" style="display: none;">
+                        <div class="col-md-5">
+                            <label for="evidenceEfficiency" class="form-label fw-semibold text-secondary small">Client Satisfaction Rating</label>
+                            <select class="form-select" id="evidenceEfficiency" onchange="this.classList.remove('is-invalid'); const err = document.getElementById('efficiencyErrorMsg'); if(err) err.style.display='none';">
+                                <option value="">— not yet rated —</option>
+                                {% for label, score in [('Excellent', 5), ('Very Satisfactory', 4), ('Satisfactory', 3), ('Unsatisfactory', 2), ('Poor', 1)] %}
+                                <option value="{{ score }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-danger mt-1 d-block" id="efficiencyErrorMsg" style="display: none; font-size: 0.75rem;">
+                                Client Satisfaction Rating is required.
+                            </small>
+                        </div>
+                    </div>
+
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-12">
+                            <label for="evidenceRemarks" class="form-label fw-semibold text-secondary small">
+                                Remarks <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            <input type="text" class="form-control" id="evidenceRemarks" maxlength="255"
+                                   placeholder="Short note printed in the IPCR's Remarks column">
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-top">
+                        <label class="form-label fw-semibold text-secondary small mb-2">Computed Rating</label>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="badge bg-light text-dark border px-3 py-2">Quantity <span id="ratingQ" class="fw-bold ms-1">—</span></span>
+                            <span class="badge bg-light text-dark border px-3 py-2">Efficiency <span id="ratingE" class="fw-bold ms-1">—</span></span>
+                            <span class="badge bg-light text-dark border px-3 py-2">Timeliness <span id="ratingT" class="fw-bold ms-1">—</span></span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-primary px-3 py-2">Average <span id="ratingAvg" class="fw-bold ms-1">—</span></span>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <span id="accomplishmentSaveMsg" class="small me-2"></span>
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-4"
+                                onclick="saveAccomplishmentDetails()">
+                            <i class="bi bi-save me-1"></i>Save Details
+                        </button>
                     </div>
                 </div>
             </div>

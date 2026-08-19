@@ -76,6 +76,7 @@ def designated_dashboard():
 
         evidence_readiness = None
         ipcr_score = None
+        has_final_ipcr = False
         if is_committed:
             can_edit = False
             has_submitted = True
@@ -102,6 +103,7 @@ def designated_dashboard():
                     t['is_locked'] = True
                 t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             evidence_readiness = check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets)
+            has_final_ipcr = any(t.get('status') == 'Dean Approved' for t in dpcr_targets) if dpcr_targets else False
             # Live IPCR summary — uses the Designated Faculty weight table.
             from app.models.scoring import compute_ipcr_score
             ipcr_score = compute_ipcr_score(cursor, emp_id, term_id)
@@ -314,7 +316,8 @@ def designated_dashboard():
                            can_edit=can_edit,
                            dean_review=dean_review,
                            evidence_readiness=evidence_readiness,
-                           ipcr_score=ipcr_score)
+                           ipcr_score=ipcr_score,
+                           has_final_ipcr=has_final_ipcr)
 
 
 @designated_bp.route('/save_accomplishment', methods=['POST'])
@@ -483,8 +486,12 @@ def designated_upload_evidence():
     emp_id = session.get('user_id')
     target_id = request.form.get('target_id')
     quantity = request.form.get('quantity', '1')
+    is_ajax = (request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+               'application/json' in request.headers.get('Accept', ''))
     
     if not target_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid target ID.'}), 400
         flash("Invalid target ID.", "danger")
         return redirect(url_for('designated.designated_dashboard'))
         
@@ -495,6 +502,8 @@ def designated_upload_evidence():
 
     file = request.files.get('file')
     if not file or file.filename == '':
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Please select a file to upload.'}), 400
         flash("Please select a file to upload.", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
@@ -503,6 +512,8 @@ def designated_upload_evidence():
     filename = file.filename
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
     if ext not in allowed_extensions:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Unsupported file format. Allowed format: .pdf'}), 400
         flash("Unsupported file format. Allowed format: .pdf", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
@@ -523,9 +534,13 @@ def designated_upload_evidence():
         from app.models.faculty import upload_evidence_item
         upload_evidence_item(cursor, int(target_id), relative_path, qty_val)
         conn.commit()
+        if is_ajax:
+            return jsonify({'success': True, 'message': 'Evidence uploaded successfully!'})
         flash("Evidence uploaded successfully!", "success")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': f"Error uploading evidence: {str(e)}"}), 500
         flash(f"Error uploading evidence: {str(e)}", "danger")
     finally:
         cursor.close()
@@ -538,7 +553,10 @@ def designated_upload_evidence():
 @designated_ipcr_required
 def designated_delete_evidence():
     evidence_id = request.form.get('evidence_id')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
     if not evidence_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid evidence ID.'}), 400
         flash("Invalid evidence ID.", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
@@ -549,11 +567,17 @@ def designated_delete_evidence():
         success = delete_evidence_item(cursor, int(evidence_id))
         if success:
             conn.commit()
+            if is_ajax:
+                return jsonify({'success': True, 'message': 'Evidence removed successfully.'})
             flash("Evidence removed successfully.", "success")
         else:
+            if is_ajax:
+                return jsonify({'success': False, 'message': 'Evidence item not found.'}), 404
             flash("Evidence item not found.", "danger")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': f"Error deleting evidence: {str(e)}"}), 500
         flash(f"Error deleting evidence: {str(e)}", "danger")
     finally:
         cursor.close()

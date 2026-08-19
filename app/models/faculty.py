@@ -824,7 +824,7 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
         if actual_q >= assigned_q and assigned_q > 0:
             targets_met_qty += 1
 
-        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified') and not any(e.get('verification_status') in ('Returned', 'Rejected') for e in ev_list):
+        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved') and not any(e.get('verification_status') in ('Returned', 'Rejected') for e in ev_list):
             submitted_count += 1
 
     all_ready = (total_targets > 0) and (targets_with_evidence == total_targets) and (targets_met_qty == total_targets)

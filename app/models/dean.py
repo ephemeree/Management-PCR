@@ -514,15 +514,16 @@ def get_dean_evidence_faculty(cursor, term_id):
     from app.models.faculty import enrich_faculty_verification_status
 
     query = """
-        SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program,
+        SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program, ep.designation, sa.system_role,
                COUNT(DISTINCT ct.target_id) as total_targets,
                SUM(CASE WHEN ct.actual_quantity >= ct.assigned_quantity AND ct.assigned_quantity > 0 THEN 1 ELSE 0 END) as met_targets,
                MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) as is_dean_context
         FROM tbl_employee_profiles ep
         JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+        LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
         WHERE mi.term_id = %s
-        GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program
+        GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program, ep.designation, sa.system_role
         HAVING MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name
     """

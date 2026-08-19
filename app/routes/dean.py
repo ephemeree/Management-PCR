@@ -80,6 +80,8 @@ def dean_dashboard():
 
     from app.models.dean import get_dean_evidence_faculty
     pending_dean_evidence_list, approved_dean_evidence_list = get_dean_evidence_faculty(cursor, term_id)
+    approved_designated_dean_evidence_list = [f for f in approved_dean_evidence_list if f.get('designation') == 'Designated Faculty' or f.get('system_role') == 'DESIGNATED_FACULTY']
+    approved_regular_dean_evidence_list = [f for f in approved_dean_evidence_list if not (f.get('designation') == 'Designated Faculty' or f.get('system_role') == 'DESIGNATED_FACULTY')]
 
     departments = get_departments(cursor)
 
@@ -102,7 +104,9 @@ def dean_dashboard():
                            designated_assignments=designated_assignments,
                            college_wide_allocations=college_wide_allocations,
                            pending_dean_evidence_list=pending_dean_evidence_list,
-                           approved_dean_evidence_list=approved_dean_evidence_list)
+                           approved_dean_evidence_list=approved_dean_evidence_list,
+                           approved_designated_dean_evidence_list=approved_designated_dean_evidence_list,
+                           approved_regular_dean_evidence_list=approved_regular_dean_evidence_list)
 
 
 @dean_bp.route('/cascade_quotas', methods=['POST'])
@@ -171,36 +175,6 @@ def cascade_quotas():
     return redirect(url_for('dean.dean_dashboard'))
 
 
-@dean_bp.route('/batch_approve', methods=['POST'])
-@role_required('DEAN')
-def batch_approve():
-    conn = None
-    cursor = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        score_ids = request.form.getlist('score_ids[]')
-        action = request.form.get('action', 'approve')
-
-        if not score_ids:
-            flash('No IPCRs selected for approval', 'warning')
-            return redirect(url_for('dean.dean_dashboard'))
-
-        new_status = 'Approved' if action == 'approve' else 'Reverted'
-        success, message = update_dean_approval_status(cursor, conn, score_ids, new_status)
-
-        flash(message, 'success' if success else 'danger')
-
-    except Exception as e:
-        flash(f'Error processing batch approval: {str(e)}', 'danger')
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-
-    return redirect(url_for('dean.dean_dashboard'))
 
 
 @dean_bp.route('/validate_quotas', methods=['POST'])

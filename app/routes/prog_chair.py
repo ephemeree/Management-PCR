@@ -96,6 +96,8 @@ def prog_chair_dashboard():
             evidence_faculty_list = get_program_chair_evidence_faculty(cursor, specialization, term_id)
             pending_evidence_faculty_list = [f for f in evidence_faculty_list if not f.get('is_both_approved')]
             approved_evidence_faculty_list = [f for f in evidence_faculty_list if f.get('is_both_approved')]
+            approved_designated_evidence_list = [f for f in approved_evidence_faculty_list if f.get('designation') == 'Designated Faculty' or f.get('system_role') == 'DESIGNATED_FACULTY']
+            approved_regular_evidence_list = [f for f in approved_evidence_faculty_list if not (f.get('designation') == 'Designated Faculty' or f.get('system_role') == 'DESIGNATED_FACULTY')]
 
         return render_template(
             'prog_chair_dashboard.html',
@@ -111,7 +113,9 @@ def prog_chair_dashboard():
             locked_drafts=locked_drafts,
             evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [],
             pending_evidence_faculty_list=pending_evidence_faculty_list if 'pending_evidence_faculty_list' in locals() else [],
-            approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else []
+            approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else [],
+            approved_designated_evidence_list=approved_designated_evidence_list if 'approved_designated_evidence_list' in locals() else [],
+            approved_regular_evidence_list=approved_regular_evidence_list if 'approved_regular_evidence_list' in locals() else []
         )
     finally:
         cursor.close()

@@ -27,11 +27,17 @@
 <button class="nav-item" data-section="nav-phase4" onclick="showSection('nav-phase4')">
     <i class="bi bi-person-check-fill"></i>
     <span class="nav-text">Commitments</span>
+    {% if pending_ret_count > 0 %}
+    <span class="badge bg-danger ms-auto rounded-pill">{{ pending_ret_count }}</span>
+    {% endif %}
 </button>
 <div class="nav-label">Verification</div>
 <button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
     <i class="bi bi-file-earmark-check-fill"></i>
     <span class="nav-text">Evidence Verification</span>
+    {% if pending_evidence_faculty_list|length > 0 %}
+    <span class="badge bg-danger ms-auto rounded-pill">{{ pending_evidence_faculty_list|length }}</span>
+    {% endif %}
 </button>
 {% if has_own_ipcr %}
 <div class="nav-label">My Performance</div>
@@ -169,7 +175,7 @@ function openAssignmentEditor(empId) {
 
 <!-- Assignment Editor Modal (Dual Assignment Workflow) -->
 <div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form action="{{ url_for('ret_chair.save_assignments') }}" method="POST">
                 <input type="hidden" name="emp_id" id="assignmentEditorEmpId">
@@ -926,7 +932,7 @@ function openAssignmentEditor(empId) {
 
 <!-- RET REVIEW MODAL -->
 <div class="modal fade" id="reviewRetModal" tabindex="-1" aria-labelledby="reviewRetModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
             <!-- Modal Header -->
             <div class="modal-header border-0 py-3"
@@ -1847,7 +1853,7 @@ function openAssignmentEditor(empId) {
 
 <!-- RET Faculty Evidence Verification Modal -->
 <div class="modal fade" id="retFacultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
                 <h5 class="modal-title fw-bold" id="retEvidenceModalTitle"><i class="bi bi-file-earmark-check-fill me-2"></i>Research &amp; Extension Evidence Verification</h5>

@@ -30,6 +30,9 @@
 <button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
     <i class="bi bi-file-earmark-check-fill"></i>
     <span class="nav-text">Evidence Verification</span>
+    {% if pending_evidence_faculty_list|length > 0 %}
+    <span class="badge bg-danger ms-auto rounded-pill">{{ pending_evidence_faculty_list|length }}</span>
+    {% endif %}
 </button>
 {% if has_own_ipcr %}
 <div class="nav-label">My Performance</div>
@@ -569,7 +572,7 @@
 <!-- IPCR REVIEW MODAL                           -->
 <!-- ═══════════════════════════════════════════ -->
 <div class="modal fade" id="reviewIpcrModal" tabindex="-1" aria-labelledby="reviewIpcrModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
 
             <!-- Modal Header -->
@@ -675,7 +678,7 @@
 <!-- VIEW LOCKED IPCR MODAL -->
 <div class="modal fade" id="viewLockedIpcrModal" tabindex="-1" aria-labelledby="viewLockedIpcrModalLabel"
     aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
 
             <!-- Modal Header -->
@@ -1175,13 +1178,13 @@
                         ${qtyChanged ? `<small class="qty-edited-tag text-warning d-block mt-1"><i class="bi bi-pencil-fill"></i> Edited</small>` : '<small class="qty-edited-tag" style="display:none"></small>'}
                     </td>
                     <td>
-                        <textarea class="form-control form-control-sm item-remarks-input"
+                        ${isRet ? '<span class="text-muted fst-italic small">N/A for Program Chair</span>' : `<textarea class="form-control form-control-sm item-remarks-input"
                                   id="remarks-${item.item_id}"
                                   rows="2"
                                   placeholder="Optional note on this change..."
                                   data-item-id="${item.item_id}"
                                   data-initial-remarks="${(item.item_remarks || '').trim()}"
-                                  ${isInputDisabled ? 'disabled' : ''}>${item.item_remarks || ''}</textarea>
+                                  ${isInputDisabled ? 'disabled' : ''}>${item.item_remarks || ''}</textarea>`}
                     </td>
                 `;
                     tbody.appendChild(tr);
@@ -1564,10 +1567,10 @@
         </div>
     </div>
 
-    <!-- Approved Evidence Submissions Table -->
-    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <!-- Approved Designated Faculty Evidences Table -->
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #198754 !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-check-circle-fill me-2 text-success"></i>Approved Evidence Submissions</h5>
+            <h5 class="mb-0 fw-bold text-success"><i class="bi bi-check-circle-fill me-2 text-success"></i>Approved Designated Faculty Evidences</h5>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -1583,12 +1586,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if approved_evidence_faculty_list %}
-                            {% for fac in approved_evidence_faculty_list %}
+                        {% if approved_designated_evidence_list %}
+                            {% for fac in approved_designated_evidence_list %}
                             <tr>
                                 <td class="ps-4 py-3">
                                     <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
-                                    <small class="text-muted">{{ fac.specialization or 'Regular Faculty' }}</small>
+                                    <small class="text-muted">{{ fac.designation or 'Designated Faculty' }} ({{ fac.specialization or 'Department' }})</small>
                                 </td>
                                 <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
                                 <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
@@ -1619,7 +1622,76 @@
                         {% else %}
                             <tr>
                                 <td colspan="6" class="text-center py-4 text-muted">
-                                    No fully approved evidence submissions yet.
+                                    No approved evidence submissions from Designated Faculty yet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved Regular Faculty Evidences Table -->
+    <div class="card border-0 shadow-sm" style="border-top: 4px solid #0d6efd !important; border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-check-circle-fill me-2 text-primary"></i>Approved Regular Faculty Evidences</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Committed Targets</th>
+                            <th class="text-center">Targets Met</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if approved_regular_evidence_list %}
+                            {% for fac in approved_regular_evidence_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                    <small class="text-muted">{{ fac.specialization or 'Regular Faculty' }}</small>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    {% if fac.is_both_approved %}
+                                    <span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-all me-1"></i>Approved by Both</span>
+                                    {% else %}
+                                    <span class="badge bg-info text-dark px-3 py-2 rounded-pill"><i class="bi bi-check-circle me-1"></i>Approved by Chair (Waiting for RET)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center pe-4">
+                                    <div class="d-inline-flex gap-2 align-items-center justify-content-center">
+                                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                            onclick="openFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                            <i class="bi bi-eye-fill me-1"></i>View Evidences
+                                        </button>
+                                        {% if fac.is_submitted_to_dean %}
+                                        <button type="button" class="btn btn-secondary btn-sm px-3 py-2 rounded-pill fw-bold opacity-75" disabled title="Already submitted to Dean for final verification">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Submitted to Dean
+                                        </button>
+                                        {% else %}
+                                        <button type="button" class="btn btn-success btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                            onclick="submitFacultyEvidenceToDean({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                            <i class="bi bi-send-fill me-1"></i>Submit to Dean
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No approved evidence submissions from Regular Faculty yet.
                                 </td>
                             </tr>
                         {% endif %}
@@ -1632,7 +1704,7 @@
 
 <!-- Faculty Evidence Verification Modal -->
 <div class="modal fade" id="facultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
                 <h5 class="modal-title fw-bold" id="evidenceModalTitle"><i class="bi bi-file-earmark-check-fill me-2"></i>Faculty Evidence Verification</h5>

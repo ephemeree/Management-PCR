@@ -17,11 +17,12 @@
 <button class="nav-item" data-section="nav-draft-ipcr" onclick="showSection('nav-draft-ipcr')">
     <i class="bi bi-file-earmark-check-fill"></i>
     <span class="nav-text">IPCR Draft Approval</span>
+    {% set pending_drafts_dean = draft_submissions | rejectattr('review_status', 'equalto', 'Approved') | rejectattr('review_status', 'equalto', 'Rejected') | list | length if draft_submissions else 0 %}
+    {% if pending_drafts_dean > 0 %}
+    <span class="badge bg-danger ms-auto rounded-pill">{{ pending_drafts_dean }}</span>
+    {% endif %}
 </button>
-<button class="nav-item" data-section="nav-phase6" onclick="showSection('nav-phase6')">
-    <i class="bi bi-check-all"></i>
-    <span class="nav-text">Batch Approvals</span>
-</button>
+
 <button class="nav-item" data-section="nav-target-assign" onclick="showSection('nav-target-assign')">
     <i class="bi bi-person-plus-fill"></i>
     <span class="nav-text">Target Assignment</span>
@@ -29,6 +30,9 @@
 <button class="nav-item" data-section="nav-final-verification" onclick="showSection('nav-final-verification')">
     <i class="bi bi-file-earmark-diff-fill"></i>
     <span class="nav-text">Final Verification</span>
+    {% if pending_dean_evidence_list|length > 0 %}
+    <span class="badge bg-danger ms-auto rounded-pill">{{ pending_dean_evidence_list|length }}</span>
+    {% endif %}
 </button>
 {% if has_own_ipcr %}
 <div class="nav-label">My Performance</div>
@@ -302,82 +306,7 @@
 </div>
 
 <!-- Phase 6: Final Digital Batch Approvals -->
-<div id="nav-phase6" class="dashboard-section">
-    <div class="page-header d-flex justify-content-between align-items-center">
-        <div>
-            <h2>Phase 6: Final Digital Batch Approvals</h2>
-            <p>Apply your digital signature to verified IPCRs before generating the official Standardized CSC documents.
-            </p>
-        </div>
-        <div>
-            <button class="btn btn-success btn-sm" onclick="approveSelected()">
-                <i class="bi bi-pen"></i> Approve All Selected
-            </button>
-            <button class="btn btn-warning btn-sm" onclick="revertSelected()">
-                <i class="bi bi-arrow-return-left"></i> Revert to Manager
-            </button>
-        </div>
-    </div>
 
-    <div class="card shadow-sm border-0" style="border-top: 4px solid #2DD46B !important;">
-        <div class="card-body">
-
-            {% if pending_approvals %}
-            <form id="approvalForm" action="{{ url_for('dean.batch_approve') }}" method="POST">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th><input class="form-check-input" type="checkbox" id="selectAll"
-                                    onchange="toggleSelectAll()"></th>
-                            <th>Faculty Name</th>
-                            <th>Department</th>
-                            <th>Final Truncated Rating</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for approval in pending_approvals %}
-                        <tr>
-                            <td>
-                                <input class="form-check-input approval-checkbox" type="checkbox" name="score_ids[]"
-                                    value="{{ approval.score_id }}">
-                            </td>
-                            <td>{{ approval.faculty_name }}</td>
-                            <td>{{ approval.department }}</td>
-                            <td class="fw-bold text-success">
-                                {{ "%.2f"|format(approval.final_score) }} ({{ approval.adjectival_rating }})
-                            </td>
-                            <td>
-                                {% if approval.dean_approval_status == 'Pending' %}
-                                <span class="badge bg-warning text-dark">Awaiting Dean Signature</span>
-                                {% elif approval.dean_approval_status == 'Approved' %}
-                                <span class="badge bg-success">Approved</span>
-                                {% else %}
-                                <span class="badge bg-secondary">{{ approval.dean_approval_status }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <button class="btn btn-outline-secondary btn-sm"
-                                    onclick="alert('Review IPCR feature coming soon')">
-                                    Review IPCR
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <input type="hidden" name="action" id="batchAction" value="">
-            </form>
-            {% else %}
-            <div class="text-center py-4">
-                <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
-                <p class="mt-2 text-muted">No pending approvals. All IPCRs have been processed.</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
 <!-- ──────────────────────────────────────────────
      IPCR Draft Approval (Designated Faculty Review)
      ────────────────────────────────────────────── -->
@@ -390,45 +319,48 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0" style="border-top: 4px solid #6366F1 !important;">
-        <div class="card-body">
-            {% if draft_submissions %}
+    {% set pending_drafts = draft_submissions | rejectattr('review_status', 'equalto', 'Approved') | list if draft_submissions else [] %}
+    {% set approved_drafts = draft_submissions | selectattr('review_status', 'equalto', 'Approved') | list if draft_submissions else [] %}
+
+    <!-- Table 1: Pending Draft Submissions -->
+    <div class="card shadow-sm border-0 mb-5" style="border-top: 4px solid #FFC107 !important; border-radius: 14px; overflow: hidden;">
+        <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-hourglass-split text-warning me-2"></i>Pending Draft Submissions</h5>
+            <small class="text-muted">Draft IPCRs submitted by Designated Faculty awaiting review or returned for revisions.</small>
+        </div>
+        <div class="card-body p-0">
+            {% if pending_drafts %}
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Faculty Name</th>
+                            <th class="ps-4 py-3">Faculty Name</th>
                             <th>Academic Rank</th>
                             <th>Designation</th>
                             <th>Assigned Program</th>
                             <th class="text-center">Targets</th>
                             <th class="text-center">Status</th>
-                            <th class="text-center">Actions</th>
+                            <th class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for sub in draft_submissions %}
+                        {% for sub in pending_drafts %}
                         <tr id="draft-row-{{ sub.emp_id }}">
-                            <td class="fw-bold">{{ sub.faculty_name }}</td>
-                            <td>{{ sub.academic_rank }}</td>
+                            <td class="ps-4 fw-bold">{{ sub.faculty_name }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ sub.academic_rank }}</span></td>
                             <td>{{ sub.designation }}</td>
                             <td>{{ sub.assigned_program }}</td>
                             <td class="text-center">
-                                <span class="badge bg-secondary">{{ sub.total_targets }} targets</span>
+                                <span class="badge bg-secondary">{{ sub.total_targets }} target{{ 's' if sub.total_targets != 1 }}</span>
                             </td>
                             <td class="text-center" id="status-cell-{{ sub.emp_id }}">
-                                {% if sub.review_status == 'Approved' %}
-                                <span class="badge bg-success px-3 py-2"><i
-                                        class="bi bi-check-circle-fill me-1"></i>Approved</span>
-                                {% elif sub.review_status == 'Rejected' %}
-                                <span class="badge bg-danger px-3 py-2"><i
-                                        class="bi bi-x-circle-fill me-1"></i>Returned</span>
+                                {% if sub.review_status == 'Rejected' %}
+                                <span class="badge bg-danger px-3 py-2"><i class="bi bi-x-circle-fill me-1"></i>Returned</span>
                                 {% else %}
-                                <span class="badge bg-warning text-dark px-3 py-2"><i
-                                        class="bi bi-hourglass-split me-1"></i>Pending Review</span>
+                                <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Pending Review</span>
                                 {% endif %}
                             </td>
-                            <td class="text-center">
+                            <td class="text-center pe-4">
                                 <button class="btn btn-sm btn-outline-primary open-review-modal"
                                     data-emp-id="{{ sub.emp_id }}" data-bs-toggle="modal"
                                     data-bs-target="#reviewDeanModal">
@@ -441,9 +373,66 @@
                 </table>
             </div>
             {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="mt-2 text-muted">No draft IPCR submissions from Designated Faculty yet.</p>
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                <h6 class="fw-semibold mb-1">No Pending Draft Submissions</h6>
+                <p class="small mb-0">There are no pending draft IPCR submissions from Designated Faculty.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Table 2: Approved IPCRs -->
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #198754 !important; border-radius: 14px; overflow: hidden;">
+        <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
+            <h5 class="fw-bold text-success mb-0"><i class="bi bi-check-circle-fill me-2"></i>Approved IPCR Drafts</h5>
+            <small class="text-muted">Draft IPCRs that have been verified and approved by the Dean.</small>
+        </div>
+        <div class="card-body p-0">
+            {% if approved_drafts %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3">Faculty Name</th>
+                            <th>Academic Rank</th>
+                            <th>Designation</th>
+                            <th>Assigned Program</th>
+                            <th class="text-center">Targets</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in approved_drafts %}
+                        <tr id="draft-row-{{ sub.emp_id }}">
+                            <td class="ps-4 fw-bold text-success">{{ sub.faculty_name }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ sub.academic_rank }}</span></td>
+                            <td>{{ sub.designation }}</td>
+                            <td>{{ sub.assigned_program }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-success bg-opacity-10 text-success fw-bold">{{ sub.total_targets }} target{{ 's' if sub.total_targets != 1 }} Approved</span>
+                            </td>
+                            <td class="text-center" id="status-cell-{{ sub.emp_id }}">
+                                <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                            </td>
+                            <td class="text-center pe-4">
+                                <button class="btn btn-sm btn-outline-success open-review-modal"
+                                    data-emp-id="{{ sub.emp_id }}" data-bs-toggle="modal"
+                                    data-bs-target="#reviewDeanModal" title="View Approved IPCR">
+                                    <i class="bi bi-eye-fill me-1"></i> View
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-check-circle fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                <h6 class="fw-semibold mb-1">No Approved IPCRs Yet</h6>
+                <p class="small mb-0">No designated faculty draft IPCRs have been approved yet.</p>
             </div>
             {% endif %}
         </div>
@@ -454,7 +443,7 @@
 <!-- DEAN IPCR REVIEW MODAL (Program Chair UX)  -->
 <!-- ═══════════════════════════════════════════ -->
 <div class="modal fade" id="reviewDeanModal" tabindex="-1" aria-labelledby="reviewDeanModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
 
             <!-- Modal Header -->
@@ -537,7 +526,7 @@
                 </div>
 
                 <!-- Section 3: Unselected Indicators Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4" id="unselectedIndicatorsCard" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3 bg-light">
                         <h6 class="fw-bold text-secondary text-uppercase mb-0">
                             <i class="bi bi-exclamation-circle me-2"></i>Unselected Indicators
@@ -563,7 +552,7 @@
                 </div>
 
                 <!-- Section 4: College-Wide Targets Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4" id="collegeWideTargetsCard" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3 bg-light">
                         <h6 class="fw-bold text-secondary text-uppercase mb-0">
                             <i class="bi bi-globe me-2"></i>College-Wide Targets
@@ -895,17 +884,17 @@
         </div>
     </div>
 
-    <!-- Table 2: Approved Final Verifications -->
-    <div class="card shadow-sm border-0 mb-4" style="border-radius: 14px; overflow: hidden;">
-        <div class="card-header bg-white border-0 pt-4 pb-3 px-4 d-flex justify-content-between align-items-center">
+    <!-- Approved Designated Faculty Final Verifications Table -->
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #198754 !important; border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="fw-bold text-dark mb-0">
-                    <i class="bi bi-patch-check-fill text-success me-2"></i>Approved Final Verifications
+                <h5 class="fw-bold text-success mb-0">
+                    <i class="bi bi-patch-check-fill text-success me-2"></i>Approved Designated Faculty Final Verifications
                 </h5>
-                <small class="text-muted">Faculty evidence packages fully approved by the Dean.</small>
+                <small class="text-muted">Designated faculty evidence packages fully approved by the Dean.</small>
             </div>
             <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-bold">
-                {{ approved_dean_evidence_list | length }} Approved
+                {{ approved_designated_dean_evidence_list | length }} Approved
             </span>
         </div>
         <div class="card-body p-0">
@@ -922,8 +911,71 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if approved_dean_evidence_list %}
-                            {% for fac in approved_dean_evidence_list %}
+                        {% if approved_designated_dean_evidence_list %}
+                            {% for fac in approved_designated_dean_evidence_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                    <small class="text-muted">{{ fac.designation or 'Designated Faculty' }} ({{ fac.specialization or 'Department' }})</small>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.assigned_program or 'CIT' }}</span></td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success px-3 py-2 rounded-pill shadow-xs"><i class="bi bi-patch-check-fill me-1"></i>Dean Approved</span>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <div class="d-inline-flex gap-2 align-items-center justify-content-center">
+                                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                            onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                            <i class="bi bi-file-earmark-text-fill me-1"></i>View IPCR
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No approved final verifications for Designated Faculty yet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved Regular Faculty Final Verifications Table -->
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #0d6efd !important; border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold text-primary mb-0">
+                    <i class="bi bi-patch-check-fill text-primary me-2"></i>Approved Regular Faculty Final Verifications
+                </h5>
+                <small class="text-muted">Regular faculty evidence packages fully approved by the Dean.</small>
+            </div>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold">
+                {{ approved_regular_dean_evidence_list | length }} Approved
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-start">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Program / Dept</th>
+                            <th class="text-center">Committed Targets</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if approved_regular_dean_evidence_list %}
+                            {% for fac in approved_regular_dean_evidence_list %}
                             <tr>
                                 <td class="ps-4 py-3">
                                     <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
@@ -948,7 +1000,7 @@
                         {% else %}
                             <tr>
                                 <td colspan="6" class="text-center py-4 text-muted">
-                                    No fully approved evidence submissions yet.
+                                    No approved final verifications for Regular Faculty yet.
                                 </td>
                             </tr>
                         {% endif %}
@@ -974,11 +1026,11 @@
             <div class="modal-body p-4 text-center" id="deanEvidenceModalContainer">
                 <!-- Loaded dynamically -->
             </div>
-            <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-between align-items-center w-100" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+            <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-end gap-2" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-success fw-bold px-4 rounded-pill shadow-sm" id="btnDeanApproveIPCR" style="display: none;">
                     <i class="bi bi-check-all me-1"></i>Approve IPCR
                 </button>
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill ms-auto" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -1359,41 +1411,7 @@
         return true;
     }
 
-    function toggleSelectAll() {
-        const selectAll = document.getElementById('selectAll');
-        const checkboxes = document.querySelectorAll('.approval-checkbox');
-        checkboxes.forEach(cb => cb.checked = selectAll.checked);
-    }
 
-    function approveSelected() {
-        const checked = document.querySelectorAll('.approval-checkbox:checked');
-        if (checked.length === 0) {
-            alert('Please select at least one IPCR to approve.');
-            return;
-        }
-
-        if (confirm(`Are you sure you want to approve ${checked.length} selected IPCR(s)? This will apply your digital signature.`)) {
-            document.getElementById('batchAction').value = 'approve';
-            document.getElementById('approvalForm').submit();
-        }
-    }
-
-    function revertSelected() {
-        const checked = document.querySelectorAll('.approval-checkbox:checked');
-        if (checked.length === 0) {
-            alert('Please select at least one IPCR to revert.');
-            return;
-        }
-
-        if (confirm(`Are you sure you want to revert ${checked.length} selected IPCR(s) back to the Middle Manager?`)) {
-            document.getElementById('batchAction').value = 'revert';
-            document.getElementById('approvalForm').submit();
-        }
-    }
-
-    function viewIPCR(scoreId) {
-        window.location.href = `/dean/review_ipcr/${scoreId}`;
-    }
 
     // ── Dean IPCR Review AJAX (Program Chair UX style) ──
 
@@ -1632,6 +1650,35 @@
                 document.getElementById('deanOverallRemarks').value = data.overall_remarks || '';
                 document.getElementById('modalDeanReviewId').value = data.review_id;
                 document.getElementById('modalDeanEmpId').value = data.emp_id;
+
+                const isApproved = (data.overall_status === 'Approved' || data.overall_status === 'Locked');
+                const approveBtn = document.getElementById('btnDeanApprove');
+                const rejectBtn = document.getElementById('btnDeanReject');
+                const remarksInput = document.getElementById('deanOverallRemarks');
+                const unselectedCard = document.getElementById('unselectedIndicatorsCard');
+                const collegeWideCard = document.getElementById('collegeWideTargetsCard');
+
+                if (isApproved) {
+                    if (approveBtn) approveBtn.style.display = 'none';
+                    if (rejectBtn) rejectBtn.style.display = 'none';
+                    if (remarksInput) remarksInput.disabled = true;
+                    if (unselectedCard) unselectedCard.style.display = 'none';
+                    if (collegeWideCard) collegeWideCard.style.display = 'none';
+                } else {
+                    if (approveBtn) {
+                        approveBtn.style.display = '';
+                        approveBtn.disabled = false;
+                        approveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve & Lock';
+                    }
+                    if (rejectBtn) {
+                        rejectBtn.style.display = '';
+                        rejectBtn.disabled = false;
+                        rejectBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                    }
+                    if (remarksInput) remarksInput.disabled = false;
+                    if (unselectedCard) unselectedCard.style.display = '';
+                    if (collegeWideCard) collegeWideCard.style.display = '';
+                }
 
                 // Populate submitted targets
                 populateReviewItems(data.items);
@@ -1975,12 +2022,13 @@
                             ? '<span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>'
                             : '<span class="badge bg-danger px-3 py-2"><i class="bi bi-x-circle-fill me-1"></i>Returned</span>';
                     }
-                    // Close modal after 1.5s
+                    // Close modal after 1s and reload page to move IPCR to Approved table
                     setTimeout(() => {
                         const modalEl = document.getElementById('reviewDeanModal');
                         const modal = bootstrap.Modal.getInstance(modalEl);
                         if (modal) modal.hide();
-                    }, 1500);
+                        location.reload();
+                    }, 1000);
                 } else {
                     showToast('danger', data.message);
                     // Restore button state on error
