@@ -363,10 +363,146 @@ def submit_review_decision():
 # College-Wide Target Assignment (Designated Faculty)
 # ──────────────────────────────────────────────
 
+@dean_bp.route('/designated_assignment_editor/<int:emp_id>')
+@role_required('DEAN')
+def designated_assignment_editor(emp_id):
+    """AJAX — returns the College-Wide target list + current assignments for a designated faculty member / chair."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active term found.'}), 400
+        term_id = active_term['term_id']
+
+        cursor.execute("""
+            SELECT CONCAT(first_name, ' ', last_name), academic_rank, designation, assigned_program, specialization
+            FROM tbl_employee_profiles
+            WHERE emp_id = %s
+        """, (emp_id,))
+        fac_row = cursor.fetchone()
+        if not fac_row:
+            return jsonify({'success': False, 'message': 'Faculty member not found.'}), 404
+        faculty_name = fac_row[0]
+        academic_rank = fac_row[1] or ''
+        designation = fac_row[2] or 'Designated Faculty'
+        department = fac_row[3] or fac_row[4] or 'General'
+
+        # College-Wide quotas cascaded for the active term
+        cw_quotas = get_college_wide_cascaded_quotas(cursor, term_id)
+
+        # Existing allocations for this designated faculty member from tbl_draft_allocation
+        from app.models.dean import get_designated_faculty_assignments
+        assigned_list = get_designated_faculty_assignments(cursor, term_id, emp_id)
+        assigned_map = {a['indicator_id']: a for a in assigned_list}
+
+        # Track total allocations across all faculty to compute remaining quota
+        allocations_list = get_college_wide_allocations_tracker(cursor, term_id)
+        allocated_totals = {}
+        for alloc in allocations_list:
+            ind_id = alloc['indicator_id']
+            allocated_totals[ind_id] = allocated_totals.get(ind_id, 0) + (alloc.get('proposed_quantity') or 0)
+
+        targets = []
+        for q in cw_quotas:
+            ind_id = q['indicator_id']
+            asg = assigned_map.get(ind_id)
+            total_quota = q['total_target_value']
+            current_total_allocated = allocated_totals.get(ind_id, 0)
+
+            is_assigned = ind_id in assigned_map
+            qty = asg['assigned_quantity'] if (asg and asg.get('assigned_quantity') is not None) else 1
+            desc = asg['custom_description'] if (asg and asg.get('custom_description')) else q['indicator_description']
+            dur_val = asg['target_duration_value'] if (asg and asg.get('target_duration_value') is not None) else 6
+            dur_unit = asg['target_duration_unit'] if (asg and asg.get('target_duration_unit')) else 'months'
+
+            targets.append({
+                'indicator_id': ind_id,
+                'indicator_description': q['indicator_description'],
+                'category_name': q['category_name'],
+                'total_quota': total_quota,
+                'allocated_total': current_total_allocated,
+                'is_assigned': is_assigned,
+                'assigned_quantity': qty,
+                'custom_description': desc,
+                'target_duration_value': dur_val,
+                'target_duration_unit': dur_unit,
+                'target_deadline': asg.get('target_deadline') if asg else None
+            })
+
+        return jsonify({
+            'success': True,
+            'emp_id': emp_id,
+            'faculty_name': faculty_name,
+            'academic_rank': academic_rank,
+            'designation': designation,
+            'department': department,
+            'targets': targets
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@dean_bp.route('/save_designated_assignments', methods=['POST'])
+@role_required('DEAN')
+def save_designated_assignments():
+    """Saves the Dean's authored College-Wide target assignments for one designated faculty member / chair."""
+    emp_id = request.form.get('emp_id')
+    if not emp_id:
+        flash("Missing faculty member.", "danger")
+        return redirect(url_for('dean.dean_dashboard'))
+
+    indicator_ids = request.form.getlist('assign_indicator_ids[]')
+    assignments = []
+    for ind_id in indicator_ids:
+        qty_val = request.form.get(f'assign_quantity_{ind_id}', 1)
+        desc_val = request.form.get(f'assign_description_{ind_id}', '').strip() or None
+        dur_val_raw = request.form.get(f'assign_dur_value_{ind_id}', '').strip()
+        dur_unit_val = request.form.get(f'assign_dur_unit_{ind_id}', 'months').strip() or 'months'
+
+        try:
+            qty = int(qty_val)
+        except (ValueError, TypeError):
+            qty = 1
+
+        try:
+            dur_val = int(dur_val_raw) if dur_val_raw else None
+        except (ValueError, TypeError):
+            dur_val = None
+
+        assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            flash("No active academic term found.", "danger")
+            return redirect(url_for('dean.dean_dashboard'))
+
+        from app.models.dean import save_designated_faculty_assignments
+        success, msg = save_designated_faculty_assignments(
+            conn, cursor, active_term['term_id'], int(emp_id), assignments, session.get('user_id')
+        )
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error saving assignments: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('dean.dean_dashboard'))
+
+
 @dean_bp.route('/assign_designated_target', methods=['POST'])
 @role_required('DEAN')
 def assign_designated_target():
-    """Assign a College-Wide target to a designated faculty member."""
+    """Assign a single College-Wide target to a designated faculty member."""
     term_id = request.form.get('term_id')
     emp_id = request.form.get('emp_id')
     indicator_id = request.form.get('indicator_id')
@@ -395,6 +531,31 @@ def assign_designated_target():
 # ──────────────────────────────────────────────
 # Dean Final Evidence Verification
 # ──────────────────────────────────────────────
+
+@dean_bp.route('/preview_ipcr/<int:emp_id>')
+@role_required('DEAN')
+def dean_preview_ipcr(emp_id):
+    """Renders the official printable IPCR form for the Dean to review before or after approval."""
+    from app.models.ipcr_form import build_ipcr_form
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models import get_all_terms
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            flash('No active academic term found.', 'warning')
+            return redirect(url_for('dean.dean_dashboard'))
+
+        form = build_ipcr_form(cursor, emp_id, active_term['term_id'])
+        if not form or not form['has_targets']:
+            flash('No committed IPCR targets found for this faculty member.', 'warning')
+            return redirect(url_for('dean.dean_dashboard'))
+
+        return render_template('ipcr_print.html', form=form, back_url=url_for('dean.dean_dashboard'))
+    finally:
+        cursor.close()
+        conn.close()
 
 @dean_bp.route('/faculty_evidence_details/<int:emp_id>')
 @role_required('DEAN')

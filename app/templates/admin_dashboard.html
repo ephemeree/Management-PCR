@@ -304,6 +304,7 @@
                                 <code>instruction</code>, <code>research</code>, <code>extension</code>,
                                 <code>support</code>, <code>administrative</code> and <code>custom</code> —
                                 a generated slug such as <code>a_instructions</code> will not route targets.
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Review Lane</label>
@@ -917,7 +918,9 @@
             {% set tslug = dt | lower | replace(' ', '_') %}
             {% set grid = teaching_load.get(dt, {}) %}
             {% set cur_mode = teaching_load_mode.get(dt, 'GENERAL') %}
-            <div class="tl-tab-panel" id="tlTabPanel_{{ tslug }}" style="{% if not loop.first %}display:none;{% endif %}">
+            <div class="tl-tab-panel" id="tlTabPanel_{{ tslug }}"
+                 data-configured="{{ 1 if (grid | length > 0) else 0 }}"
+                 style="{% if not loop.first %}display:none;{% endif %}">
                 <form action="{{ url_for('admin.admin_save_teaching_load') }}" method="POST">
                     <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
                     <input type="hidden" name="designation_type" value="{{ dt }}">
@@ -1014,14 +1017,6 @@
                         </button>
                     </div>
                 </form>
-                <script>
-                (function () {
-                    // Lock the saved configuration until Edit is pressed.
-                    if ({{ 'true' if (grid | length > 0) else 'false' }}) {
-                        setTeachingLoadLocked('{{ tslug }}', true);
-                    }
-                })();
-                </script>
             </div>
             {% endfor %}
             {% endif %}
@@ -1198,6 +1193,15 @@
     function unlockTeachingLoad(slug) {
         setTeachingLoadLocked(slug, false);
     }
+
+    // Lock every teaching-load panel that already has a saved configuration. This runs on
+    // DOMContentLoaded rather than inline, because the panels are rendered well before
+    // these functions are defined.
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.tl-tab-panel[data-configured="1"]').forEach(function (panel) {
+            setTeachingLoadLocked(panel.id.replace('tlTabPanel_', ''), true);
+        });
+    });
     function setTlMode(slug, mode) {
         const hidden = document.getElementById('tlMode_' + slug);
         if (hidden) hidden.value = mode;

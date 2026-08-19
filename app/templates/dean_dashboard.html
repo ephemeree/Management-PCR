@@ -108,9 +108,17 @@
 </div>
 <!-- Phase 1: Institutional Quota Cascading -->
 <div id="nav-phase1" class="dashboard-section">
-    <div class="page-header">
-        <h2>Phase 1: Institutional Quota Cascading</h2>
-        <p>Set targets for different programs under the college.</p>
+    {% set has_cascaded_quotas = (existing_quotas | length) > 0 %}
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2>Phase 1: Institutional Quota Cascading</h2>
+            <p>Set targets for different programs under the college.</p>
+        </div>
+        {% if has_cascaded_quotas %}
+        <span class="badge bg-secondary px-3 py-2" id="cascadeLockBadge">
+            <i class="bi bi-lock-fill me-1"></i>Cascaded &amp; Locked
+        </span>
+        {% endif %}
     </div>
 
     <div class="card shadow-sm border-0 mb-4">
@@ -122,6 +130,12 @@
                 | Deadline: {{ active_term.deadline_date.strftime('%B %d, %Y') if active_term.deadline_date else 'N/A'
                 }}
             </div>
+
+            {% if has_cascaded_quotas %}
+            <div class="alert alert-secondary border-0 small py-2 mb-3">
+                <i class="bi bi-lock-fill me-1"></i>Institutional targets have been cascaded for this academic term and are locked.
+            </div>
+            {% endif %}
 
             {% if master_indicators %}
             <form action="{{ url_for('dean.cascade_quotas') }}" method="POST" id="cascadeForm"
@@ -166,7 +180,8 @@
                                         class="form-control form-control-sm shadow-sm fw-bold quota-input {% if role == 'College-Wide' %}text-success{% endif %}"
                                         name="quota_{{ loop.index0 }}[]" min="0"
                                         value="{{ existing_quotas.get(indicator.indicator_id, {}).get(role, 0) }}"
-                                        data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()">
+                                        data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()"
+                                        {% if has_cascaded_quotas %}disabled{% endif %}>
                                 </td>
                                 {% endfor %}
                             </tr>
@@ -177,12 +192,14 @@
 
                 <div id="validationMessage" class="alert d-none mt-2"></div>
 
-                <div class="text-end mt-3 border-top pt-3">
+                {% if not has_cascaded_quotas %}
+                <div class="d-flex justify-content-end align-items-center gap-2 mt-3 border-top pt-3">
                     <button type="button" class="btn btn-primary fw-bold shadow-sm px-4" id="cascadeBtn"
                             onclick="confirmCascade()">
                         Cascade Institutional Targets <i class="bi bi-arrow-right-circle-fill ms-1"></i>
                     </button>
                 </div>
+                {% endif %}
             </form>
 
             <!-- Cascade confirmation: blocks submission while any target is unassigned -->
@@ -203,20 +220,36 @@
                             <div id="cascadeReadyBox" style="display:none;">
                                 <p class="mb-2">This will distribute <strong id="cascadeTargetCount">0</strong>
                                     target(s) to the departments as entered.</p>
+                                <div class="alert alert-warning border-0 small py-2 mb-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    <strong>Please check inputs carefully:</strong> Cascading is a one-time action for this term. Once confirmed, these cascaded targets will be <strong>permanently locked</strong> and cannot be changed.
+                                </div>
                                 <p class="text-muted small mb-0">Program Chairs and the RET Chair will then be able
                                     to allocate them to faculty.</p>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="button" class="btn btn-primary" id="cascadeConfirmBtn"
-                                    onclick="document.getElementById('cascadeForm').submit();">Confirm &amp; Cascade</button>
+                            <button type="button" class="btn btn-primary fw-bold" id="cascadeConfirmBtn"
+                                    onclick="submitCascadeForm()">Confirm &amp; Cascade</button>
                         </div>
                     </div>
                 </div>
             </div>
 
             <script>
+            function submitCascadeForm() {
+                const btn = document.getElementById('cascadeConfirmBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Cascading...';
+                }
+                document.querySelectorAll('.quota-input').forEach(function(inp) {
+                    inp.disabled = false;
+                });
+                document.getElementById('cascadeForm').submit();
+            }
+
             function confirmCascade() {
                 const rows = document.querySelectorAll('input[name="indicator_id[]"]');
                 const unassigned = [];
@@ -701,6 +734,215 @@
     </div>
 
     {% if designated_faculty_list %}
+    <!-- Designated Faculty & Chairs Assignment Table -->
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #0d6efd !important;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold mb-0 text-primary">
+                    <i class="bi bi-person-lines-fill me-2"></i>Assign College-Wide Targets to Designated Faculty &amp; Chairs
+                </h5>
+                <small class="text-muted">Directly assign College-Wide targets to Program Chairs, RET Chair, and other Designated Faculty members.</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-search text-muted"></i>
+                <input type="text" id="assignDesignatedSearch" class="form-control form-control-sm"
+                       placeholder="Search faculty or chair..." style="width: 240px;" onkeyup="filterDesignatedFacultyTable()">
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="assignDesignatedTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Faculty / Chairperson</th>
+                            <th>Designation</th>
+                            <th>Program / Specialization</th>
+                            <th>Academic Rank</th>
+                            <th class="text-center" style="width: 170px;">College-Wide Assigned</th>
+                            <th class="text-end pe-4" style="width: 150px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in designated_faculty_list %}
+                        {% set asg_map = designated_assignments.get(f.emp_id, {}) %}
+                        {% set asg_count = asg_map | length %}
+                        <tr class="designated-faculty-row">
+                            <td class="fw-bold text-dark ps-4">{{ f.first_name }} {{ f.last_name }}</td>
+                            <td>
+                                {% if f.designation == 'Program Chair' %}
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-person-workspace me-1"></i>Program Chair</span>
+                                {% elif f.designation == 'RET Chair' %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="bi bi-mortarboard-fill me-1"></i>RET Chair</span>
+                                {% elif f.designation == 'Dean' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="bi bi-shield-shaded me-1"></i>Dean</span>
+                                {% else %}
+                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="bi bi-person-badge me-1"></i>{{ f.designation or 'Designated Faculty' }}</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-light text-dark border">{{ f.assigned_program or f.specialization or 'General' }}</span></td>
+                            <td>{{ f.academic_rank or '—' }}</td>
+                            <td class="text-center">
+                                {% if asg_count > 0 %}
+                                <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle me-1"></i>{{ asg_count }} Target(s)</span>
+                                {% else %}
+                                <span class="badge bg-secondary bg-opacity-25 text-muted px-3 py-2">0 Assigned</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        onclick="openDesignatedAssignmentEditor({{ f.emp_id }})">
+                                    <i class="bi bi-pencil-square me-1"></i>Assign
+                                    {% if asg_count > 0 %}
+                                    <span class="badge bg-primary ms-1">{{ asg_count }}</span>
+                                    {% endif %}
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for College-Wide Target Assignment to Designated Faculty -->
+    <div class="modal fade" id="designatedAssignmentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <form action="{{ url_for('dean.save_designated_assignments') }}" method="POST">
+                    <input type="hidden" name="emp_id" id="designatedAssignEmpId">
+                    <div class="modal-header bg-light">
+                        <h5 class="modal-title fw-bold text-dark">
+                            <i class="bi bi-person-plus-fill text-primary me-2"></i>Assign College-Wide Targets
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded mb-3 border">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0" id="designatedAssignFacultyName">—</h6>
+                                <div class="text-muted small">
+                                    <span id="designatedAssignRank">—</span> · <span id="designatedAssignDept">—</span>
+                                </div>
+                            </div>
+                            <span class="badge bg-primary px-3 py-2" id="designatedAssignDesignation">Designated Faculty</span>
+                        </div>
+                        <p class="text-muted small mb-3">
+                            <i class="bi bi-info-circle me-1"></i>Check the College-Wide target(s) to assign to this chairperson / designated faculty member. These will appear on their IPCR under <strong>Strategic Priorities &amp; Support Functions</strong>.
+                        </p>
+                        <div id="designatedAssignModalBody"></div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-floppy-fill me-1"></i>Save Assignments</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function filterDesignatedFacultyTable() {
+        const filter = (document.getElementById('assignDesignatedSearch').value || '').toLowerCase();
+        const rows = document.querySelectorAll('#assignDesignatedTable tbody tr.designated-faculty-row');
+        rows.forEach(r => {
+            const text = r.textContent.toLowerCase();
+            r.style.display = text.includes(filter) ? '' : 'none';
+        });
+    }
+
+    function toggleDesignatedAssignRowInputs(indId, isChecked) {
+        const inputs = document.querySelectorAll('.dean-assign-input-' + indId);
+        inputs.forEach(inp => {
+            inp.disabled = !isChecked;
+        });
+    }
+
+    function openDesignatedAssignmentEditor(empId) {
+        const modalEl = document.getElementById('designatedAssignmentModal');
+        const body = document.getElementById('designatedAssignModalBody');
+        document.getElementById('designatedAssignEmpId').value = empId;
+        body.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Loading College-Wide targets...</div>';
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+
+        fetch("{{ url_for('dean.designated_assignment_editor', emp_id=0) }}".replace('/0', '/' + empId))
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                body.innerHTML = '<div class="alert alert-danger">' + (data.message || 'Failed to load.') + '</div>';
+                return;
+            }
+            document.getElementById('designatedAssignFacultyName').textContent = data.faculty_name;
+            document.getElementById('designatedAssignRank').textContent = data.academic_rank || 'Faculty';
+            document.getElementById('designatedAssignDept').textContent = data.department || 'General';
+            document.getElementById('designatedAssignDesignation').textContent = data.designation || 'Designated Faculty';
+
+            if (!data.targets || !data.targets.length) {
+                body.innerHTML = '<div class="alert alert-info py-3"><i class="bi bi-info-circle me-1"></i>No College-Wide cascaded targets found. Set College-Wide quotas in Quota Cascading first.</div>';
+                return;
+            }
+
+            let html = '<div class="list-group mb-2">';
+            data.targets.forEach(it => {
+                const qty = it.assigned_quantity != null ? it.assigned_quantity : 1;
+                const desc = (it.custom_description || it.indicator_description || '').replace(/"/g, '&quot;');
+                const durVal = it.target_duration_value != null ? it.target_duration_value : 6;
+                const durUnit = it.target_duration_unit || 'months';
+                const checked = it.is_assigned ? 'checked' : '';
+                const disabledAttr = it.is_assigned ? '' : 'disabled';
+
+                const units = ['days', 'weeks', 'months', 'semesters'];
+                let unitOptions = '';
+                units.forEach(u => {
+                    unitOptions += '<option value="' + u + '" ' + (durUnit === u ? 'selected' : '') + '>' + u + '</option>';
+                });
+
+                const catLabel = (it.category_name || '').replace('A. ', '').replace('B. ', '').replace('C. ', '');
+
+                html +=
+                  '<div class="list-group-item py-3">' +
+                    '<div class="d-flex align-items-center gap-2">' +
+                      '<input class="form-check-input m-0" type="checkbox" name="assign_indicator_ids[]" value="' + it.indicator_id + '" ' + checked + ' onchange="toggleDesignatedAssignRowInputs(' + it.indicator_id + ', this.checked)">' +
+                      '<span class="flex-grow-1 fw-semibold small text-dark">' +
+                        '<span class="badge bg-secondary small me-1">' + catLabel + '</span> ' +
+                        it.indicator_description +
+                      '</span>' +
+                      '<span class="badge bg-light text-dark border small">Quota: ' + it.total_quota + '</span>' +
+                      '<span class="text-muted small ms-2">Qty:</span>' +
+                      '<input type="number" min="1" class="form-control form-control-sm text-center dean-assign-input-' + it.indicator_id + '" style="width:80px;" ' +
+                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + '>' +
+                    '</div>' +
+                    '<div class="row g-2 mt-2 ps-4">' +
+                      '<div class="col-md-7">' +
+                        '<input type="text" class="form-control form-control-sm dean-assign-input-' + it.indicator_id + '" ' +
+                               'name="assign_description_' + it.indicator_id + '" ' +
+                               'placeholder="IPCR target description" ' +
+                               'value="' + desc + '" ' + disabledAttr + '>' +
+                      '</div>' +
+                      '<div class="col-md-5">' +
+                        '<div class="d-flex gap-1">' +
+                          '<input type="number" min="1" class="form-control form-control-sm text-center dean-assign-input-' + it.indicator_id + '" ' +
+                                 'name="assign_dur_value_' + it.indicator_id + '" placeholder="Duration" ' +
+                                 'value="' + durVal + '" ' + disabledAttr + '>' +
+                          '<select class="form-select form-select-sm dean-assign-input-' + it.indicator_id + '" ' +
+                                  'name="assign_dur_unit_' + it.indicator_id + '" ' + disabledAttr + '>' +
+                            unitOptions +
+                          '</select>' +
+                        '</div>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>';
+            });
+            html += '</div>';
+            body.innerHTML = html;
+        })
+        .catch(err => {
+            body.innerHTML = '<div class="alert alert-danger">Error: ' + err + '</div>';
+        });
+    }
+    </script>
+
     <div class="card shadow-sm border-0" style="border-top: 4px solid #4F8CFF !important;">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="fw-bold mb-0 text-primary">
@@ -877,8 +1119,8 @@
                                 </td>
                                 <td class="text-center pe-4">
                                     <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
-                                        onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
-                                        <i class="bi bi-eye-fill me-1"></i>View &amp; Verify Evidences
+                                        onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', true)">
+                                        <i class="bi bi-file-earmark-check-fill me-1"></i>Review IPCR
                                     </button>
                                 </td>
                             </tr>
@@ -937,12 +1179,10 @@
                                     <span class="badge bg-success px-3 py-2 rounded-pill shadow-xs"><i class="bi bi-patch-check-fill me-1"></i>Dean Approved</span>
                                 </td>
                                 <td class="text-center pe-4">
-                                    <div class="d-inline-flex gap-2 align-items-center justify-content-center">
-                                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
-                                            onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
-                                            <i class="bi bi-file-earmark-text-fill me-1"></i>View IPCR
-                                        </button>
-                                    </div>
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                        onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', false)">
+                                        <i class="bi bi-file-earmark-text-fill me-1"></i>View IPCR
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -1000,12 +1240,10 @@
                                     <span class="badge bg-success px-3 py-2 rounded-pill shadow-xs"><i class="bi bi-patch-check-fill me-1"></i>Dean Approved</span>
                                 </td>
                                 <td class="text-center pe-4">
-                                    <div class="d-inline-flex gap-2 align-items-center justify-content-center">
-                                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
-                                            onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
-                                            <i class="bi bi-file-earmark-text-fill me-1"></i>View IPCR
-                                        </button>
-                                    </div>
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                        onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', false)">
+                                        <i class="bi bi-file-earmark-text-fill me-1"></i>View IPCR
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -1029,20 +1267,27 @@
 <div class="modal fade" id="deanEvidenceModal" tabindex="-1" aria-hidden="true" style="z-index: 1055;">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-            <div class="modal-header bg-primary text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold fs-6">
-                    <i class="bi bi-file-earmark-check-fill me-2"></i>IPCR Final Approval: <span id="deanEvidenceModalFacultyName"></span>
+            <div class="modal-header bg-primary text-white border-0 py-3 d-flex align-items-center" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold fs-6 mb-0">
+                    <i class="bi bi-file-earmark-text-fill me-2"></i>Official IPCR Review: <span id="deanEvidenceModalFacultyName"></span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4 text-center" id="deanEvidenceModalContainer">
-                <!-- Loaded dynamically -->
+            <div class="modal-body p-0" id="deanEvidenceModalContainer" style="min-height: 70vh; background: #f8f9fa;">
+                <!-- Loaded via iframe -->
             </div>
-            <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-end gap-2" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-success fw-bold px-4 rounded-pill shadow-sm" id="btnDeanApproveIPCR" style="display: none;">
-                    <i class="bi bi-check-all me-1"></i>Approve IPCR
-                </button>
+            <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-between" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <div>
+                    <button type="button" class="btn btn-outline-danger fw-semibold px-4 rounded-pill" id="btnDeanReturnIPCR" style="display: none;">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reject &amp; Return
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success fw-bold px-4 rounded-pill shadow-sm" id="btnDeanApproveIPCR" style="display: none;">
+                        <i class="bi bi-check-all me-1"></i>Approve IPCR
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1052,13 +1297,13 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-arrow-counterclockwise me-2"></i>Reject &amp; Return Evidence to Faculty</h5>
+                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-arrow-counterclockwise me-2"></i>Reject &amp; Return IPCR to Faculty</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 text-start">
-                <label for="deanReturnEvidenceReasonInput" class="form-label fw-bold small">Reason for Returning to Faculty (Required)</label>
-                <textarea class="form-control" id="deanReturnEvidenceReasonInput" rows="3" placeholder="Explain why this evidence is being rejected/returned so the faculty member can fix it..."></textarea>
-                <div id="deanReturnEvidenceReasonError" class="text-danger small mt-2" style="display:none;">A reason is required before returning evidence.</div>
+                <label for="deanReturnEvidenceReasonInput" class="form-label fw-bold small">Reason for Returning (Required)</label>
+                <textarea class="form-control" id="deanReturnEvidenceReasonInput" rows="3" placeholder="Explain why this IPCR is being returned so the faculty/chair can address it..."></textarea>
+                <div id="deanReturnEvidenceReasonError" class="text-danger small mt-2" style="display:none;">A reason is required before returning.</div>
             </div>
             <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
                 <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
@@ -1068,200 +1313,41 @@
     </div>
 </div>
 
-<div class="modal fade" id="deanEvidenceViewerModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-            <div class="modal-header text-white border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-file-earmark-text me-2"></i><span id="deanEvidenceViewerTitle">Evidence File</span></h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0 text-center bg-light" id="deanEvidenceViewerBody" style="min-height: 500px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <!-- Embedded PDF or Image -->
-            </div>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block scripts %}
 <script>
-    let deanCurrentPendingEvidenceId = null;
     let deanCurrentPendingEmpId = null;
-    let deanEvidenceVerificationChanged = false;
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const modalEl = document.getElementById('deanEvidenceModal');
-        if (modalEl) {
-            modalEl.addEventListener('hidden.bs.modal', function() {
-                if (deanEvidenceVerificationChanged) {
-                    window.location.reload();
-                }
-            });
-        }
-    });
-
-    window.openDeanEvidenceModal = function(empId, facultyName) {
+    window.openDeanEvidenceModal = function(empId, facultyName, isPending) {
         document.getElementById('deanEvidenceModalFacultyName').textContent = facultyName;
         const container = document.getElementById('deanEvidenceModalContainer');
-        container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">Loading evidence details...</div></div>';
+        container.innerHTML = `
+            <iframe src="/dean/preview_ipcr/${empId}"
+                    style="width: 100%; height: 75vh; border: none; background: #fff;"
+                    id="deanIpcrPreviewIframe"
+                    title="IPCR Document Preview"></iframe>
+        `;
         
-        deanEvidenceVerificationChanged = false;
+        deanCurrentPendingEmpId = empId;
+        const btnApprove = document.getElementById('btnDeanApproveIPCR');
+        const btnReturn = document.getElementById('btnDeanReturnIPCR');
+        
+        if (isPending) {
+            if (btnApprove) {
+                btnApprove.style.display = 'inline-block';
+                btnApprove.onclick = () => window.approveDeanEvidencePackage(empId, facultyName);
+            }
+            if (btnReturn) {
+                btnReturn.style.display = 'inline-block';
+                btnReturn.onclick = () => window.returnToFaculty(empId, facultyName);
+            }
+        } else {
+            if (btnApprove) btnApprove.style.display = 'none';
+            if (btnReturn) btnReturn.style.display = 'none';
+        }
+
         const modalEl = document.getElementById('deanEvidenceModal');
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
-
-        fetch(`/dean/faculty_evidence_details/${empId}`)
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success) {
-                    container.innerHTML = `<div class="alert alert-danger mb-0">${data.message}</div>`;
-                    return;
-                }
-                renderDeanEvidenceDetails(data, empId);
-            })
-            .catch(err => {
-                container.innerHTML = `<div class="alert alert-danger mb-0">Error: ${err}</div>`;
-            });
     };
-
-    function renderDeanEvidenceDetails(data, empId) {
-        const container = document.getElementById('deanEvidenceModalContainer');
-        const targets = data.targets;
-        const summary = data.ipcr_summary;
-
-        if (!targets || targets.length === 0) {
-            container.innerHTML = '<div class="text-center text-muted py-4">No committed targets found for this faculty member.</div>';
-            return;
-        }
-
-        // Table 1: IPCR Targets
-        let targetsHtml = `
-            <div class="table-responsive mb-4 shadow-sm rounded-3 border">
-                <table class="table table-bordered table-hover mb-0 align-middle bg-white" style="font-size: 0.85rem;">
-                    <thead class="table-light text-center align-middle border-bottom">
-                        <tr>
-                            <th rowspan="2" width="15%" class="bg-light">MFO/PAP</th>
-                            <th rowspan="2" width="30%" class="bg-light">Success Indicator<br>(Target + Measure)</th>
-                            <th rowspan="2" width="25%" class="bg-light">Actual Accomplishments</th>
-                            <th colspan="4" class="bg-light border-bottom-0">Rating</th>
-                            <th rowspan="2" width="10%" class="bg-light">Remarks</th>
-                        </tr>
-                        <tr>
-                            <th width="5%" title="Quality" class="bg-light">Q</th>
-                            <th width="5%" title="Efficiency" class="bg-light">E</th>
-                            <th width="5%" title="Timeliness" class="bg-light">T</th>
-                            <th width="5%" title="Average" class="bg-light">A</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        let currentCategory = '';
-        targets.forEach(t => {
-            const catName = t.category_name || 'General';
-            if (catName !== currentCategory) {
-                targetsHtml += `
-                    <tr class="table-secondary">
-                        <td colspan="8" class="text-start fw-bold text-dark py-2 px-3">${catName}</td>
-                    </tr>
-                `;
-                currentCategory = catName;
-            }
-
-            const q = t.rating && t.rating.q !== null ? t.rating.q : '-';
-            const e = t.rating && t.rating.e !== null ? t.rating.e : '-';
-            const tim = t.rating && t.rating.t !== null ? t.rating.t : '-';
-            const avg = t.rating && t.rating.average !== null ? t.rating.average : '-';
-
-            targetsHtml += `
-                <tr>
-                    <td class="text-start px-3 text-muted" style="font-size: 0.8rem;">${catName}</td>
-                    <td class="text-start px-3">${t.indicator_description}</td>
-                    <td class="text-start px-3 text-secondary">${t.actual_accomplishment || ''}</td>
-                    <td class="text-center fw-semibold text-primary">${q}</td>
-                    <td class="text-center fw-semibold text-primary">${e}</td>
-                    <td class="text-center fw-semibold text-primary">${tim}</td>
-                    <td class="text-center fw-bold bg-light text-dark">${avg}</td>
-                    <td class="text-start px-2"></td>
-                </tr>
-            `;
-        });
-
-        targetsHtml += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-
-        // Table 2: IPCR Summary
-        let summaryHtml = '';
-        if (summary && summary.breakdown && summary.breakdown.length > 0) {
-            summaryHtml += `
-                <div class="d-flex justify-content-center">
-                    <div class="table-responsive shadow-sm rounded-3 border" style="width: 100%; max-width: 600px;">
-                        <table class="table table-bordered mb-0 align-middle bg-white" style="font-size: 0.85rem;">
-                            <thead class="table-light text-center align-middle">
-                                <tr>
-                                    <th rowspan="2" width="45%" class="bg-light">Category</th>
-                                    <th rowspan="2" width="15%" class="bg-light">Weight (%)</th>
-                                    <th colspan="2" class="bg-light border-bottom-0">Rating</th>
-                                </tr>
-                                <tr>
-                                    <th width="20%" class="bg-light">Average</th>
-                                    <th width="20%" class="bg-light">Weighted</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-            `;
-
-            summary.breakdown.forEach(b => {
-                summaryHtml += `
-                                <tr>
-                                    <td class="text-start px-3 fw-medium">${b.category_name}</td>
-                                    <td class="text-center text-muted">${b.weight_pct}%</td>
-                                    <td class="text-center fw-semibold text-dark">${b.raw_avg !== null ? b.raw_avg : '-'}</td>
-                                    <td class="text-center fw-bold text-primary">${b.weighted_value !== null ? b.weighted_value : '-'}</td>
-                                </tr>
-                `;
-            });
-
-            summaryHtml += `
-                                <tr>
-                                    <td colspan="2" class="text-end fw-bold px-3 py-3">Total Overall Rating</td>
-                                    <td colspan="2" class="text-center fw-bold fs-6 text-dark py-3">${summary.total_overall_rating !== null ? summary.total_overall_rating : '-'}</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="2" class="text-end fw-bold px-3 py-3">Final Weighted Rating</td>
-                                    <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">${summary.final_weighted_rating !== null ? summary.final_weighted_rating : '-'}</td>
-                                </tr>
-                                <tr class="table-success">
-                                    <td colspan="2" class="text-end fw-bold px-3 py-3 text-success">Adjectival Rating</td>
-                                    <td colspan="2" class="text-center fw-bold fs-5 text-success py-3">${summary.adjectival_rating || '-'}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        } else {
-            summaryHtml = '<div class="alert alert-warning text-center mt-3">Rating summary calculation is not available. Please ensure weights are configured for this faculty designation.</div>';
-        }
-
-        container.innerHTML = targetsHtml + summaryHtml;
-        
-        const btnApproveIPCR = document.getElementById('btnDeanApproveIPCR');
-        if (btnApproveIPCR) {
-            const hasPending = targets.some(t => t.status === 'Submitted to Dean');
-            if (hasPending) {
-                btnApproveIPCR.style.display = 'block';
-                const facName = document.getElementById('deanEvidenceModalFacultyName').textContent;
-                btnApproveIPCR.onclick = () => window.approveDeanEvidencePackage(empId, facName);
-            } else {
-                btnApproveIPCR.style.display = 'none';
-            }
-        }
-    }
 
     window.approveDeanEvidencePackage = function(empId, facultyName) {
         showCustomConfirm({
@@ -1295,8 +1381,8 @@
     window.returnToFaculty = function(empId, facultyName) {
         showCustomConfirm({
             title: "Return to Faculty?",
-            mainText: `Are you sure you want to return the finalized IPCR to <strong>${facultyName}</strong>?`,
-            subText: "This will allow the faculty to view and print their final IPCR.",
+            mainText: `Are you sure you want to return the IPCR to <strong>${facultyName}</strong>?`,
+            subText: "This will return the targets for revision.",
             confirmText: "Return IPCR",
             confirmClass: "btn-danger",
             iconClass: "bi-arrow-counterclockwise",
@@ -1305,100 +1391,19 @@
         
         function submitReturn() {
             fetch(`/dean/return_to_faculty/${empId}`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    showToast('success', data.message);
-                    setTimeout(() => window.location.reload(), 1500);
+                    window.location.reload();
                 } else {
-                    showToast('danger', data.message || 'Error returning IPCR.');
+                    alert(data.message);
                 }
             })
-            .catch(err => {
-                showToast('danger', 'Network error.');
-            });
+            .catch(err => alert('Error: ' + err));
         }
-    };
-
-    window.openDeanEvidenceViewer = function(url, filename) {
-        document.getElementById('deanEvidenceViewerTitle').textContent = filename;
-        const body = document.getElementById('deanEvidenceViewerBody');
-        const ext = filename.split('.').pop().toLowerCase();
-        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
-        const isPdf = ext === 'pdf';
-        
-        if (isImage) {
-            body.innerHTML = `<img src="${url}" class="img-fluid m-3" style="max-height: 80vh; object-fit: contain;" alt="${filename}">`;
-        } else if (isPdf) {
-            body.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="600px" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">`;
-        } else {
-            body.innerHTML = `<div class="p-5">
-                <i class="bi bi-file-earmark-arrow-down fs-1 text-muted"></i>
-                <h5 class="mt-3 text-secondary">File preview not available for this format</h5>
-                <a href="${url}" target="_blank" class="btn btn-primary rounded-pill mt-3 px-4 fw-semibold"><i class="bi bi-download me-1"></i>Download File</a>
-            </div>`;
-        }
-        
-        const viewerModal = new bootstrap.Modal(document.getElementById('deanEvidenceViewerModal'));
-        viewerModal.show();
-    };
-
-    window.verifyDeanEvidence = function(evidenceId, status, empId, comment = '') {
-        fetch('/dean/verify_evidence', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ evidence_id: evidenceId, status: status, comment: comment })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                deanEvidenceVerificationChanged = true;
-                const badge = document.getElementById(`dean-ev-badge-${evidenceId}`);
-                const buttons = document.getElementById(`dean-ev-buttons-${evidenceId}`);
-                if (status === 'Approved') {
-                    if (badge) {
-                        badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-2 py-1';
-                        badge.textContent = 'Approved';
-                    }
-                    if (buttons) {
-                        buttons.classList.remove('d-flex');
-                        buttons.classList.add('d-none');
-                    }
-                } else {
-                    if (badge) {
-                        badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1';
-                        badge.textContent = 'Returned';
-                    }
-                }
-            } else {
-                alert(data.message || 'Error updating evidence verification.');
-            }
-        })
-        .catch(err => alert('Verification error: ' + err));
-    };
-
-    window.returnDeanEvidence = function(evidenceId, empId) {
-        deanCurrentPendingEvidenceId = evidenceId;
-        deanCurrentPendingEmpId = empId;
-        document.getElementById('deanReturnEvidenceReasonInput').value = '';
-        document.getElementById('deanReturnEvidenceReasonError').style.display = 'none';
-        const modal = new bootstrap.Modal(document.getElementById('deanReturnEvidenceReasonModal'));
-        modal.show();
-    };
-
-    window.confirmDeanReturnEvidence = function() {
-        const reason = document.getElementById('deanReturnEvidenceReasonInput').value.trim();
-        if (!reason) {
-            document.getElementById('deanReturnEvidenceReasonError').style.display = 'block';
-            return;
-        }
-        const modalEl = document.getElementById('deanReturnEvidenceReasonModal');
-        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-        if (modalInstance) modalInstance.hide();
-
-        verifyDeanEvidence(deanCurrentPendingEvidenceId, 'Returned', deanCurrentPendingEmpId, reason);
     };
 
     function updateTotals() {

@@ -404,11 +404,12 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                 # Materialize the RET Chair's direct Research assignments (locked — always
                 # present regardless of self-selection). Chair-assigned quantities are
                 # authoritative if the same indicator was also self-selected.
-                # Assigned research inherits the same rank-menu description/duration so it
-                # scores identically to a self-selected target.
+                # Assigned research inherits any rank-menu description/duration unless overridden by the chair.
                 cursor.execute("""
                     SELECT ra.indicator_id, ra.target_quantity,
-                           rri.target_description, rri.target_duration_value, rri.target_duration_unit
+                           COALESCE(ra.target_description, rri.target_description),
+                           COALESCE(ra.target_duration_value, rri.target_duration_value),
+                           COALESCE(ra.target_duration_unit, rri.target_duration_unit)
                     FROM tbl_ret_assignments ra
                     LEFT JOIN tbl_ret_rule_indicators rri ON rri.indicator_id = ra.indicator_id
                     LEFT JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
@@ -438,8 +439,13 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                         """, (emp_id, assign_ind_id, assign_qty, target_status, a_desc, a_deadline,
                               a_dur_value, a_dur_unit))
             else:
-                # RET review already decided (Approved/Rejected): Research is locked from
-                # further self-editing; only refresh its status. Scoped to research.
+                # RET review already decided: Research is locked from further self-editing.
+                #
+                # Only a *rejected* research selection goes back into review. An approved
+                # one must keep its 'Approved' status — resetting it made the Program Chair
+                # show "Awaiting RET Chair Approval" and refuse to approve, while the RET
+                # Chair's own review still read Approved so nothing appeared in their queue.
+                # The faculty member could not move in either direction.
                 if ret_status == 'Rejected':
                     cursor.execute("""
                         UPDATE tbl_draft_targets dt
@@ -449,15 +455,6 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                         WHERE dt.emp_id = %s
                           AND tc.slug = 'research'
                     """, (target_status, emp_id))
-
-                cursor.execute("""
-                    UPDATE tbl_draft_targets dt
-                    JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
-                    JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                    SET dt.review_status = %s
-                    WHERE dt.emp_id = %s
-                      AND tc.slug = 'research'
-                """, (target_status, emp_id))
 
         # 7b. Materialize distributed Extension targets — uniform to ALL regular faculty,
         # locked (not self-selectable), independent of Research eligibility. Rewrite from

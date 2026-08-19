@@ -29,8 +29,9 @@ permission checks in Phase M, and ideally a **second Program Chair** in another 
 > If a chair's designation is wrong, their My IPCR silently will not appear.
 
 > **Migrations required:** `MIGRATION_group7.sql` (the `is_admin_function` column **and** its
-> backfill) and `MIGRATION_group8.sql` (rating period, institution settings, signatories,
-> `print_remarks`). The collation-repair section of group 7 is optional and changes nothing.
+> backfill), `MIGRATION_group8.sql` (rating period, institution settings, signatories,
+> `print_remarks`), and `MIGRATION_group9.sql` (`target_description`, `target_duration_value`,
+> `target_duration_unit` on `tbl_ret_assignments`).
 
 ---
 
@@ -40,15 +41,15 @@ permission checks in Phase M, and ideally a **second Program Chair** in another 
 |---|---|
 | **0** | Login, logout, registration, bad credentials |
 | **A** | Admin: term, departments, teaching load, printed-IPCR config, criteria, categories, weights, indicators |
-| **B** | Dean: cascade quotas to departments / RET / College-Wide |
+| **B** | Dean: cascade quotas to departments / RET / College-Wide (with permanent lock & warning) |
 | **C** | Program Chair: distribute to faculty **and to chairs/Dean** |
-| **D** | RET Chair: research menu, direct assignment, extension distribution |
+| **D** | RET Chair: research menu, direct assignment (with desc/duration), extension distribution |
 | **E** | Regular Faculty: select and submit |
 | **F** | RET review → PC review → return/resubmit → lock |
 | **G** | Evidence upload, accomplishment reporting, Q/E/T scoring |
-| **H** | Verification by Program Chair, RET Chair and Dean |
-| **I** | Designated Faculty: full cycle including custom targets |
-| **J** | Program Chair / RET Chair / Dean own IPCR |
+| **H** | Verification by Program Chair, RET Chair and Dean (official printable IPCR document review) |
+| **I** | Designated Faculty: full cycle including custom targets & Program Chair allocated instruction |
+| **J** | Program Chair / RET Chair / Dean own IPCR & Dean College-Wide target assignments |
 | **K** | Print IPCR, both variants |
 | **L** | Admin maintenance: roster, CSV import, backup, accounts |
 | **M** | Permissions and security |
@@ -76,8 +77,6 @@ Admin → **Term Configuration**.
       *"for the period JANUARY to JUNE 2026"*.
 - [ ] Open the term → it becomes active and **every other term is deactivated**.
 
-A1 Comment/Suggestion/Question: What if we remove the deadline field from the form, seems redundant especially when we now have the correct data to collect for printing. 
-
 ### A2. Departments
 Admin → **Institution Setup** → *Departments / Programs*.
 
@@ -95,8 +94,7 @@ Same panel → *Teaching Load*.
 
 - [ ] **Regular Faculty** shows `21` hours / `6` months; **Designated Faculty** shows `10` / `6`.
 - [ ] Change Regular to `18` → Save → reopen → persisted.
-- [ ] Switch to **Per academic rank**, fill Instructor only → Save → reopen → in per-rank
-      mode, the "all ranks" row gone.
+- [ ] Switch to **Per academic rank**, fill Instructor only → Save → reopen → in per-rank mode, the "all ranks" row gone.
 - [ ] Switch back to **Same for all ranks**, set `21` / `6 months`, Save. *(Leave it here.)*
 - [ ] After saving, fields are **locked**; an **Edit** button unlocks them and Save returns.
 
@@ -179,8 +177,8 @@ Dean → **Quota Cascading**.
 - [ ] Cascade an **Administrative Functions** target to a department *(feeds J2)*.
 - [ ] Leave one target unallocated → press **Cascade Institutional Targets** → a
       confirmation modal appears and **blocks submission**, naming the unassigned target.
-- [ ] Fill it → press again → modal shows the target count → **Confirm & Cascade**.
-- [ ] Reopen: the saved quotas are still there.
+- [ ] Fill it → press again → modal shows target count & warns that cascading is a one-time action and permanently locks quotas for the term → **Confirm & Cascade** → button disables with spinner and submits.
+- [ ] Reopen: saved quotas persist, card displays **Cascaded & Locked** badge, info alert is shown, all inputs are disabled, and cascade button is removed.
 
 > Record what you cascade to each department and to RET — phases C and J check those
 > exact numbers reappear.
@@ -193,11 +191,10 @@ Program Chair → **Target Allocation**.
 
 - [ ] The list shows the department's **Regular Faculty**.
 - [ ] It **also shows the Dean, the Program Chair themselves, the RET Chair and any other
-      designated faculty** in that department. *(fixed — they were missing entirely)*
+      designated faculty** in that department.
 - [ ] Each row has a **duration number + unit dropdown**, not free text.
 - [ ] Fill quantity, duration (`6` + `months`) and a target description → Save.
-- [ ] **Allocate instruction to the Dean, the Program Chair and the RET Chair** —
-      Phase J checks these appear in their Core Functions.
+- [ ] **Allocate instruction to the Dean, the Program Chair and the RET Chair** — Phase J checks these appear in their Core Functions.
 - [ ] Reopen → values persist including the unit.
 - [ ] Support-type targets are offered to **Regular Faculty only**, not to designated faculty.
 - [ ] Re-saving after finalisation is blocked with a warning.
@@ -223,9 +220,10 @@ RET Chair → **Menu Config**.
 RET Chair → **Target Assignment**.
 
 - [ ] All regular faculty are listed.
-- [ ] **Assign** on a *different* faculty → modal shows **Research only** → tick one → Save.
+- [ ] **Assign** on a *different* faculty → modal shows **Research only** → tick one, verify IPCR description and duration (value + unit dropdown) fields appear and pre-fill → Save.
 - [ ] The button shows a count badge.
-- [ ] Reopen the editor → the assignment is still ticked.
+- [ ] Reopen the editor → the assignment is still ticked and description/duration persist.
+- [ ] Log in as the assigned faculty in Phase E → assigned research is locked, carrying the assigned description and deadline.
 
 ### D3. Extension distribution — ⚠ one-time
 Same panel → *Distribute Extension Targets to All Faculty*.
@@ -355,7 +353,7 @@ On the indicator tagged in A8:
 ### G6. Submit evidences
 - [ ] **Submit Evidences** → flash message includes the Final Weighted Rating and Adjectival.
 - [ ] **Uploading is now locked** — a notice replaces the form; existing files still viewable.
-- [ ] Verify persisted:
+- [ ] Verify persisted in database:
 
 ```sql
 SELECT f.emp_id, f.final_score, f.adjectival_rating,
@@ -399,10 +397,11 @@ RET Chair → evidence details.
 ### H4. Dean
 Dean → **Final Verification**.
 
-- [ ] Faculty with submitted evidence are listed.
-- [ ] Dean can open the evidence viewer and **Approve / Return** files.
-- [ ] **Approve Package** → the faculty's targets become **Dean Approved**.
-- [ ] **Return to Faculty** sends it back with remarks.
+- [ ] Faculty with submitted evidence packages are listed.
+- [ ] Click **Review IPCR** → official printable IPCR document form is rendered directly inside the review modal (commitments, indicators, accomplishments, Q·E·T scores, summary ratings, and signatories).
+- [ ] **Approve IPCR** → the faculty's targets become **Dean Approved**.
+- [ ] **Return to Faculty** sends it back with confirmation.
+- [ ] Approved tables allow viewing the finalized official IPCR anytime.
 
 ---
 
@@ -412,12 +411,12 @@ Log in as DESIGNATED_FACULTY.
 
 - [ ] Selection table columns are readable — the description does not squeeze Target Qty
       and Deadline into squares.
-- [ ] Selection uses **duration number + unit**.
-- [ ] The **Teaching Load** target shows the *Designated* hours from A3 (e.g. 10).
-- [ ] Instruction allocated by their Program Chair in Phase C appears under **Core Functions**.
+- [ ] Selection uses **duration number + unit dropdown**.
+- [ ] The **Teaching Load** target shows the *Designated* hours from A3 (e.g. 10) under **Core Functions**.
+- [ ] Instruction allocated by their Program Chair in Phase C appears under **Core Functions** (locked).
 - [ ] Targets picked from the pool land under **Strategic Priorities/Support Functions**.
-- [ ] **Add custom target** modal has description, quantity and **Target Duration** value + unit.
-- [ ] A custom target saves and appears under Strategic Priorities/Support Functions.
+- [ ] **Add custom target** modal has description, quantity and **Target Duration** value + unit dropdown.
+- [ ] A custom target saves and appears under **Strategic Priorities/Support Functions**.
 - [ ] **Submit** → the Dean sees it in **IPCR Draft Approval**.
 - [ ] Dean edits a quantity, adds a remark, and **returns** it → designated faculty sees remarks.
 - [ ] **Resubmit** → back to the Dean.
@@ -431,8 +430,7 @@ Log in as DESIGNATED_FACULTY.
 - [ ] Count the targets in **1. Core Functions** and **2. Strategic Priorities & Support
       Functions** on the My IPCR page.
 - [ ] The Summary of Ratings shows **those same two counts**.
-- [ ] Only the **teaching load** and **Program-Chair-allocated instruction** are Core.
-      Pool selections, custom items and oversight cascades are Strategic Priorities/Support
+- [ ] Only the **teaching load** and **Program-Chair-allocated instruction** are Core. Pool selections, custom items and oversight cascades are Strategic Priorities/Support
       — *even when their target type is Instruction*.
 - [ ] Neither weighted category shows **0 targets** while the other holds them all.
 
@@ -452,7 +450,7 @@ Run after B and C so there are cascades and allocations to pick up.
 
 ### J2. Core Functions — the instruction they were allocated
 - [ ] **Program Chair**: the instruction allocated to them in Phase C appears under
-      **Core Functions**, with the mandatory teaching load. *(fixed)*
+      **Core Functions**, alongside the mandatory teaching load.
 - [ ] **RET Chair**: same.
 - [ ] **Dean**: same.
 - [ ] Quantities and durations match what the Program Chair entered.
@@ -467,7 +465,7 @@ Run after B and C so there are cascades and allocations to pick up.
 
 ### J4. Claimed targets are not selectable
 - [ ] A target cascaded to a department or to RET does **not** appear in the pool anyone
-      can select from.
+      else can select from.
 - [ ] Another Designated Faculty sees only unclaimed instruction/support targets.
 
 ### J5. The same indicator, both ways
@@ -476,14 +474,15 @@ Run after B and C so there are cascades and allocations to pick up.
 - [ ] In Summary of Ratings the oversight copy sits under **Strategic Priorities/Support
       (75%)** and the personal copy under **Core Functions (25%)**.
 
-### J6. Dean sees the chairs
-- [ ] Dean → **Target Assignment** lists Program Chairs and the RET Chair among designated
-      faculty.
-- [ ] Assign a **College-Wide** target to one of them → it appears on their IPCR.
+### J6. Dean sees the chairs & assigns College-Wide targets
+- [ ] Dean → **Target Assignment** lists Program Chairs and the RET Chair among designated faculty with their assigned targets count.
+- [ ] Click **Assign** on a chairperson / designated faculty → modal shows College-Wide targets with total and remaining quotas.
+- [ ] Check a **College-Wide** target, set quantity, custom description, and duration (value + unit dropdown) → **Save Assignments** → badge updates.
+- [ ] Log in as that chair / designated faculty → the assigned College-Wide target appears on their IPCR under **Strategic Priorities & Support Functions** with the specified quantity and duration.
 
 ### J7. Full cycle
 - [ ] A chair submits their own IPCR → Dean reviews → approves → chair locks.
-- [ ] The chair's Summary of Ratings shows both categories populated.
+- [ ] The chair's Summary of Ratings shows both categories populated (Core Functions 25% and Strategic Priorities/Support Functions 75%).
 
 ---
 
@@ -579,7 +578,7 @@ Each of these should be **refused**. They are the checks that matter most.
 - [ ] A **Regular Faculty** opening `/designated/` → refused (they use `/faculty/`).
 
 ### M2. Cross-user data
-- [ ] Faculty A **cannot delete** Faculty B's evidence. *(fixed — was possible)*
+- [ ] Faculty A **cannot delete** Faculty B's evidence.
 - [ ] Faculty A **cannot view** Faculty B's evidence file via its URL.
 - [ ] Faculty A **cannot save accomplishment details** against Faculty B's target.
 - [ ] A Program Chair sees only **their own department's** faculty.

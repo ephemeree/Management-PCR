@@ -123,6 +123,18 @@
 <script>
 // --- RET research assignment editor ---
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function toggleAssignRowInputs(indId, isChecked) {
+    const inputs = document.querySelectorAll('.assign-input-' + indId);
+    inputs.forEach(inp => {
+        inp.disabled = !isChecked;
+    });
+}
+
 // Open the assignment editor modal and populate it with the faculty member's
 // rank-eligible RET menu, pre-checking any existing assignments.
 function openAssignmentEditor(empId) {
@@ -148,24 +160,57 @@ function openAssignmentEditor(empId) {
                 return '<h6 class="fw-bold mt-3">' + title + '</h6>' +
                        '<p class="text-muted small mb-0">No indicators in this faculty member\'s rank menu.</p>';
             }
-            let html = '<h6 class="fw-bold mt-3">' + title + '</h6><div class="list-group mb-2">';
+            let html = '<h6 class="fw-bold mt-3 text-primary"><i class="bi bi-star-fill me-2"></i>' + title + '</h6><div class="list-group mb-2">';
             items.forEach(it => {
                 const qty = it.assigned_quantity != null ? it.assigned_quantity : it.default_quantity;
+                const desc = escapeHtml(it.target_description || '');
+                const durVal = it.target_duration_value != null ? it.target_duration_value : '';
+                const durUnit = it.target_duration_unit || 'months';
                 const checked = it.is_assigned ? 'checked' : '';
+                const disabledAttr = it.is_assigned ? '' : 'disabled';
+
+                const units = ['days', 'weeks', 'months', 'semesters'];
+                let unitOptions = '';
+                units.forEach(u => {
+                    unitOptions += '<option value="' + u + '" ' + (durUnit === u ? 'selected' : '') + '>' + u + '</option>';
+                });
+
                 html +=
-                  '<label class="list-group-item d-flex align-items-center gap-2">' +
-                    '<input class="form-check-input m-0 assign-check" type="checkbox" name="assign_indicator_ids[]" value="' + it.indicator_id + '" ' + checked + '>' +
-                    '<span class="flex-grow-1">' + it.indicator_description + '</span>' +
-                    '<input type="number" min="1" class="form-control form-control-sm" style="width:90px;" ' +
-                           'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '">' +
-                  '</label>';
+                  '<div class="list-group-item py-3">' +
+                    '<div class="d-flex align-items-center gap-2">' +
+                      '<input class="form-check-input m-0 assign-check" type="checkbox" name="assign_indicator_ids[]" value="' + it.indicator_id + '" ' + checked + ' onchange="toggleAssignRowInputs(' + it.indicator_id + ', this.checked)">' +
+                      '<span class="flex-grow-1 fw-semibold small text-dark">' + escapeHtml(it.indicator_description) + '</span>' +
+                      '<span class="text-muted small">Qty:</span>' +
+                      '<input type="number" min="1" class="form-control form-control-sm text-center assign-input-' + it.indicator_id + '" style="width:80px;" ' +
+                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + '>' +
+                    '</div>' +
+                    '<div class="row g-2 mt-2 ps-4">' +
+                      '<div class="col-md-7">' +
+                        '<input type="text" class="form-control form-control-sm assign-input-' + it.indicator_id + '" ' +
+                               'name="assign_description_' + it.indicator_id + '" ' +
+                               'placeholder="IPCR target description" ' +
+                               'value="' + desc + '" ' + disabledAttr + '>' +
+                      '</div>' +
+                      '<div class="col-md-5">' +
+                        '<div class="d-flex gap-1">' +
+                          '<input type="number" min="1" class="form-control form-control-sm text-center assign-input-' + it.indicator_id + '" ' +
+                                 'name="assign_dur_value_' + it.indicator_id + '" placeholder="Duration" ' +
+                                 'value="' + durVal + '" ' + disabledAttr + '>' +
+                          '<select class="form-select form-select-sm assign-input-' + it.indicator_id + '" ' +
+                                  'name="assign_dur_unit_' + it.indicator_id + '" ' + disabledAttr + '>' +
+                            unitOptions +
+                          '</select>' +
+                        '</div>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>';
             });
             html += '</div>';
             return html;
         };
 
         // Research only — Extension is distributed to all faculty, not assigned per-person.
-        body.innerHTML = section('Research', data.research);
+        body.innerHTML = section('Research Targets', data.research);
     })
     .catch(err => {
         body.innerHTML = '<div class="alert alert-danger">Error: ' + err + '</div>';

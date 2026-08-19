@@ -436,7 +436,9 @@ def get_designated_faculty_assignments(cursor, term_id, emp_id):
     from app.models.connection import timed_query
     query = """
         SELECT da.allocation_id, da.indicator_id, da.assigned_quantity,
-               mi.indicator_description, tc.category_name
+               da.custom_description, da.target_deadline,
+               da.target_duration_value, da.target_duration_unit,
+               mi.indicator_description, tc.category_name, tc.slug
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
@@ -449,7 +451,7 @@ def get_designated_faculty_assignments(cursor, term_id, emp_id):
 def get_designated_faculty_assignments_batch(cursor, term_id, emp_ids):
     """
     Get target assignments for MULTIPLE designated faculty members in ONE query.
-    Returns a dict: {emp_id: {indicator_id: assigned_quantity, ...}, ...}
+    Returns a dict: {emp_id: {indicator_id: assignment_dict, ...}, ...}
     """
     if not emp_ids:
         return {}
@@ -457,9 +459,13 @@ def get_designated_faculty_assignments_batch(cursor, term_id, emp_ids):
     from app.models.connection import timed_query
     placeholders = ','.join(['%s'] * len(emp_ids))
     query = f"""
-        SELECT da.emp_id, da.indicator_id, da.assigned_quantity
+        SELECT da.emp_id, da.indicator_id, da.assigned_quantity,
+               da.custom_description, da.target_deadline,
+               da.target_duration_value, da.target_duration_unit,
+               tc.slug
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+        LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s AND da.emp_id IN ({placeholders})
     """
     rows = timed_query(cursor, query, [term_id] + emp_ids, label="get_designated_faculty_assignments_batch")
@@ -469,12 +475,71 @@ def get_designated_faculty_assignments_batch(cursor, term_id, emp_ids):
         emp_id = row['emp_id']
         if emp_id not in result:
             result[emp_id] = {}
-        result[emp_id][row['indicator_id']] = row['assigned_quantity']
+        result[emp_id][row['indicator_id']] = row
     return result
 
 
+def save_designated_faculty_assignments(conn, cursor, term_id, emp_id, assignments, assigned_by=None):
+    """
+    Replaces the Dean's College-Wide assignments for one designated faculty member / chair.
+    Preserves any Program Chair instruction allocations in tbl_draft_allocation.
+
+    `assignments` is a list of tuples:
+    (indicator_id, assigned_quantity, custom_description, target_duration_value, target_duration_unit)
+    """
+    from app.models.scoring import format_duration
+    try:
+        # Get allowed College-Wide indicator IDs for this term
+        cursor.execute("""
+            SELECT cq.indicator_id
+            FROM tbl_cascaded_quotas cq
+            WHERE cq.term_id = %s AND cq.assigned_to_role = 'College-Wide' AND cq.total_target_value > 0
+        """, (term_id,))
+        allowed_cw_ids = {r[0] for r in cursor.fetchall()}
+
+        if allowed_cw_ids:
+            cw_placeholders = ','.join(['%s'] * len(allowed_cw_ids))
+            cursor.execute(f"""
+                DELETE FROM tbl_draft_allocation
+                WHERE emp_id = %s AND indicator_id IN ({cw_placeholders})
+            """, [emp_id] + list(allowed_cw_ids))
+
+        saved = 0
+        skipped = 0
+        for item in assignments:
+            if len(item) == 5:
+                indicator_id, qty, desc, dur_val, dur_unit = item
+            else:
+                indicator_id, qty = item[0], item[1]
+                desc, dur_val, dur_unit = None, None, None
+
+            if indicator_id not in allowed_cw_ids:
+                skipped += 1
+                continue
+
+            qty = qty if qty and int(qty) > 0 else 1
+            deadline = format_duration(dur_val, dur_unit)
+
+            cursor.execute("""
+                INSERT INTO tbl_draft_allocation (emp_id, indicator_id, assigned_quantity,
+                                                  custom_description, target_deadline,
+                                                  target_duration_value, target_duration_unit)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (emp_id, indicator_id, int(qty), desc, deadline, dur_val, dur_unit))
+            saved += 1
+
+        conn.commit()
+        msg = f"Saved {saved} College-Wide target assignment(s)."
+        if skipped:
+            msg += f" {skipped} skipped (not in College-Wide quota pool)."
+        return True, msg
+    except Exception as e:
+        conn.rollback()
+        return False, f"Error saving assignments: {str(e)}"
+
+
 def save_designated_faculty_assignment(cursor, conn, term_id, emp_id, indicator_id, quantity):
-    """Save or update a target assignment for a designated faculty member in tbl_draft_allocation."""
+    """Save or update a single target assignment for a designated faculty member in tbl_draft_allocation."""
     try:
         # Check if an assignment already exists
         cursor.execute(

@@ -944,7 +944,9 @@
             const firstNav = document.querySelector('.sidebar-nav .nav-item[data-section]');
             const hash = (window.location.hash || '').replace(/^#/, '');
 
-            if (hash && document.getElementById(hash)) {
+            // Only a real section counts. Panels nested inside a section share the
+            // nav- prefix, and switching to one hid every section and showed nothing.
+            if (hash && document.querySelector('.dashboard-section#' + CSS.escape(hash))) {
                 showSection(hash);
             } else if (saved && document.getElementById(saved)) {
                 showSection(saved);

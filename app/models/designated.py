@@ -38,7 +38,25 @@ def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True, 
     rows = timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators")
     if exclude_claimed:
         claimed = get_claimed_indicator_ids(cursor, term_id)
-        rows = [r for r in rows if r['indicator_id'] not in claimed]
+
+        # An indicator the Program Chair explicitly allocated to *this* person stays in the
+        # list even though the department also holds it. The claimed rule exists to stop
+        # someone picking up work that already has an owner — but for their own allocated
+        # share they are the owner. Dropping it left the allocation with no row to attach
+        # to, so a chair's Core Functions showed only the teaching load.
+        allocated = set()
+        if emp_id:
+            cursor.execute(
+                "SELECT da.indicator_id "
+                "FROM tbl_draft_allocation da "
+                "JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id "
+                "WHERE da.emp_id = %s AND mi.term_id = %s "
+                "  AND COALESCE(da.assigned_quantity, 0) > 0",
+                (emp_id, term_id))
+            allocated = {r[0] for r in cursor.fetchall()}
+
+        rows = [r for r in rows
+                if r['indicator_id'] not in claimed or r['indicator_id'] in allocated]
     return rows
 
 
@@ -470,4 +488,4 @@ def lock_and_commit_designated_ipcr(conn, cursor, emp_id, term_id):
         return True, "IPCR locked successfully and committed to evaluation targets."
     except Exception as e:
         conn.rollback()
-        return False, str(e)
+        return False, str(e)

@@ -392,7 +392,7 @@ def admin_save_category():
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error saving category: {str(e)}", "danger")
-    return redirect(url_for('admin.admin_dashboard') + '#nav-categories')
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
 @admin_bp.route('/categories/toggle_active', methods=['POST'])
@@ -409,7 +409,7 @@ def admin_toggle_category():
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error updating category status: {str(e)}", "danger")
-    return redirect(url_for('admin.admin_dashboard') + '#nav-categories')
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
 @admin_bp.route('/institution/save', methods=['POST'])

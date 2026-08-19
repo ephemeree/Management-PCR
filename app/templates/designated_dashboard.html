@@ -485,11 +485,16 @@
             <div class="modal-body p-4">
                 <form id="addTargetForm">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Indicator Type</label>
+                        <label class="form-label small fw-bold">Target Type</label>
                         <select class="form-select" name="Indicator" required>
-                            <option value="Instructions">Strategic Priorities</option>
-                            <option value="Support">Support</option>
+                            <option value="Support">Support Functions</option>
+                            <option value="Instructions">Instruction</option>
                         </select>
+                        <div class="form-text small">
+                            Custom targets are rated under <strong>Strategic Priorities /
+                            Support Functions</strong> whichever type you pick — they are
+                            never counted as personal teaching work.
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="targetDescription" class="form-label fw-bold">Target Description <span
@@ -908,7 +913,15 @@
                     categoryName = 'A. Instructions';
                 }
 
-                const tbody = document.getElementById(`tbody-${categoryId}`);
+                // Custom targets always render in section 2 (Strategic Priorities &
+                // Support Functions) — that is the only table they belong to, and the one
+                // the scoring flag puts them under.
+                const tbody = document.getElementById('tbody-support');
+                if (!tbody) {
+                    alert('Could not add the target: the Strategic Priorities / Support '
+                          + 'Functions table is missing from this page.');
+                    return;
+                }
 
                 // Remove placeholder row if it exists
                 const placeholderRow = tbody.querySelector('td[colspan]');
@@ -933,7 +946,7 @@
                                 <input type="hidden" name="custom_duration_values[]" value="${durValue}">
                                 <input type="hidden" name="custom_duration_units[]" value="${durUnit}">
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('tr').remove(); checkEmptyTable('${categoryId}');">
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('tr').remove(); checkEmptyTable('support');">
                                 <i class="bi bi-trash-fill"></i>
                             </button>
                         </div>

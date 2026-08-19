@@ -113,18 +113,18 @@ def designated_dashboard():
                 if '21 hours' not in t['indicator_description'] and '21 hrs' not in t['indicator_description']
             ]
             
-            # Fetch cascaded instruction allocations from Program Chair
+            # Fetch cascaded allocations (Program Chair instruction + Dean College-Wide)
             cursor.execute("""
                 SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
-                       da.target_duration_value, da.target_duration_unit
+                       da.target_duration_value, da.target_duration_unit, tc.slug
                 FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
+                WHERE da.emp_id = %s AND mi.term_id = %s
             """, (emp_id, term_id))
             alloc_rows = cursor.fetchall()
             alloc_map = {r[0]: {'assigned_quantity': r[1], 'custom_description': r[2], 'target_deadline': r[3],
-                                'target_duration_value': r[4], 'target_duration_unit': r[5]} for r in alloc_rows}
+                                'target_duration_value': r[4], 'target_duration_unit': r[5], 'slug': r[6]} for r in alloc_rows}
 
             draft_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
@@ -138,11 +138,11 @@ def designated_dashboard():
                 WHERE dt.emp_id = %s AND mi.term_id = %s
                 ORDER BY tc.category_name, mi.indicator_id
             """, (emp_id, term_id), label="designated_load_drafts")
-            
+
             for d in draft_targets:
                 if d['category_name'] == 'Custom Target Items':
                     d['category_name'] = 'Support Functions'
-            
+
             draft_map = {d['indicator_id']: d for d in draft_targets}
 
             # Configured teaching load, used as the fallback when a draft row has none.
@@ -154,10 +154,12 @@ def designated_dashboard():
             tl_default_deadline = format_duration(_tl_dv, _tl_du)
 
             dpcr_targets = []
+            seen_indicator_ids = set()
             for t in standard_targets:
                 ind_id = t['indicator_id']
+                seen_indicator_ids.add(ind_id)
                 is_tl = 'Teaching Load' in t['indicator_description']
-                
+
                 if is_tl:
                     t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else tl_default_hours
                     t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or tl_default_desc
@@ -168,15 +170,15 @@ def designated_dashboard():
                     t['is_core'] = True
                     t['is_locked'] = True
                 elif ind_id in alloc_map and (alloc_map[ind_id].get('assigned_quantity') or 0) > 0:
-                    # Cascaded Instruction Target from Program Chair -> Core Functions & Locked
+                    is_instruction = alloc_map[ind_id].get('slug') == 'instruction'
                     t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else alloc_map[ind_id]['assigned_quantity']
                     t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or alloc_map[ind_id]['custom_description'] or t['indicator_description']
                     t['target_deadline'] = (draft_map[ind_id]['target_deadline'] if ind_id in draft_map else None) or alloc_map[ind_id]['target_deadline'] or ''
                     t['status'] = draft_map[ind_id]['status'] if ind_id in draft_map else 'Draft'
                     t['is_selected'] = True
                     t['is_cascaded'] = True
-                    t['is_core'] = True
-                    t['is_locked'] = True
+                    t['is_core'] = is_instruction
+                    t['is_locked'] = is_instruction
                 elif ind_id in draft_map:
                     t['total_target_value'] = draft_map[ind_id]['total_target_value']
                     t['target_description'] = draft_map[ind_id]['target_description'] or t['indicator_description']
