@@ -207,6 +207,18 @@
                             <label class="form-label small fw-bold">Submission Deadline</label>
                             <input type="date" class="form-control" name="deadline_date" required>
                         </div>
+                        {# The rating period printed on the IPCR header —
+                           "...for the period JANUARY to JUNE 2026." #}
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Rating Period From</label>
+                                <input type="date" class="form-control" name="period_start">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Rating Period To</label>
+                                <input type="date" class="form-control" name="period_end">
+                            </div>
+                        </div>
                         <button type="submit" class="btn btn-primary w-100 fw-bold">Open Term & Deactivate
                             Others</button>
                     </form>
@@ -1005,6 +1017,93 @@
         </div>
     </div>
 
+    <!-- Printed IPCR: institution text + who signs each block -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-0 pt-4 pb-2">
+            <h5 class="fw-bold text-dark mb-0">Printed IPCR</h5>
+            <small class="text-muted">The header text and signature blocks on the generated
+                IPCR form. Two blocks follow the org chart automatically; the rest are people
+                you name here.</small>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('admin.admin_save_institution') }}" method="POST" class="mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">College Full Name</label>
+                        <input type="text" class="form-control" name="college_full_name"
+                               value="{{ institution.get('college_full_name', '') }}"
+                               placeholder="College of Information and Communications Technology">
+                        <div class="form-text small">Printed in the commitment sentence.</div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Code</label>
+                        <input type="text" class="form-control" name="college_code"
+                               value="{{ institution.get('college_code', '') }}" placeholder="CICT">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-outline-primary w-100 fw-semibold">Save</button>
+                    </div>
+                </div>
+            </form>
+
+            <form action="{{ url_for('admin.admin_save_signatories') }}" method="POST">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-3">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 18%;">Block</th>
+                                <th style="width: 17%;">Applies to</th>
+                                <th style="width: 22%;">Filled from</th>
+                                <th style="width: 25%;">Name</th>
+                                <th style="width: 18%;">Position Label</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sig in signatories %}
+                            <tr>
+                                <td class="fw-semibold small">{{ signatory_labels.get(sig.block_key, sig.block_key) }}</td>
+                                <td class="small text-muted">{{ sig.designation_type or 'Both forms' }}</td>
+                                <td>
+                                    <select class="form-select form-select-sm sig-source"
+                                            name="sig_{{ sig.signatory_id }}_source"
+                                            data-sid="{{ sig.signatory_id }}" onchange="toggleSigName(this)">
+                                        {% for src in signatory_sources %}
+                                        <option value="{{ src }}" {% if sig.source == src %}selected{% endif %}>
+                                            {% if src == 'FIXED' %}A named person
+                                            {% elif src == 'PROGRAM_CHAIR' %}Their Program Chair
+                                            {% else %}The Dean{% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm"
+                                           id="sigName_{{ sig.signatory_id }}"
+                                           name="sig_{{ sig.signatory_id }}_name"
+                                           value="{{ sig.full_name or '' }}"
+                                           placeholder="e.g. JUAN D. CRUZ, Ed.D."
+                                           {% if sig.source != 'FIXED' %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm"
+                                           name="sig_{{ sig.signatory_id }}_title"
+                                           value="{{ sig.position_title or '' }}"
+                                           placeholder="e.g. Head of Office">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary fw-bold">
+                        <i class="bi bi-floppy-fill me-1"></i>Save Signatories
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Add/Edit Department Modal -->
     <div class="modal fade" id="departmentModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
@@ -1042,6 +1141,13 @@
     </div>
 
     <script>
+    function toggleSigName(sel) {
+        // Only a named person needs a name typed in; derived blocks follow the roster.
+        const input = document.getElementById('sigName_' + sel.dataset.sid);
+        if (!input) return;
+        input.disabled = (sel.value !== 'FIXED');
+        if (input.disabled) input.value = '';
+    }
     function newDepartment() {
         document.getElementById('deptId').value = '';
         document.getElementById('deptName').value = '';

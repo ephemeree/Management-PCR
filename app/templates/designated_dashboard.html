@@ -36,6 +36,12 @@
     <span class="nav-text">Evidence Gathering</span>
 </button>
 {% endif %}
+{% if has_submitted %}
+<a class="nav-item text-decoration-none" href="{{ url_for('designated.designated_print_ipcr') }}" target="_blank">
+    <i class="bi bi-printer-fill"></i>
+    <span class="nav-text">Print IPCR</span>
+</a>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -900,6 +906,7 @@
             completionStatus: {{ (target.completion_status or 'COMPLETED') | tojson }},
             efficiencyType: {{ (target.efficiency_type or '') | tojson }},
             efficiencyRating: {{ target.efficiency_rating_E if target.efficiency_rating_E else 'null' }},
+            printRemarks: {{ (target.print_remarks or '') | tojson }},
             ratingQ: {{ target.rating.q if target.rating and target.rating.q is not none else 'null' }},
             ratingE: {{ target.rating.e if target.rating and target.rating.e is not none else 'null' }},
             ratingT: {{ target.rating.t if target.rating and target.rating.t is not none else 'null' }},
@@ -937,7 +944,8 @@
                 target_id: targetId,
                 actual_duration_value: durationRaw === '' ? null : durationRaw,
                 completion_status: status,
-                efficiency_rating_E: effRaw === '' ? null : effRaw
+                efficiency_rating_E: effRaw === '' ? null : effRaw,
+                print_remarks: document.getElementById('evidenceRemarks').value
             })
         })
         .then(r => r.json())
@@ -1011,6 +1019,7 @@
         document.getElementById('ratingT').textContent = dash(meta.ratingT);
         document.getElementById('ratingAvg').textContent = dash(meta.ratingAvg);
 
+        document.getElementById('evidenceRemarks').value = meta.printRemarks || '';
         document.getElementById('accomplishmentSaveMsg').textContent = '';
         toggleCompletedInState();
 
@@ -1178,6 +1187,16 @@
                         </div>
                     </div>
 
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-12">
+                            <label for="evidenceRemarks" class="form-label fw-semibold text-secondary small">
+                                Remarks <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            <input type="text" class="form-control" id="evidenceRemarks" maxlength="255"
+                                   placeholder="Short note printed in the IPCR's Remarks column">
+                        </div>
+                    </div>
                     <div class="mt-3 pt-3 border-top">
                         <label class="form-label fw-semibold text-secondary small mb-2">Computed Rating</label>
                         <div class="d-flex gap-2 flex-wrap align-items-center">

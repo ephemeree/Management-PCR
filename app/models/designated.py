@@ -301,7 +301,7 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
                COALESCE(ct.target_duration_value, dt.target_duration_value) as target_duration_value,
                COALESCE(ct.target_duration_unit, dt.target_duration_unit) as target_duration_unit,
                ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
-               ct.is_admin_function,
+               ct.is_admin_function, ct.print_remarks,
                mi.efficiency_type,
                tc.category_name, tc.category_id, mi.is_custom
         FROM tbl_committed_targets ct

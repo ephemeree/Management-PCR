@@ -578,7 +578,7 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
                COALESCE(ct.target_description, mi.indicator_description) as indicator_description,
                ct.target_deadline, ct.target_duration_value, ct.target_duration_unit,
                ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
-               ct.is_admin_function,
+               ct.is_admin_function, ct.print_remarks,
                mi.efficiency_type,
                tc.category_name, tc.category_id
         FROM tbl_committed_targets ct
@@ -603,11 +603,13 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
 
 
 def save_accomplishment_details(conn, cursor, emp_id, target_id, actual_duration_value,
-                                completion_status, efficiency_rating_E):
+                                completion_status, efficiency_rating_E, print_remarks=None):
     """
     Save the per-target accomplishment inputs used for Timeliness (T) and, where the
     indicator is client-satisfaction rated, Efficiency (E). Ownership is enforced so a
     faculty member can only update their own committed targets.
+
+    print_remarks is the free-text note that appears in the printed IPCR's Remarks column.
     """
     from app.models.scoring import COMPLETION_STATUSES
     try:
@@ -625,11 +627,14 @@ def save_accomplishment_details(conn, cursor, emp_id, target_id, actual_duration
         if completion_status and completion_status != 'COMPLETED':
             actual_duration_value = None
 
+        remarks = (print_remarks or '').strip()[:255] or None
         cursor.execute("""
             UPDATE tbl_committed_targets
-            SET actual_duration_value = %s, completion_status = %s, efficiency_rating_E = %s
+            SET actual_duration_value = %s, completion_status = %s, efficiency_rating_E = %s,
+                print_remarks = %s
             WHERE target_id = %s
-        """, (actual_duration_value, completion_status or None, efficiency_rating_E, target_id))
+        """, (actual_duration_value, completion_status or None, efficiency_rating_E,
+              remarks, target_id))
         conn.commit()
         return True, "Accomplishment details saved."
     except Exception as e:

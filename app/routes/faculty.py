@@ -140,6 +140,7 @@ def faculty_save_accomplishment():
             _int_or_none(data.get('actual_duration_value')),
             (data.get('completion_status') or '').strip() or None,
             _int_or_none(data.get('efficiency_rating_E')),
+            data.get('print_remarks'),
         )
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
@@ -515,3 +516,31 @@ def faculty_unclaim_evidence():
         conn.close()
 
     return redirect(url_for('faculty.faculty_dashboard'))
+
+@faculty_bp.route('/print_ipcr')
+@role_required('FACULTY')
+def faculty_print_ipcr():
+    """Printable IPCR for the logged-in faculty member's active term."""
+    return _render_ipcr_print(session.get('user_id'), url_for('faculty.faculty_dashboard'))
+
+
+def _render_ipcr_print(emp_id, back_url):
+    from app.models.ipcr_form import build_ipcr_form
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            flash('No active academic term.', 'warning')
+            return redirect(back_url)
+
+        form = build_ipcr_form(cursor, emp_id, active_term['term_id'])
+        if not form or not form['has_targets']:
+            flash('No committed IPCR to print yet — lock your IPCR first.', 'warning')
+            return redirect(back_url)
+
+        return render_template('ipcr_print.html', form=form, back_url=back_url)
+    finally:
+        cursor.close()
+        conn.close()

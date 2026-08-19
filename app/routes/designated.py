@@ -342,6 +342,7 @@ def designated_save_accomplishment():
             _int_or_none(data.get('actual_duration_value')),
             (data.get('completion_status') or '').strip() or None,
             _int_or_none(data.get('efficiency_rating_E')),
+            data.get('print_remarks'),
         )
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
@@ -559,3 +560,14 @@ def designated_delete_evidence():
         conn.close()
 
     return redirect(url_for('designated.designated_dashboard'))
+
+@designated_bp.route('/print_ipcr')
+@designated_ipcr_required
+def designated_print_ipcr():
+    """
+    Printable IPCR for any designated faculty member — including Program Chairs, the RET
+    Chair and the Dean, who reach it from their own dashboards.
+    """
+    from app.routes.faculty import _render_ipcr_print
+    return _render_ipcr_print(session.get('user_id'),
+                              url_for('designated.designated_dashboard'))

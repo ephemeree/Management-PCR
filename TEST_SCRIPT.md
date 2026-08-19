@@ -36,7 +36,7 @@ several steps depend on them matching.
 | **I** | Designated **Evidence Gathering** has the Accomplishment Details card |
 | **I** | Selection table column widths rebalanced |
 
-**New this round — Phase J:** Program Chair, RET Chair and Dean now have their own IPCR.
+**New — Phase J:** Program Chair, RET Chair and Dean now have their own IPCR.
 
 | What | Detail |
 |---|---|
@@ -44,12 +44,21 @@ several steps depend on them matching.
 | Correct weights | `'Program Chair'` / `'RET Chair'` / `'Dean'` matched neither weight table, so their IPCR could not be scored at all. All now rate against **Designated Faculty (75/25)** |
 | Oversight targets | A chair's IPCR auto-fills with their department's (or RET's) cascaded quotas at **full quantity** |
 | Navigation | Opening My IPCR **keeps your own sidebar**; its items link back to the section you came from |
-| **Category fix** | A designated faculty's self-selected targets were being counted as **Core Functions**. Only the teaching load and Program-Chair-allocated instruction are Core; everything else is **Strategic Priorities/Support**. This is what made a 3-core/1-strategic IPCR read *4 core / 0 strategic → Poor* |
+| Category fix | A designated faculty's self-selected targets were counted as **Core Functions**. Only the teaching load and Program-Chair-allocated instruction are Core; everything else is **Strategic Priorities/Support** |
 
-> Needs [`old MDS/MIGRATION_group7.sql`](old%20MDS/MIGRATION_group7.sql): the `is_admin_function`
-> columns **and** the backfill that recategorises targets committed before the column existed.
-> Without the backfill, existing designated IPCRs keep the wrong split. The collation-repair
-> section of that file is optional cleanup and changes no behaviour.
+**New — Phase K:** the IPCR can now be printed.
+
+| What | Detail |
+|---|---|
+| Print IPCR | Replaces the "coming soon" placeholder. Renders the real form — Regular and Designated variants differ in column header, opening sentence, categories and weights |
+| Config | Admin → Institution Setup → **Printed IPCR** sets the college name and who signs each block; Term Configuration gains a **rating period** |
+| Remarks | A free-text note per target, entered on the evidence modal, printed in the form's Remarks column |
+| Category order fix | The Summary of Ratings listed categories **alphabetically**. Now I / II / III order — this affected the dashboards too, not only the printed form |
+
+> Needs [`old MDS/MIGRATION_group7.sql`](old%20MDS/MIGRATION_group7.sql) (the `is_admin_function`
+> columns **and** the backfill) and [`old MDS/MIGRATION_group8.sql`](old%20MDS/MIGRATION_group8.sql)
+> (rating period, institution settings, signatories, `print_remarks`). The collation-repair
+> section of group 7 is optional cleanup and changes no behaviour.
 
 ---
 
@@ -58,6 +67,9 @@ several steps depend on them matching.
 ### A1. Open the new term
 Admin → **Term Configuration** → set Academic Year, Semester, Deadline → Open Term.
 
+- [ ] The form has **Rating Period From / To** alongside the deadline.
+- [ ] Set them (e.g. `2026-01-01` to `2026-06-30`) — the printed IPCR header reads
+      *"for the period JANUARY to JUNE 2026"*. Leaving them blank prints a blank.
 - [ ] New term appears and is marked active; only one term is active.
 
 ### A2. Institution Setup — Departments *(new)*
@@ -82,6 +94,22 @@ Same panel → *Teaching Load*.
 - [ ] Switch back to **Same for all ranks**, set `21` / `6` months, Save. *(Leave it here.)*
 - [ ] After saving, the fields are **locked** — an **Edit** button appears and the Save
       button hides. Pressing **Edit** unlocks them and brings Save back. *(fixed)*
+
+### A3b. Institution Setup — Printed IPCR *(new)*
+Same panel → *Printed IPCR*.
+
+- [ ] **College Full Name** is pre-filled with *College of Information and Communications
+      Technology*; the code reads `CICT`.
+- [ ] Four signature blocks are listed: **Reviewed by · Approved by · Assessed by ·
+      Final Rating by**.
+- [ ] "Filled from" offers **A named person / Their Program Chair / The Dean**.
+- [ ] Choosing a derived option **disables** the Name field — those follow the roster.
+- [ ] Type the real **Head of Office** name on *Approved by* and *Final Rating by* → Save →
+      reopen and confirm both persisted.
+- [ ] Saving a *named person* block with an empty name is refused.
+
+> Blocks with no name render blank on the printed form, exactly as the paper version is
+> issued. Fill these in before Phase K or the signature lines will be empty.
 
 ### A4. Criteria (target types)
 Admin → **Criteria**.
@@ -255,6 +283,8 @@ Faculty → **Evidence Gathering**.
 - [ ] **Computed Rating** badges populate: Q · E · T → Average.
 - [ ] The sentence now reads with real values.
 - [ ] Selecting a non-Completed status **disables** the "Completed in" field.
+- [ ] A **Remarks** field is present *(new)*. Type a short note (e.g. `Chairperson, BSDS`)
+      → Save → reopen the modal and confirm it is still there. Phase K checks it prints.
 
 **Timeliness spot-checks** (target 6 months):
 
@@ -417,6 +447,62 @@ that same number among their faculty.
 
 ---
 
+## Phase K — Print IPCR *(new)*
+
+Run after Phase G so there are ratings to print, and after **A3b** so the signatories are set.
+
+### K1. Regular Faculty
+Faculty → **Print IPCR** (opens in a new tab).
+
+- [ ] The button opens the form — it no longer shows "coming soon".
+- [ ] Title reads **INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR)**.
+- [ ] Opening sentence: *"I, NAME, faculty member of the College of Information and
+      Communications Technology, … for the period JANUARY to JUNE 2026."*
+- [ ] First column header is **MFO/PAP**.
+- [ ] Sections in order: **I. Strategic Priorities (50%) · II. Core Functions (40%) ·
+      III. Support Functions (10%)**.
+- [ ] Sub-sections under Core Functions read **A. Research** then **B. Extension…** —
+      not reversed, not alphabetical.
+- [ ] Rating columns are **Q¹ E² T³ A⁴** and match the badges on your evidence panel.
+- [ ] **Final Average Rating** row is present.
+- [ ] Summary box lists the categories in **I / II / III** order with their weights,
+      then Total Overall → Final Weighted → **Adjectival Rating inside the box**.
+- [ ] Legend, and the **Discussed with / Assessed by / Final Rating by** footer.
+- [ ] Signature names match what you set in A3b.
+
+### K2. Designated Faculty
+Designated Faculty (or a chair via **My IPCR → Print IPCR**).
+
+- [ ] First column header is **Output**, not MFO/PAP.
+- [ ] Opening sentence names their role — a Program Chair reads *"Program Chairperson of
+      the BSDS program of the…"*.
+- [ ] Sections: **I. Strategic Priorities/Support Functions (75%) · II. Core Functions (25%)**.
+- [ ] Sub-section under I is **A. Administrative Functions**.
+- [ ] Summary box uses **75 / 25**, not 50/40/10.
+
+### K3. Remarks
+- [ ] The note typed in G2 appears in the **Remarks** column against that target.
+- [ ] Clearing it and saving leaves the column blank (not whitespace).
+
+### K4. Draft vs final
+- [ ] Before the Dean approves, a red **DRAFT** banner appears at the top.
+- [ ] After **Dean approval**, the banner is gone.
+- [ ] A faculty who has not locked their IPCR is redirected with
+      *"No committed IPCR to print yet — lock your IPCR first."*
+
+### K5. Print settings
+Press **Print / Save as PDF**, then check **More settings**:
+
+- [ ] Paper size **Letter 8.5 × 11**, Layout **Landscape**, Scale **100**.
+- [ ] An outer **border frames the whole form** on every page.
+- [ ] The toolbar buttons do **not** appear on the printed page.
+- [ ] Text is legible at 100% — no clipped columns.
+
+> A typical form runs to **2 sheets**: the targets fill page 1, the summary box and
+> signature footer take page 2. That is expected — the sample IPCR runs to 3.
+
+---
+
 ## Appendix — Known gaps
 
 1. **Rank rules reset each term** by design; redo D1 for a new term.
@@ -434,6 +520,12 @@ that same number among their faculty.
    empty category ever appears, that decision is still open.
 9. **Eight tables carry a different collation** from the original schema (a defect in the
    earlier migrations). Harmless today; the repair is in `MIGRATION_group7.sql`.
+10. **Signatory rules are unconfirmed for two cases**: who reviews the Dean's own IPCR, and
+    a non-chair designated faculty's. The latter currently inherits the Designated row and
+    resolves to the Dean. Both are editable in A3b.
+11. **Export DPCR has been removed** from the Dean dashboard (adviser's call — the system
+    no longer needs it). Its template file had already been deleted, so the button was
+    broken anyway. Print IPCR is now the system's only document output.
 
 ## Appendix — Reset for a re-run
 

@@ -346,10 +346,17 @@ def compute_ipcr_score(cursor, emp_id, term_id):
             continue
         by_category.setdefault(cat_id, []).append(avg)
 
+    # The summary box lists categories in the order the printed form numbers them
+    # (I. Strategic Priorities, II. Core Functions, III. Support Functions), which is the
+    # configured display order — not alphabetical.
+    category_order = {c['ipcr_category_id']: idx for idx, c in enumerate(categories)}
+
     breakdown = []
     total_overall = 0.0
     final_weighted = 0.0
-    for cat_id, pct in sorted(weights.items(), key=lambda kv: category_names.get(kv[0], '')):
+    for cat_id, pct in sorted(weights.items(),
+                              key=lambda kv: (category_order.get(kv[0], 999),
+                                              category_names.get(kv[0], ''))):
         averages = by_category.get(cat_id, [])
         raw_avg = round2(sum(averages) / len(averages)) if averages else None
         weighted = round2(raw_avg * (pct / 100.0)) if raw_avg is not None else None
