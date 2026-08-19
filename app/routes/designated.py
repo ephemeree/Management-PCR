@@ -1,7 +1,10 @@
 from flask import Blueprint, render_template, session, request, jsonify, redirect, url_for, flash
 from app.models import *
 from app.decorators import role_required, designated_ipcr_required
-from app.models.designated import get_designated_selectable_indicators, submit_designated_ipcr
+from app.models.designated import (
+    get_designated_selectable_indicators, submit_designated_ipcr,
+    lock_and_commit_designated_ipcr
+)
 
 designated_bp = Blueprint('designated', __name__, url_prefix='/designated')
 
@@ -65,14 +68,8 @@ def designated_dashboard():
         if dr_result:
             dean_review = dr_result[0]
 
-        # Determine editability: allowed if not submitted, or if returned/rejected by Dean
-        if not has_submitted:
-            can_edit = True
-        else:
-            if dean_review and dean_review['overall_status'] == 'Rejected':
-                can_edit = True
-            else:
-                can_edit = False
+        # Determine editability: allowed ONLY if not yet submitted. Once submitted (or returned), it is view-only.
+        can_edit = not has_submitted
 
         evidence_readiness = None
         ipcr_score = None
@@ -110,7 +107,7 @@ def designated_dashboard():
 
         elif can_edit:
             # Load standard selectable indicators and exclude 21 hours regular teaching load targets
-            raw_standard_targets = get_designated_selectable_indicators(cursor, term_id)
+            raw_standard_targets = get_designated_selectable_indicators(cursor, term_id, emp_id=emp_id)
             standard_targets = [
                 t for t in raw_standard_targets 
                 if '21 hours' not in t['indicator_description'] and '21 hrs' not in t['indicator_description']
@@ -314,10 +311,76 @@ def designated_dashboard():
                            dpcr_targets=dpcr_targets,
                            has_submitted=has_submitted,
                            can_edit=can_edit,
+                           is_committed=is_committed,
+                           is_locked=is_committed,
                            dean_review=dean_review,
                            evidence_readiness=evidence_readiness,
                            ipcr_score=ipcr_score,
                            has_final_ipcr=has_final_ipcr)
+
+
+@designated_bp.route('/lock_ipcr', methods=['POST'])
+@designated_ipcr_required
+def designated_lock_ipcr():
+    """Lock the approved draft IPCR and commit it to tbl_committed_targets."""
+    emp_id = session.get('user_id')
+    term_id = request.form.get('term_id')
+
+    if not term_id:
+        flash("No active academic term found.", "danger")
+        return redirect(url_for('designated.designated_dashboard'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        success, msg = lock_and_commit_designated_ipcr(conn, cursor, emp_id, int(term_id))
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error locking IPCR: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('designated.designated_dashboard'))
+
+
+@designated_bp.route('/resubmit_ipcr', methods=['POST'])
+@designated_ipcr_required
+def designated_resubmit_ipcr():
+    """Re-submit returned draft IPCR to Dean for approval."""
+    emp_id = session.get('user_id')
+    term_id = request.form.get('term_id')
+
+    if not term_id:
+        flash("No active academic term found.", "danger")
+        return redirect(url_for('designated.designated_dashboard'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE tbl_draft_targets dt
+            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+            SET dt.review_status = 'Pending Review'
+            WHERE dt.emp_id = %s AND mi.term_id = %s
+        """, (emp_id, int(term_id)))
+
+        cursor.execute("""
+            UPDATE tbl_ipcr_dean_review
+            SET overall_status = 'Pending Review'
+            WHERE emp_id = %s AND term_id = %s
+        """, (emp_id, int(term_id)))
+
+        conn.commit()
+        flash("IPCR has been re-submitted for Dean's approval.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error re-submitting IPCR: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('designated.designated_dashboard'))
 
 
 @designated_bp.route('/save_accomplishment', methods=['POST'])
@@ -435,6 +498,23 @@ def submit_designated_ipcr_route():
                 'target_duration_value': dur_value,
                 'target_duration_unit': dur_unit
             })
+
+    # Validate that every selected target has a positive quantity and a specified deadline
+    for t in selected_targets:
+        if t.get('proposed_quantity', 0) <= 0:
+            flash("All selected targets must have a quantity greater than 0.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+        if not t.get('target_duration_value') or int(t['target_duration_value']) <= 0:
+            flash("All selected targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+
+    for ct in custom_targets:
+        if ct.get('proposed_quantity', 0) <= 0:
+            flash("All custom targets must have a quantity greater than 0.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+        if not ct.get('target_duration_value') or int(ct['target_duration_value']) <= 0:
+            flash("All custom targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
 
     conn = get_db_connection()
     cursor = conn.cursor()

@@ -615,7 +615,10 @@ def get_program_chair_evidence_faculty(cursor, specialization, term_id):
         JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
-        WHERE ep.specialization = %s AND mi.term_id = %s
+        WHERE (ep.specialization = %s 
+               OR ep.designation IN ('RET Chair', 'Program Chair', 'Designated Faculty', 'Dean') 
+               OR sa.system_role IN ('RET_CHAIR', 'PROGRAM_CHAIR', 'DESIGNATED_FACULTY', 'DEAN'))
+          AND mi.term_id = %s
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.designation, sa.system_role
         HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name

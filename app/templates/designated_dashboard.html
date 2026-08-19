@@ -30,7 +30,7 @@
     <i class="bi bi-file-earmark-text-fill"></i>
     <span class="nav-text">My IPCR</span>
 </button>
-{% if dean_review and dean_review.overall_status == 'Approved' %}
+{% if is_committed %}
 <button class="nav-item" data-section="nav-evidence" onclick="showSection('nav-evidence')">
     <i class="bi bi-cloud-upload-fill"></i>
     <span class="nav-text">Evidence Gathering</span>
@@ -100,9 +100,13 @@
             data-bs-target="#addTargetModal">
             <i class="bi bi-plus-lg me-2"></i> Add Target
         </button>
-        {% elif dean_review and dean_review.overall_status == 'Approved' %}
+        {% elif is_committed %}
         <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
             <i class="bi bi-lock-fill me-2"></i>Approved &amp; Locked
+        </span>
+        {% elif dean_review and dean_review.overall_status == 'Approved' %}
+        <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
+            <i class="bi bi-check-circle-fill me-2"></i>Dean Approved
         </span>
         {% elif dean_review and dean_review.overall_status == 'Rejected' %}
         <span class="badge bg-danger px-3 py-2 fs-6 shadow-sm">
@@ -128,15 +132,29 @@
     {% else %}
 
     {# ── Dean Review Alerts ───────────────────────────────── #}
-    {% if dean_review and dean_review.overall_status == 'Approved' %}
+    {% if is_committed %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
         style="background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%); border-left: 5px solid #212529 !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
             <i class="bi bi-lock-fill text-dark fs-4 mt-1"></i>
             <div>
                 <h6 class="fw-bold text-dark mb-1">Your IPCR has been Approved and Locked</h6>
-                <p class="mb-0 text-muted small">Your targets have been committed to your final evaluation. Editing is
-                    disabled.</p>
+                <p class="mb-0 text-muted small">Your targets have been committed to your final evaluation. You may now proceed to evidence gathering.</p>
+                {% if dean_review and dean_review.overall_remarks %}
+                <p class="mb-0 text-dark mt-1 small"><strong>Dean's Remarks:</strong> {{ dean_review.overall_remarks }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% elif dean_review and dean_review.overall_status == 'Approved' %}
+    <div class="alert border-0 shadow-sm mb-4" role="alert"
+        style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-left: 5px solid #10b981 !important; border-radius: 10px;">
+        <div class="d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-4 mt-1"></i>
+            <div>
+                <h6 class="fw-bold text-success mb-1">Your IPCR has been Approved by the Dean!</h6>
+                <p class="mb-0 text-dark small">Review your finalized commitment targets below and click <strong>"Lock My IPCR"</strong> to commit your targets and proceed to evidence gathering.</p>
                 {% if dean_review.overall_remarks %}
                 <p class="mb-0 text-dark mt-1 small"><strong>Dean's Remarks:</strong> {{ dean_review.overall_remarks }}
                 </p>
@@ -155,8 +173,7 @@
                 {% if dean_review.overall_remarks %}
                 <p class="mb-1 text-dark"><strong>Remarks:</strong> {{ dean_review.overall_remarks }}</p>
                 {% endif %}
-                <small class="text-muted">Review the Dean's changes and remarks below, adjust them as needed, and click
-                    "Submit IPCR for Approval" to re-submit.</small>
+                <small class="text-muted">Review the Dean's adjusted target quantities and remarks below. Click <strong>"Re-submit IPCR for Approval"</strong> to send this draft back to the Dean for approval.</small>
             </div>
         </div>
     </div>
@@ -414,8 +431,47 @@
                 {% if has_submitted %}Re-submit IPCR for Approval{% else %}Submit IPCR for Approval{% endif %}
             </button>
         </div>
+        {% else %}
+        <div class="mt-4 text-end">
+            {% if is_committed %}
+            <div class="alert alert-dark d-inline-block border-0 shadow-sm rounded-pill px-4">
+                <i class="bi bi-lock-fill me-2"></i> Your IPCR is locked and committed.
+            </div>
+            {% elif dean_review and dean_review.overall_status == 'Approved' %}
+            <div class="d-inline-flex flex-column align-items-end gap-2">
+                <div class="alert alert-success border-0 shadow-sm rounded-pill px-4 py-2 m-0">
+                    <i class="bi bi-check-circle-fill me-2"></i> Your IPCR has been approved by the Dean!
+                </div>
+                <button type="button" id="lockBtn" class="btn btn-warning btn-lg px-5 shadow fw-bold rounded-pill text-dark">
+                    <i class="bi bi-lock-fill me-2"></i>Lock My IPCR
+                </button>
+            </div>
+            {% elif dean_review and dean_review.overall_status == 'Rejected' %}
+            <div class="d-inline-flex flex-column align-items-end gap-2">
+                <button type="submit" form="resubmitDraftForm" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="resubmitBtn">
+                    <i class="bi bi-send-check-fill me-2"></i> Re-submit IPCR for Approval
+                </button>
+            </div>
+            {% else %}
+            <div class="alert alert-info d-inline-block border-0 shadow-sm rounded-pill px-4">
+                <i class="bi bi-info-circle-fill me-2"></i> Your IPCR is currently waiting for Approval.
+            </div>
+            {% endif %}
+        </div>
         {% endif %}
     </form>
+
+    {% if dean_review and dean_review.overall_status == 'Rejected' and not is_committed %}
+    <form id="resubmitDraftForm" action="{{ url_for('designated.designated_resubmit_ipcr') }}" method="POST" style="display:none;">
+        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+    </form>
+    {% endif %}
+
+    {% if dean_review and dean_review.overall_status == 'Approved' and not is_committed %}
+    <form id="lockForm" action="{{ url_for('designated.designated_lock_ipcr') }}" method="POST" style="display:none;">
+        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+    </form>
+    {% endif %}
     {% endif %}
 </div>
 
@@ -450,10 +506,10 @@
                     </div>
 
                     <div class="mb-0">
-                        <label for="targetDurationValue" class="form-label fw-bold">Target Duration</label>
+                        <label for="targetDurationValue" class="form-label fw-bold">Target Duration (Deadline) <span class="text-danger">*</span></label>
                         <div class="d-flex gap-2">
                             <input type="number" class="form-control form-control-lg" id="targetDurationValue"
-                                   min="1" placeholder="e.g., 6" style="max-width: 140px;">
+                                   min="1" placeholder="e.g., 6" style="max-width: 140px;" required>
                             <select class="form-select form-select-lg" id="targetDurationUnit">
                                 <option value="days">days</option>
                                 <option value="weeks">weeks</option>
@@ -461,7 +517,7 @@
                                 <option value="semesters">semesters</option>
                             </select>
                         </div>
-                        <div class="form-text small">Used to compute the Timeliness rating.</div>
+                        <div class="form-text small">Used to compute the Timeliness rating and deadline.</div>
                     </div>
                 </form>
             </div>
@@ -491,7 +547,7 @@
     }
 </style>
 
-{% if dean_review and dean_review.overall_status == 'Approved' %}
+{% if is_committed %}
 <div id="nav-evidence" class="dashboard-section">
     <div class="page-header d-flex justify-content-between align-items-center">
         <div>
@@ -826,8 +882,8 @@
                 const deadline = durValue ? `${durValue} ${durValue === '1' ? durUnit.replace(/s$/, '') : durUnit}` : '';
 
                 // Quick Frontend Validation check
-                if (!description || !quantity || parseInt(quantity) < 1) {
-                    alert('Please fill in all required fields and provide a valid quantity of at least 1.');
+                if (!description || !quantity || parseInt(quantity) < 1 || !durValue || parseInt(durValue) < 1) {
+                    alert('Please fill in all required fields, including quantity and a valid target duration (deadline).');
                     return;
                 }
 
@@ -903,7 +959,7 @@
             });
         }
 
-        // Form Validation on Submit
+        // Form Validation on Submit: ensures all SELECTED targets have valid quantity and deadline
         const form = document.getElementById('dpcrForm');
         if (form) {
             form.addEventListener('submit', function (e) {
@@ -918,9 +974,13 @@
 
                 let valid = true;
                 let firstInvalidInput = null;
+                let errorMsg = '';
+
+                // Validate ONLY selected standard targets (unselected targets are ignored)
                 checkedBoxes.forEach(cb => {
                     const row = cb.closest('tr');
-                    // Find either standard or existing custom target qty input
+                    
+                    // 1. Validate Target Quantity
                     const qtyInput = row.querySelector(`input[name="target_qty_${cb.value}"]`);
                     if (qtyInput) {
                         const qty = parseInt(qtyInput.value) || 0;
@@ -929,19 +989,66 @@
                             valid = false;
                             if (!firstInvalidInput) {
                                 firstInvalidInput = qtyInput;
+                                errorMsg = 'All selected targets must have a quantity greater than 0.';
                             }
                         } else {
                             qtyInput.classList.remove('is-invalid');
                         }
                     }
+
+                    // 2. Validate Deadline / Target Duration Value
+                    const durInput = row.querySelector(`input[name="target_dur_value_${cb.value}"]`);
+                    if (durInput) {
+                        const durVal = parseInt(durInput.value) || 0;
+                        if (!durInput.value.trim() || durVal <= 0) {
+                            durInput.classList.add('is-invalid');
+                            valid = false;
+                            if (!firstInvalidInput) {
+                                firstInvalidInput = durInput;
+                                errorMsg = 'All selected targets must have a deadline (target duration) filled up.';
+                            }
+                        } else {
+                            durInput.classList.remove('is-invalid');
+                        }
+                    }
+                });
+
+                // Clear is-invalid on unselected rows so they do not block submission
+                const uncheckedBoxes = form.querySelectorAll('.strategic-checkbox:not(:checked)');
+                uncheckedBoxes.forEach(cb => {
+                    const row = cb.closest('tr');
+                    const qtyInput = row.querySelector(`input[name="target_qty_${cb.value}"]`);
+                    const durInput = row.querySelector(`input[name="target_dur_value_${cb.value}"]`);
+                    if (qtyInput) qtyInput.classList.remove('is-invalid');
+                    if (durInput) durInput.classList.remove('is-invalid');
                 });
 
                 if (!valid) {
-                    alert('All selected targets must have a quantity greater than 0.');
+                    alert(errorMsg || 'Please ensure all selected targets have their quantity and deadline filled up.');
                     if (firstInvalidInput) {
                         firstInvalidInput.focus();
                     }
                     e.preventDefault();
+                }
+            });
+
+            // Clear invalid styling when user modifies inputs or unchecks a box
+            form.addEventListener('input', function (e) {
+                if (e.target.classList.contains('is-invalid')) {
+                    const val = parseInt(e.target.value) || 0;
+                    if (val > 0) {
+                        e.target.classList.remove('is-invalid');
+                    }
+                }
+            });
+
+            form.addEventListener('change', function (e) {
+                if (e.target.classList.contains('strategic-checkbox') && !e.target.checked) {
+                    const row = e.target.closest('tr');
+                    const qtyInput = row.querySelector(`input[name="target_qty_${e.target.value}"]`);
+                    const durInput = row.querySelector(`input[name="target_dur_value_${e.target.value}"]`);
+                    if (qtyInput) qtyInput.classList.remove('is-invalid');
+                    if (durInput) durInput.classList.remove('is-invalid');
                 }
             });
         }
@@ -978,6 +1085,23 @@
 
             modal.show();
         };
+
+        // Lock Button Event Hook
+        const lockBtn = document.getElementById('lockBtn');
+        if (lockBtn) {
+            lockBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                showCustomConfirm({
+                    title: "Lock IPCR?",
+                    mainText: "Are you sure you want to lock your IPCR?",
+                    subText: "Once locked, it is committed for final evaluation and cannot be edited. You can then proceed to evidence gathering.",
+                    confirmText: "Yes, Lock IPCR",
+                    confirmClass: "btn-warning text-dark",
+                    iconClass: "bi-lock-fill",
+                    onConfirm: () => document.getElementById('lockForm').submit()
+                });
+            });
+        }
 
         // Submit Evidences Button Event Hook
         const submitEvidenceBtn = document.getElementById('submitEvidenceBtn');

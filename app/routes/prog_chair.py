@@ -92,12 +92,18 @@ def prog_chair_dashboard():
             for draft in pending_drafts:
                 draft['ipcr_status'] = get_overall_ipcr_status(cursor, draft['emp_id'], term_id)
             pending_drafts_count = get_pending_drafts_count(cursor, specialization, term_id)
-            locked_drafts = get_locked_faculty_ipcrs(cursor, specialization, term_id)
             evidence_faculty_list = get_program_chair_evidence_faculty(cursor, specialization, term_id)
             pending_evidence_faculty_list = [f for f in evidence_faculty_list if not f.get('is_both_approved')]
             approved_evidence_faculty_list = [f for f in evidence_faculty_list if f.get('is_both_approved')]
-            approved_designated_evidence_list = [f for f in approved_evidence_faculty_list if f.get('designation') == 'Designated Faculty' or f.get('system_role') == 'DESIGNATED_FACULTY']
-            approved_regular_evidence_list = [f for f in approved_evidence_faculty_list if not (f.get('designation') == 'Designated Faculty' or f.get('system_role') == 'DESIGNATED_FACULTY')]
+            
+            def _is_designated_or_chair_or_dean(f):
+                role = (f.get('system_role') or '').strip()
+                desig = (f.get('designation') or '').strip()
+                return (role in ('DESIGNATED_FACULTY', 'PROGRAM_CHAIR', 'RET_CHAIR', 'DEAN')
+                        or desig in ('Designated Faculty', 'Program Chair', 'RET Chair', 'Dean'))
+
+            approved_designated_evidence_list = [f for f in approved_evidence_faculty_list if _is_designated_or_chair_or_dean(f)]
+            approved_regular_evidence_list = [f for f in approved_evidence_faculty_list if not _is_designated_or_chair_or_dean(f)]
 
         return render_template(
             'prog_chair_dashboard.html',
@@ -115,7 +121,8 @@ def prog_chair_dashboard():
             pending_evidence_faculty_list=pending_evidence_faculty_list if 'pending_evidence_faculty_list' in locals() else [],
             approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else [],
             approved_designated_evidence_list=approved_designated_evidence_list if 'approved_designated_evidence_list' in locals() else [],
-            approved_regular_evidence_list=approved_regular_evidence_list if 'approved_regular_evidence_list' in locals() else []
+            approved_regular_evidence_list=approved_regular_evidence_list if 'approved_regular_evidence_list' in locals() else [],
+            has_own_ipcr=True
         )
     finally:
         cursor.close()

@@ -59,7 +59,8 @@ def ret_chair_dashboard():
                                pending_ret_count=pending_ret_count,
                                evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [],
                                pending_evidence_faculty_list=pending_evidence_faculty_list if 'pending_evidence_faculty_list' in locals() else [],
-                               approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else [])
+                               approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else [],
+                               has_own_ipcr=True)
     finally:
         cursor.close()
         conn.close()

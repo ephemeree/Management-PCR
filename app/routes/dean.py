@@ -80,8 +80,15 @@ def dean_dashboard():
 
     from app.models.dean import get_dean_evidence_faculty
     pending_dean_evidence_list, approved_dean_evidence_list = get_dean_evidence_faculty(cursor, term_id)
-    approved_designated_dean_evidence_list = [f for f in approved_dean_evidence_list if f.get('designation') == 'Designated Faculty' or f.get('system_role') == 'DESIGNATED_FACULTY']
-    approved_regular_dean_evidence_list = [f for f in approved_dean_evidence_list if not (f.get('designation') == 'Designated Faculty' or f.get('system_role') == 'DESIGNATED_FACULTY')]
+    
+    def _is_designated_or_chair_or_dean(f):
+        role = (f.get('system_role') or '').strip()
+        desig = (f.get('designation') or '').strip()
+        return (role in ('DESIGNATED_FACULTY', 'PROGRAM_CHAIR', 'RET_CHAIR', 'DEAN')
+                or desig in ('Designated Faculty', 'Program Chair', 'RET Chair', 'Dean'))
+
+    approved_designated_dean_evidence_list = [f for f in approved_dean_evidence_list if _is_designated_or_chair_or_dean(f)]
+    approved_regular_dean_evidence_list = [f for f in approved_dean_evidence_list if not _is_designated_or_chair_or_dean(f)]
 
     departments = get_departments(cursor)
 
@@ -106,7 +113,8 @@ def dean_dashboard():
                            pending_dean_evidence_list=pending_dean_evidence_list,
                            approved_dean_evidence_list=approved_dean_evidence_list,
                            approved_designated_dean_evidence_list=approved_designated_dean_evidence_list,
-                           approved_regular_dean_evidence_list=approved_regular_dean_evidence_list)
+                           approved_regular_dean_evidence_list=approved_regular_dean_evidence_list,
+                           has_own_ipcr=True)
 
 
 @dean_bp.route('/cascade_quotas', methods=['POST'])
@@ -230,8 +238,8 @@ def review_draft_fetch(emp_id):
         college_wide = get_college_wide_cascaded_quotas(cursor, term_id)
         college_wide_ids = {q['indicator_id'] for q in college_wide}
 
-        # Also get ALL available master indicators for this term
-        all_indicators = get_available_master_indicators(cursor, term_id)
+        # Also get available master indicators for this term (filtered by reviewee role: RET vs Chair)
+        all_indicators = get_available_master_indicators(cursor, term_id, emp_id=emp_id)
         picked_ids = {i['indicator_id'] for i in items}
         
         # Filter unpicked to exclude picked AND college wide targets

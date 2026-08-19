@@ -1,12 +1,30 @@
-def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True):
+def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True, emp_id=None):
     """
-    The Instruction and Support pool a designated faculty member can add targets from.
-
-    Indicators the Dean cascaded to a department or to RET are excluded: those are carried
-    automatically by that department's chair as an oversight accountability, so offering them
-    here would let a second person commit to work that already has an owner.
+    The pool a designated faculty / chair member can add targets from.
+    - If RET Chair: only Research and Extension (review_lane = 'RET').
+    - If Program Chair / Designated Faculty: Instruction and Support (review_lane = 'CHAIR' AND is_core = 1).
     """
     from app.models.connection import timed_query
+    
+    is_ret = False
+    if emp_id:
+        cursor.execute("SELECT designation FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        row = cursor.fetchone()
+        if row and (row[0] or '').strip() == 'RET Chair':
+            is_ret = True
+
+    if is_ret:
+        query = """
+            SELECT mi.indicator_id, mi.indicator_description, tc.category_name
+            FROM tbl_master_indicators mi
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE mi.term_id = %s
+              AND mi.is_custom = 0
+              AND tc.review_lane = 'RET'
+            ORDER BY tc.category_name, mi.indicator_id
+        """
+        return timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators_ret")
+
     query = """
         SELECT mi.indicator_id, mi.indicator_description, tc.category_name
         FROM tbl_master_indicators mi
@@ -387,15 +405,69 @@ def submit_designated_evidences(conn, cursor, emp_id, term_id):
         target_ids = [t['target_id'] for t in dpcr_targets if t.get('target_id')]
         if target_ids:
             placeholders = ','.join(['%s'] * len(target_ids))
-            update_sql = f"UPDATE tbl_committed_targets SET status = 'Submitted' WHERE emp_id = %s AND target_id IN ({placeholders})"
+            update_sql = f"UPDATE tbl_committed_targets SET status = 'Submitted to Dean' WHERE emp_id = %s AND target_id IN ({placeholders})"
             cursor.execute(update_sql, [emp_id] + target_ids)
             conn.commit()
-
-        from app.models.scoring import save_final_score
-        scored, score_msg, _ = save_final_score(conn, cursor, emp_id, term_id)
-        if scored:
-            return True, f"Evidences submitted successfully for verification. {score_msg}"
-        return True, "Evidences submitted successfully for verification."
+            return True, "Evidences successfully submitted to Dean for verification."
     except Exception as e:
         conn.rollback()
         return False, f"Error submitting evidences: {str(e)}"
+
+
+def lock_and_commit_designated_ipcr(conn, cursor, emp_id, term_id):
+    """
+    Locks the designated faculty / chair IPCR after Dean approval.
+    Commits approved draft targets into tbl_committed_targets and locks them for evidence gathering.
+    """
+    try:
+        cursor.execute(
+            "SELECT overall_status, review_id FROM tbl_ipcr_dean_review WHERE emp_id = %s AND term_id = %s",
+            (emp_id, term_id)
+        )
+        review_row = cursor.fetchone()
+        if not review_row or review_row[0] != 'Approved':
+            return False, "Your IPCR must be approved by the Dean before locking."
+
+        review_id = review_row[1]
+
+        # Fetch approved draft items
+        cursor.execute("""
+            SELECT dt.indicator_id,
+                   COALESCE(dri.reviewed_quantity, dt.proposed_quantity),
+                   dt.target_description,
+                   dt.target_deadline,
+                   dt.target_duration_value,
+                   dt.target_duration_unit,
+                   dt.is_admin_function
+            FROM tbl_draft_targets dt
+            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+            LEFT JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id AND dri.review_id = %s
+            WHERE dt.emp_id = %s AND mi.term_id = %s
+        """, (review_id, emp_id, term_id))
+        draft_items = cursor.fetchall()
+
+        if not draft_items:
+            return False, "No draft targets found to commit."
+
+        # Delete any existing committed targets for this term
+        cursor.execute("""
+            DELETE ct FROM tbl_committed_targets ct
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            WHERE ct.emp_id = %s AND mi.term_id = %s
+        """, (emp_id, term_id))
+
+        # Insert approved items into tbl_committed_targets
+        for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_admin in draft_items:
+            if qty > 0:
+                cursor.execute("""
+                    INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, actual_quantity,
+                                                       target_description, target_deadline,
+                                                       target_duration_value, target_duration_unit, is_admin_function)
+                    VALUES (%s, %s, %s, 'Approved', 0, %s, %s, %s, %s, %s)
+                """, (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_admin or 0))
+
+        conn.commit()
+        return True, "IPCR locked successfully and committed to evaluation targets."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)

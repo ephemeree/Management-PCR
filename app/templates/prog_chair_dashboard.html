@@ -1567,10 +1567,10 @@
         </div>
     </div>
 
-    <!-- Approved Designated Faculty Evidences Table -->
+    <!-- Approved Designated Faculty & Chairs Evidences Table -->
     <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #198754 !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-success"><i class="bi bi-check-circle-fill me-2 text-success"></i>Approved Designated Faculty Evidences</h5>
+            <h5 class="mb-0 fw-bold text-success"><i class="bi bi-check-circle-fill me-2 text-success"></i>Approved Designated Faculty &amp; Chairs Evidences</h5>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -1591,7 +1591,7 @@
                             <tr>
                                 <td class="ps-4 py-3">
                                     <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
-                                    <small class="text-muted">{{ fac.designation or 'Designated Faculty' }} ({{ fac.specialization or 'Department' }})</small>
+                                    <small class="text-muted">{{ fac.designation or 'Designated Faculty' }}{% if fac.specialization %} ({{ fac.specialization }}){% elif fac.assigned_program %} ({{ fac.assigned_program }}){% endif %}</small>
                                 </td>
                                 <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
                                 <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
@@ -1622,7 +1622,7 @@
                         {% else %}
                             <tr>
                                 <td colspan="6" class="text-center py-4 text-muted">
-                                    No approved evidence submissions from Designated Faculty yet.
+                                    No approved evidence submissions from Designated Faculty or Chairs yet.
                                 </td>
                             </tr>
                         {% endif %}

@@ -46,6 +46,18 @@
 {% block content %}
 <script>window.dashboardRole = 'dean';</script>
 
+<style>
+    /* Custom styling for disabled Dean decision buttons to easily distinguish them */
+    #btnDeanApprove:disabled,
+    #btnDeanReject:disabled {
+        background-color: #e9ecef !important;
+        border-color: #dee2e6 !important;
+        color: #adb5bd !important;
+        opacity: 1 !important;
+        cursor: not-allowed !important;
+    }
+</style>
+
 <div id="nav-overview" class="dashboard-section active">
     <div class="page-header d-flex justify-content-between align-items-center">
         <div>
@@ -602,7 +614,7 @@
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button type="button" class="btn btn-success" id="btnDeanApprove">
-                            <i class="bi bi-check-circle me-1"></i> Approve & Lock
+                            <i class="bi bi-check-circle me-1"></i> Approve IPCR
                         </button>
                     </div>
                 </div>
@@ -855,7 +867,7 @@
                             <tr>
                                 <td class="ps-4 py-3">
                                     <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
-                                    <small class="text-muted">{{ fac.specialization or 'Regular Faculty' }}</small>
+                                    <small class="text-muted">{% if fac.designation %}{{ fac.designation }}{% if fac.specialization %} ({{ fac.specialization }}){% elif fac.assigned_program %} ({{ fac.assigned_program }}){% endif %}{% else %}{{ fac.specialization or 'Regular Faculty' }}{% endif %}</small>
                                 </td>
                                 <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
                                 <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.assigned_program or 'CIT' }}</span></td>
@@ -884,14 +896,14 @@
         </div>
     </div>
 
-    <!-- Approved Designated Faculty Final Verifications Table -->
+    <!-- Approved Designated Faculty & Chairs Final Verifications Table -->
     <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #198754 !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold text-success mb-0">
-                    <i class="bi bi-patch-check-fill text-success me-2"></i>Approved Designated Faculty Final Verifications
+                    <i class="bi bi-patch-check-fill text-success me-2"></i>Approved Designated Faculty &amp; Chairs Final Verifications
                 </h5>
-                <small class="text-muted">Designated faculty evidence packages fully approved by the Dean.</small>
+                <small class="text-muted">Designated faculty, Program Chairs, RET Chairs, and Dean evidence packages fully approved by the Dean.</small>
             </div>
             <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-bold">
                 {{ approved_designated_dean_evidence_list | length }} Approved
@@ -916,7 +928,7 @@
                             <tr>
                                 <td class="ps-4 py-3">
                                     <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
-                                    <small class="text-muted">{{ fac.designation or 'Designated Faculty' }} ({{ fac.specialization or 'Department' }})</small>
+                                    <small class="text-muted">{{ fac.designation or 'Designated Faculty' }}{% if fac.specialization %} ({{ fac.specialization }}){% elif fac.assigned_program %} ({{ fac.assigned_program }}){% endif %}</small>
                                 </td>
                                 <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
                                 <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.assigned_program or 'CIT' }}</span></td>
@@ -937,7 +949,7 @@
                         {% else %}
                             <tr>
                                 <td colspan="6" class="text-center py-4 text-muted">
-                                    No approved final verifications for Designated Faculty yet.
+                                    No approved final verifications for Designated Faculty or Chairs yet.
                                 </td>
                             </tr>
                         {% endif %}
@@ -1469,25 +1481,46 @@
         document.getElementById('unpickedItemsBody')?.addEventListener('click', function (e) {
             const btn = e.target.closest('.add-unpicked-btn');
             if (btn) {
-                const indId = parseInt(btn.getAttribute('data-indicator-id'));
-                const index = deanReviewData.unpicked.findIndex(x => x.indicator_id === indId);
+                const indId = parseInt(btn.getAttribute('data-indicator-id'), 10);
+                const index = deanReviewData.unpicked.findIndex(x => parseInt(x.indicator_id, 10) === indId);
                 if (index > -1) {
                     const ind = deanReviewData.unpicked[index];
                     deanReviewData.unpicked.splice(index, 1);
 
-                    deanReviewItems.push({
-                        item_id: null,
-                        indicator_id: ind.indicator_id,
-                        indicator_description: ind.indicator_description,
-                        category_name: ind.category_name,
-                        original_quantity: -1,
-                        reviewed_quantity: 1,
-                        item_remarks: '',
-                        is_new: true
-                    });
+                    const origInfo = originalSubmittedItemsMap[indId];
+                    if (origInfo && origInfo.original_quantity !== -1) {
+                        deanReviewItems.push({
+                            item_id: origInfo.item_id,
+                            draft_id: origInfo.draft_id,
+                            indicator_id: ind.indicator_id,
+                            indicator_description: ind.indicator_description,
+                            category_name: ind.category_name,
+                            original_quantity: origInfo.original_quantity,
+                            reviewed_quantity: origInfo.original_quantity,
+                            item_remarks: origInfo.item_remarks || '',
+                            target_description: origInfo.target_description,
+                            target_deadline: origInfo.target_deadline,
+                            is_core: origInfo.is_core,
+                            is_cascaded: origInfo.is_cascaded,
+                            is_custom: origInfo.is_custom,
+                            is_new: false
+                        });
+                    } else {
+                        deanReviewItems.push({
+                            item_id: null,
+                            indicator_id: ind.indicator_id,
+                            indicator_description: ind.indicator_description,
+                            category_name: ind.category_name,
+                            original_quantity: -1,
+                            reviewed_quantity: 1,
+                            item_remarks: '',
+                            is_new: true
+                        });
+                    }
 
                     populateReviewItems(deanReviewItems);
                     populateUnpickedItems(deanReviewData.unpicked);
+                    checkDeanEdits();
                 }
             }
         });
@@ -1496,113 +1529,188 @@
         document.getElementById('collegeWideItemsBody')?.addEventListener('click', function (e) {
             const btn = e.target.closest('.add-college-wide-btn');
             if (btn) {
-                const indId = parseInt(btn.getAttribute('data-indicator-id'));
-                const index = deanReviewData.college_wide_unpicked.findIndex(x => x.indicator_id === indId);
+                const indId = parseInt(btn.getAttribute('data-indicator-id'), 10);
+                const index = deanReviewData.college_wide_unpicked.findIndex(x => parseInt(x.indicator_id, 10) === indId);
                 if (index > -1) {
                     const ind = deanReviewData.college_wide_unpicked[index];
                     deanReviewData.college_wide_unpicked.splice(index, 1);
 
-                    deanReviewItems.push({
-                        item_id: null,
-                        indicator_id: ind.indicator_id,
-                        indicator_description: ind.indicator_description,
-                        category_name: ind.category_name,
-                        original_quantity: -1,
-                        reviewed_quantity: 1,
-                        item_remarks: '',
-                        is_new: true
-                    });
+                    const origInfo = originalSubmittedItemsMap[indId];
+                    if (origInfo && origInfo.original_quantity !== -1) {
+                        deanReviewItems.push({
+                            item_id: origInfo.item_id,
+                            draft_id: origInfo.draft_id,
+                            indicator_id: ind.indicator_id,
+                            indicator_description: ind.indicator_description,
+                            category_name: ind.category_name,
+                            original_quantity: origInfo.original_quantity,
+                            reviewed_quantity: origInfo.original_quantity,
+                            item_remarks: origInfo.item_remarks || '',
+                            target_description: origInfo.target_description,
+                            target_deadline: origInfo.target_deadline,
+                            is_core: origInfo.is_core,
+                            is_cascaded: origInfo.is_cascaded,
+                            is_custom: origInfo.is_custom,
+                            total_target_value: ind.total_target_value,
+                            is_new: false
+                        });
+                    } else {
+                        deanReviewItems.push({
+                            item_id: null,
+                            indicator_id: ind.indicator_id,
+                            indicator_description: ind.indicator_description,
+                            category_name: ind.category_name,
+                            original_quantity: -1,
+                            reviewed_quantity: 1,
+                            item_remarks: '',
+                            total_target_value: ind.total_target_value,
+                            is_new: true
+                        });
+                    }
 
                     populateReviewItems(deanReviewItems);
                     populateCollegeWideItems(deanReviewData.college_wide_unpicked);
+                    checkDeanEdits();
                 }
             }
         });
 
-        // Event delegation for removing Dean-added review items
-        document.getElementById('reviewItemsBody')?.addEventListener('click', function (e) {
-            const btn = e.target.closest('.remove-dean-added-btn');
+        // Event delegation for removing any review item
+        document.getElementById('modalBody')?.addEventListener('click', function (e) {
+            const btn = e.target.closest('.remove-review-item-btn');
             if (btn) {
-                const indId = parseInt(btn.getAttribute('data-indicator-id'));
-                const index = deanReviewItems.findIndex(x => x.indicator_id === indId);
+                const indId = parseInt(btn.getAttribute('data-indicator-id'), 10);
+                const index = deanReviewItems.findIndex(x => parseInt(x.indicator_id, 10) === indId);
                 if (index > -1) {
                     const item = deanReviewItems[index];
                     deanReviewItems.splice(index, 1);
 
                     // Check if this indicator is originally a College-Wide target
                     if (deanReviewData.college_wide_ids && deanReviewData.college_wide_ids.includes(indId)) {
-                        const origCW = deanReviewData.college_wide_all.find(x => x.indicator_id === indId);
-                        if (origCW) {
+                        if (!deanReviewData.college_wide_unpicked.some(x => parseInt(x.indicator_id, 10) === indId)) {
                             deanReviewData.college_wide_unpicked.push({
-                                indicator_id: origCW.indicator_id,
-                                indicator_description: origCW.indicator_description,
-                                category_name: origCW.category_name,
-                                total_target_value: origCW.total_target_value
+                                indicator_id: item.indicator_id,
+                                indicator_description: item.indicator_description,
+                                category_name: item.category_name,
+                                total_target_value: item.total_target_value || item.reviewed_quantity || 1
                             });
                             deanReviewData.college_wide_unpicked.sort((a, b) => {
                                 if (a.category_name !== b.category_name) {
-                                    return a.category_name.localeCompare(b.category_name);
+                                    return (a.category_name || '').localeCompare(b.category_name || '');
                                 }
                                 return a.indicator_id - b.indicator_id;
                             });
                         }
                     } else {
-                        deanReviewData.unpicked.push({
-                            indicator_id: item.indicator_id,
-                            indicator_description: item.indicator_description,
-                            category_name: item.category_name
-                        });
-
-                        deanReviewData.unpicked.sort((a, b) => {
-                            if (a.category_name !== b.category_name) {
-                                return a.category_name.localeCompare(b.category_name);
-                            }
-                            return a.indicator_id - b.indicator_id;
-                        });
+                        if (!deanReviewData.unpicked.some(x => parseInt(x.indicator_id, 10) === indId)) {
+                            deanReviewData.unpicked.push({
+                                indicator_id: item.indicator_id,
+                                indicator_description: item.indicator_description,
+                                category_name: item.category_name
+                            });
+                            deanReviewData.unpicked.sort((a, b) => {
+                                if (a.category_name !== b.category_name) {
+                                    return (a.category_name || '').localeCompare(b.category_name || '');
+                                }
+                                return a.indicator_id - b.indicator_id;
+                            });
+                        }
                     }
 
                     populateReviewItems(deanReviewItems);
                     populateUnpickedItems(deanReviewData.unpicked);
                     populateCollegeWideItems(deanReviewData.college_wide_unpicked);
+                    checkDeanEdits();
                 }
             }
         });
 
-        // Event delegation for updating input values in memory
+        // Event delegation for updating input values in memory and real-time validation
         document.getElementById('modalBody')?.addEventListener('input', function (e) {
             const input = e.target;
             if (input.classList.contains('review-qty')) {
-                const itemIdAttr = input.getAttribute('data-item-id');
-                const indIdAttr = input.getAttribute('data-indicator-id');
-                const val = parseInt(input.value) || 0;
-                if (itemIdAttr && itemIdAttr !== 'null' && itemIdAttr !== 'undefined') {
-                    const item = deanReviewItems.find(x => x.item_id === parseInt(itemIdAttr));
-                    if (item) item.reviewed_quantity = val;
-                } else if (indIdAttr) {
-                    const item = deanReviewItems.find(x => x.indicator_id === parseInt(indIdAttr));
-                    if (item) item.reviewed_quantity = val;
-                }
+                const indId = parseInt(input.getAttribute('data-indicator-id'), 10);
+                const val = parseInt(input.value, 10) || 0;
+                const item = deanReviewItems.find(x => parseInt(x.indicator_id, 10) === indId);
+                if (item) item.reviewed_quantity = val;
+                checkDeanEdits();
             } else if (input.classList.contains('review-remark')) {
-                const itemIdAttr = input.getAttribute('data-item-id');
-                const indIdAttr = input.getAttribute('data-indicator-id');
+                const indId = parseInt(input.getAttribute('data-indicator-id'), 10);
                 const val = input.value;
-                if (itemIdAttr && itemIdAttr !== 'null' && itemIdAttr !== 'undefined') {
-                    const item = deanReviewItems.find(x => x.item_id === parseInt(itemIdAttr));
-                    if (item) item.item_remarks = val;
-                } else if (indIdAttr) {
-                    const item = deanReviewItems.find(x => x.indicator_id === parseInt(indIdAttr));
-                    if (item) item.item_remarks = val;
-                }
+                const item = deanReviewItems.find(x => parseInt(x.indicator_id, 10) === indId);
+                if (item) item.item_remarks = val;
             }
         });
     });
+
+    let initialReviewSnapshot = null;
+    let originalSubmittedItemsMap = {};
+
+    function checkDeanEdits() {
+        const btnApprove = document.getElementById('btnDeanApprove');
+        if (!btnApprove) return;
+
+        const isLocked = deanReviewData && (deanReviewData.overall_status === 'Approved' || deanReviewData.overall_status === 'Locked');
+        if (isLocked) {
+            btnApprove.disabled = true;
+            return;
+        }
+
+        if (!initialReviewSnapshot || !initialReviewSnapshot.items) {
+            btnApprove.disabled = false;
+            return;
+        }
+
+        let hasEdits = false;
+
+        // 1. Check if number of items in memory changed from initial snapshot
+        if (deanReviewItems.length !== initialReviewSnapshot.items.length) {
+            hasEdits = true;
+        } else {
+            // 2. Read live values directly from DOM review-qty inputs
+            const currentInputs = document.querySelectorAll('.review-qty:not([disabled])');
+            const currentItemsMap = {};
+            currentInputs.forEach(function (inp) {
+                const indId = parseInt(inp.getAttribute('data-indicator-id'), 10);
+                const val = parseInt(inp.value, 10);
+                if (!isNaN(indId)) {
+                    currentItemsMap[indId] = isNaN(val) ? 0 : val;
+                }
+            });
+
+            // Compare each snapshot item against current live input value
+            for (const snapItem of initialReviewSnapshot.items) {
+                const snapIndId = parseInt(snapItem.indicator_id, 10);
+                const snapQty = parseInt(snapItem.quantity, 10);
+
+                if (!(snapIndId in currentItemsMap)) {
+                    hasEdits = true;
+                    break;
+                }
+
+                const liveQty = currentItemsMap[snapIndId];
+                if (liveQty !== snapQty) {
+                    hasEdits = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasEdits) {
+            btnApprove.disabled = true;
+            btnApprove.setAttribute('title', 'Target items or quantities were modified. You must return this IPCR to the faculty.');
+        } else {
+            btnApprove.disabled = false;
+            btnApprove.removeAttribute('title');
+        }
+    }
 
     function openDeanReview(empId) {
         // Reset button states from any previous action
         const approveBtn = document.getElementById('btnDeanApprove');
         const rejectBtn = document.getElementById('btnDeanReject');
         approveBtn.disabled = false;
-        approveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve & Lock';
+        approveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve IPCR';
         rejectBtn.disabled = false;
         rejectBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Reject & Return';
 
@@ -1629,6 +1737,20 @@
 
                 deanReviewData = data;
                 deanReviewItems = data.items || [];
+
+                // Store permanent map of original submitted items for this modal session
+                originalSubmittedItemsMap = {};
+                (data.items || []).forEach(item => {
+                    originalSubmittedItemsMap[item.indicator_id] = { ...item };
+                });
+
+                // Capture initial snapshot when modal opens to detect modifications
+                initialReviewSnapshot = {
+                    items: deanReviewItems.map(item => ({
+                        indicator_id: parseInt(item.indicator_id, 10),
+                        quantity: parseInt(item.reviewed_quantity != null ? item.reviewed_quantity : item.original_quantity, 10)
+                    }))
+                };
 
                 // Header
                 document.getElementById('modalFacultyName').textContent = data.faculty_name;
@@ -1668,7 +1790,7 @@
                     if (approveBtn) {
                         approveBtn.style.display = '';
                         approveBtn.disabled = false;
-                        approveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve & Lock';
+                        approveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve IPCR';
                     }
                     if (rejectBtn) {
                         rejectBtn.style.display = '';
@@ -1688,6 +1810,8 @@
 
                 // Populate college wide targets
                 populateCollegeWideItems(data.college_wide_unpicked || []);
+
+                checkDeanEdits();
 
                 loader.style.display = 'none';
                 body.style.display = 'block';
@@ -1735,7 +1859,7 @@
                     </td>
                     <td class="text-center">
                         <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
-                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
+                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-original="${item.original_quantity}"
                                value="${item.reviewed_quantity}" min="0"
                                ${isLocked ? 'disabled' : ''}>
                     </td>
@@ -1743,10 +1867,18 @@
                         <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
                     </td>
                     <td>
-                        <input type="text" class="form-control form-control-sm review-remark shadow-sm"
-                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
-                               value="${item.item_remarks || ''}"
-                               placeholder="Optional note..." ${isLocked ? 'disabled' : ''}>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="text" class="form-control form-control-sm review-remark shadow-sm"
+                                   data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
+                                   value="${item.item_remarks || ''}"
+                                   placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
+                            ${!isLocked ? `
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn" 
+                                    data-indicator-id="${item.indicator_id}" title="Remove target">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                            ` : ''}
+                        </div>
                     </td>
                 </tr>
                 `;
@@ -1785,7 +1917,7 @@
                     </td>
                     <td class="text-center">
                         <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
-                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
+                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-original="${item.original_quantity}"
                                value="${item.reviewed_quantity}" min="0"
                                ${isLocked ? 'disabled' : ''}>
                     </td>
@@ -1798,8 +1930,8 @@
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
                                    value="${item.item_remarks || ''}"
                                    placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
-                            ${item.original_quantity === -1 && !isLocked ? `
-                            <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-dean-added-btn" 
+                            ${!isLocked ? `
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn" 
                                     data-indicator-id="${item.indicator_id}" title="Remove target">
                                 <i class="bi bi-trash-fill"></i>
                             </button>
@@ -1907,7 +2039,7 @@
                 if (!data.success) {
                     showToast('danger', data.message || 'Failed to save changes.');
                     btn.disabled = false;
-                    btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve & Lock' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                    btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve IPCR' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
                     return;
                 }
                 // Now submit the decision
@@ -1916,7 +2048,7 @@
             .catch(err => {
                 showToast('danger', 'Network error saving changes.');
                 btn.disabled = false;
-                btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve & Lock' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve IPCR' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
             });
     }
 
@@ -1990,7 +2122,7 @@
             const btnReject = document.getElementById('btnDeanReject');
             if (btnApprove) {
                 btnApprove.disabled = false;
-                btnApprove.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve & Lock';
+                btnApprove.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve IPCR';
             }
             if (btnReject) {
                 btnReject.disabled = false;
@@ -2033,13 +2165,13 @@
                     showToast('danger', data.message);
                     // Restore button state on error
                     btn.disabled = false;
-                    btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve & Lock' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                    btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve IPCR' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
                 }
             })
             .catch(err => {
                 showToast('danger', 'Network error submitting decision.');
                 btn.disabled = false;
-                btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve & Lock' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve IPCR' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
             });
     }
 
