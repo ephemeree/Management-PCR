@@ -23,15 +23,32 @@ def get_chair_indicators(cursor, term_id, specialization):
 
 
 def get_specialization_faculty(cursor, specialization):
+    """
+    Everyone in this department the Program Chair allocates instruction targets to.
+
+    That includes the department's designated faculty — the Program Chair themselves, the
+    RET Chair, the Dean, and any other designated title — because a designated faculty's
+    Core Functions are exactly the instruction the Program Chair cascades to them, plus the
+    mandatory teaching load. The old filter listed only 'Regular Faculty' and 'Designated
+    Faculty' literally, so anyone holding a chair or dean title never appeared as a
+    recipient and their Core Functions stayed empty.
+
+    Only system accounts with no IPCR at all are excluded.
+    """
     from app.models.connection import timed_query
-    query = """
+    from app.models.criteria import NON_FACULTY_DESIGNATIONS
+    excluded = sorted(NON_FACULTY_DESIGNATIONS)
+    placeholders = ','.join(['%s'] * len(excluded))
+    query = f"""
         SELECT emp_id, first_name, last_name, academic_rank, leave_status, designation
         FROM tbl_employee_profiles
         WHERE (specialization = %s OR assigned_program = %s)
           AND leave_status = 'Active'
-          AND designation IN ('Regular Faculty', 'Designated Faculty')
+          AND designation IS NOT NULL AND designation <> ''
+          AND designation NOT IN ({placeholders})
     """
-    return timed_query(cursor, query, (specialization, specialization), label="get_specialization_faculty")
+    return timed_query(cursor, query, tuple([specialization, specialization] + excluded),
+                       label="get_specialization_faculty")
 
 
 def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
@@ -616,7 +633,8 @@ def get_program_chair_evidence_faculty(cursor, specialization, term_id):
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
         WHERE (ep.specialization = %s 
-               OR ep.designation IN ('RET Chair', 'Program Chair', 'Designated Faculty', 'Dean') 
+               OR (ep.designation IS NOT NULL AND ep.designation <> ''
+                    AND ep.designation NOT IN ('Regular Faculty', 'Admin')) 
                OR sa.system_role IN ('RET_CHAIR', 'PROGRAM_CHAIR', 'DESIGNATED_FACULTY', 'DEAN'))
           AND mi.term_id = %s
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.designation, sa.system_role

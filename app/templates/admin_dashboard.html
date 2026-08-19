@@ -295,6 +295,17 @@
                             <div class="form-text small">A stable slug is generated automatically from the name.</div>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label small fw-bold">Slug <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="text" class="form-control" name="slug"
+                                   placeholder="leave blank to generate from the name">
+                            <div class="form-text small">
+                                Only set this when rebuilding one of the built-in types. The
+                                application matches on the exact slugs
+                                <code>instruction</code>, <code>research</code>, <code>extension</code>,
+                                <code>support</code>, <code>administrative</code> and <code>custom</code> —
+                                a generated slug such as <code>a_instructions</code> will not route targets.
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label small fw-bold">Review Lane</label>
                             <select class="form-select" name="review_lane" required>
                                 <option value="CHAIR">Program Chair (Instruction / Support / Admin)</option>

@@ -687,19 +687,32 @@ def upload_evidence_item(cursor, target_id, file_path, quantity):
     return evidence_id
 
 
-def delete_evidence_item(cursor, evidence_id):
-    # Find target_id first
-    cursor.execute("SELECT target_id FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
+def delete_evidence_item(cursor, evidence_id, emp_id):
+    """
+    Delete one uploaded evidence file.
+
+    emp_id is required and checked against the owner of the target the evidence hangs off.
+    Without it, anyone could delete anyone else's evidence by posting an arbitrary
+    evidence_id — the id is the only thing the request carries.
+    """
+    cursor.execute("""
+        SELECT er.target_id, ct.emp_id
+        FROM tbl_evidence_repo er
+        JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+        WHERE er.evidence_id = %s
+    """, (evidence_id,))
     row = cursor.fetchone()
     if not row:
         return False
-    target_id = row[0]
-    
+    target_id, owner_emp_id = row
+    if owner_emp_id != emp_id:
+        return False
+
     # Delete co-author relationships
     cursor.execute("DELETE FROM tbl_co_authors WHERE evidence_id = %s", (evidence_id,))
     # Delete evidence item
     cursor.execute("DELETE FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
-    
+
     recalculate_target_accomplished_quantity(cursor, target_id)
     return True
 

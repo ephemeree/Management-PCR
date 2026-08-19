@@ -29,7 +29,8 @@ def admin_dashboard():
     }
     departments = get_departments(cursor, active_only=False)
     institution = get_institution_settings(cursor)
-    signatories = get_signatories(cursor)
+    # conn lets the panel recreate the standard blocks if the table was emptied.
+    signatories = get_signatories(cursor, conn)
     teaching_load = {
         dt: (get_teaching_load_grid(cursor, active_term['term_id'], dt) if active_term else {})
         for dt in DESIGNATION_TYPES

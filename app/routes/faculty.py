@@ -386,7 +386,7 @@ def faculty_delete_evidence():
     cursor = conn.cursor()
     try:
         from app.models.faculty import delete_evidence_item
-        success = delete_evidence_item(cursor, int(evidence_id))
+        success = delete_evidence_item(cursor, int(evidence_id), session.get('user_id'))
         if success:
             conn.commit()
             if is_ajax:

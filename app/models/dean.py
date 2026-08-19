@@ -128,7 +128,8 @@ def get_designated_draft_submissions(cursor, term_id):
         LEFT JOIN tbl_ipcr_dean_review dr ON dr.emp_id = dt.emp_id AND dr.term_id = %s
         WHERE mi.term_id = %s
           AND (sa.system_role IN ('PROGRAM_CHAIR', 'RET_CHAIR', 'DESIGNATED_FACULTY', 'DEAN')
-               OR ep.designation IN ('Program Chair', 'RET Chair', 'Designated Faculty', 'Dean'))
+               OR (ep.designation IS NOT NULL AND ep.designation <> ''
+                    AND ep.designation NOT IN ('Regular Faculty', 'Admin')))
           AND mi.is_custom IN (0, 1)
         GROUP BY dt.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.assigned_program, ep.designation, dr.overall_status
         ORDER BY ep.last_name ASC
@@ -149,17 +150,21 @@ def get_or_create_dean_review(conn, cursor, emp_id, term_id, dean_id):
     existing = cursor.fetchone()
     if existing:
         review_id = existing[0]
-        # Sync: add any new draft targets that aren't in review items yet
+        # Sync: add any new draft targets that aren't in review items yet.
+        # Scoped to the review's own term — an employee's drafts from earlier terms are
+        # still on file and would otherwise be pulled into this review.
         cursor.execute("""
             INSERT IGNORE INTO tbl_ipcr_dean_review_items
                 (review_id, draft_id, indicator_id, original_quantity, reviewed_quantity)
             SELECT %s, dt.draft_id, dt.indicator_id, dt.proposed_quantity, dt.proposed_quantity
             FROM tbl_draft_targets dt
+            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
             WHERE dt.emp_id = %s
+              AND mi.term_id = %s
               AND dt.draft_id NOT IN (
                   SELECT COALESCE(draft_id, 0) FROM tbl_ipcr_dean_review_items WHERE review_id = %s
               )
-        """, (review_id, emp_id, review_id))
+        """, (review_id, emp_id, term_id, review_id))
         conn.commit()
         return review_id
 
@@ -170,14 +175,16 @@ def get_or_create_dean_review(conn, cursor, emp_id, term_id, dean_id):
     """, (emp_id, term_id, dean_id))
     review_id = cursor.lastrowid
 
-    # Pre-populate review items from draft targets
+    # Pre-populate review items from this term's draft targets only.
     cursor.execute("""
         INSERT INTO tbl_ipcr_dean_review_items
             (review_id, draft_id, indicator_id, original_quantity, reviewed_quantity)
         SELECT %s, dt.draft_id, dt.indicator_id, dt.proposed_quantity, dt.proposed_quantity
         FROM tbl_draft_targets dt
+        JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
         WHERE dt.emp_id = %s
-    """, (review_id, emp_id))
+          AND mi.term_id = %s
+    """, (review_id, emp_id, term_id))
     conn.commit()
     return review_id
 
@@ -544,7 +551,8 @@ def get_dean_evidence_faculty(cursor, term_id):
             MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
             OR (
                 (sa.system_role IN ('RET_CHAIR', 'PROGRAM_CHAIR', 'DESIGNATED_FACULTY', 'DEAN') 
-                 OR ep.designation IN ('RET Chair', 'Program Chair', 'Designated Faculty', 'Dean'))
+                 OR (ep.designation IS NOT NULL AND ep.designation <> ''
+                    AND ep.designation NOT IN ('Regular Faculty', 'Admin')))
                 AND MAX(CASE WHEN ct.status IN ('Submitted', 'Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
             )
         )

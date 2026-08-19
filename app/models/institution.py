@@ -255,8 +255,58 @@ def save_institution_setting(conn, cursor, key, value):
         return False, str(e)
 
 
-def get_signatories(cursor):
-    """Raw signatory configuration rows, for the Admin panel."""
+# The signature blocks a printed IPCR always has. The set is fixed by the form itself —
+# there is no such thing as an extra block — so rather than offering an "add" button the
+# panel guarantees these exist. Without them the printed form has no signature lines and
+# nothing in the UI could recreate them.
+DEFAULT_SIGNATORIES = [
+    ('REVIEWED_BY',     'Regular Faculty',    'PROGRAM_CHAIR', 'Immediate Supervisor'),
+    ('REVIEWED_BY',     'Designated Faculty', 'DEAN',          'Immediate Supervisor'),
+    ('ASSESSED_BY',     None,                 'DEAN',          'Supervisor'),
+    ('APPROVED_BY',     None,                 'FIXED',         'Head of Office'),
+    ('FINAL_RATING_BY', None,                 'FIXED',         'Head of Office'),
+]
+
+
+def ensure_default_signatories(conn, cursor):
+    """
+    Create any missing signature block. Idempotent — an existing block is left exactly as
+    the Admin configured it, names included.
+    """
+    created = 0
+    for block_key, designation_type, source, title in DEFAULT_SIGNATORIES:
+        if designation_type is None:
+            cursor.execute("""
+                SELECT signatory_id FROM tbl_ipcr_signatories
+                WHERE block_key = %s AND designation_type IS NULL
+            """, (block_key,))
+        else:
+            cursor.execute("""
+                SELECT signatory_id FROM tbl_ipcr_signatories
+                WHERE block_key = %s AND designation_type = %s
+            """, (block_key, designation_type))
+        if cursor.fetchone():
+            continue
+        cursor.execute("""
+            INSERT INTO tbl_ipcr_signatories
+                (block_key, designation_type, source, full_name, position_title)
+            VALUES (%s, %s, %s, NULL, %s)
+        """, (block_key, designation_type, source, title))
+        created += 1
+    if created:
+        conn.commit()
+    return created
+
+
+def get_signatories(cursor, conn=None):
+    """
+    Signatory configuration rows for the Admin panel.
+
+    Passing conn lets the panel self-heal a missing set — the blocks are otherwise only
+    creatable by re-running the migration.
+    """
+    if conn is not None:
+        ensure_default_signatories(conn, cursor)
     cursor.execute("""
         SELECT signatory_id, block_key, designation_type, source, full_name, position_title
         FROM tbl_ipcr_signatories
