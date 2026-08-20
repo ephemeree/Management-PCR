@@ -238,56 +238,79 @@ Same panel → *Distribute Extension Targets to All Faculty*.
 
 ## Phase E — Regular Faculty: select and submit
 
+### E1. Standard initial submission (with Research)
 Log in as the FACULTY whose rank you configured in D1.
 
-- [ ] **Research Menu** shows that rank's indicators.
-- [ ] **Extension Targets** card is read-only with a lock icon.
-- [ ] Research reads **"(optional) — up to: 0 / 1"**.
+- [ ] **Research Menu** shows that rank's indicators with configured descriptions and durations.
+- [ ] **Extension Targets** card is read-only with a lock icon ("Distributed to all faculty").
+- [ ] Research counter reads **"(optional) — up to: 0 / 1"**.
 - [ ] **Submit is enabled with 0 research selected** *(research is optional)*.
-- [ ] Selecting 1 locks the other; unticking releases it.
+- [ ] Selecting 1 locks remaining options; unticking releases them.
 - [ ] The **Teaching Load** target shows the hours configured in A3 (e.g. 21).
-- [ ] Instruction/support targets allocated in Phase C appear with their durations.
-- [ ] Select 1 research → **Submit IPCR for Review**.
-- [ ] After submitting, the selection is **read-only**.
+- [ ] Instruction/support targets allocated in Phase C appear with their custom descriptions and durations.
+- [ ] Select 1 research target → **Submit IPCR for Review**.
+- [ ] On submit and page reload:
+      - Research checkbox remains **checked and disabled / read-only** as submitted.
+      - Overall status updates to **"Pending Review"** (does *not* skip directly to Program Chair approval).
+      - Verify all targets persist on dashboard: mandatory Teaching Load, selected Research target, and distributed Extension target.
 
-**Assigned research** — log in as the faculty from D2:
-- [ ] Their assigned research is **checked and disabled**, badged "Assigned by RET Chair".
+### E2. Assigned research combination
+Log in as the faculty who received a direct assignment from D2:
+- [ ] Assigned research is **checked and disabled**, badged "Assigned by RET Chair".
+- [ ] Assigned description and duration/deadline carry over from the chair's assignment.
+- [ ] Faculty can optionally select an additional self-selected research target if rank menu quota allows, or submit directly.
+- [ ] Submit IPCR → both assigned and self-selected targets are retained.
 
-**No research menu** — a faculty whose rank has no rule:
-- [ ] Still sees the read-only **Extension** card, and can still submit.
+### E3. Zero research / Non-RET-eligible faculty (Direct bypass)
+Log in as a faculty whose rank has no research rule (or choose 0 research targets):
+- [ ] Sees the read-only **Extension** card and allocated instruction targets.
+- [ ] Submits IPCR → submission **bypasses RET review completely** and immediately transitions to **"Waiting for Approval"** (Program Chair queue).
+- [ ] Confirm Teaching Load and Extension targets remain intact.
 
 ---
 
-## Phase F — Reviews, return, and lock
+## Phase F — Reviews, return, resubmit, and lock
 
-### F1. RET review
+### F1. RET Chair review & approval
 RET Chair → **Commitments**.
 
-- [ ] **Submitted Targets** shows selected Research **and** distributed Extension as
-      read-only rows ("Distributed to all faculty", 🔒 Not editable).
-- [ ] **Unselected Indicators** lists **Research only**.
+- [ ] Faculty from E1 and E2 appear in the review queue; faculty from E3 (0 research / non-RET) do **not** appear here.
+- [ ] **Submitted Targets** shows selected Research **and** distributed Extension as read-only rows (🔒 Not editable).
+- [ ] **Unselected Indicators** lists unselected Research indicators only.
 - [ ] Edit a reviewed quantity and add an item remark → Save → persists.
-- [ ] **Approve**.
+- [ ] **Approve** → submission advances out of RET queue and moves to Program Chair review queue.
 
-> A faculty with no research should not appear in this queue at all.
+### F2. RET Chair reject / return flow (Edge case)
+*Test on a secondary faculty submission or before approving:*
+- [ ] RET Chair selects **Reject / Return** with remarks (e.g. "Please pick an alternative research indicator").
+- [ ] Faculty dashboard shows **Returned** status with RET Chair's remarks.
+- [ ] Research checkbox is **editable again**.
+- [ ] Faculty switches selection and resubmits → status resets to **"Pending Review"** and re-enters RET Chair queue.
 
-### F2. Program Chair review
+### F3. Program Chair review & return (Deadlock regression test)
 Program Chair → **Commitments**.
 
-- [ ] Research shows **Approved by RET Chair**; Extension shows approved.
-- [ ] Edit a reviewed quantity + remark on one item → Save → persists.
-- [ ] **Return** the IPCR with remarks → the faculty sees a *Returned* alert with them.
+- [ ] Faculty submission appears with full target list: mandatory Teaching Load, approved Research target, Extension target, and instruction/support allocations.
+- [ ] Research shows badge **"Approved by RET Chair"**; Extension shows approved.
+- [ ] Program Chair edits a standard workload quantity / adds an item remark.
+- [ ] Program Chair clicks **Return** with remarks (e.g. "Adjust teaching hours or instruction target").
+- [ ] Faculty logs in:
+      - Sees **Returned** alert with Program Chair's remarks.
+      - Standard workload targets are editable.
+      - **Research target remains locked / approved** (not reset to unapproved).
+- [ ] Faculty adjusts a target and clicks **Resubmit for Approval**.
+- [ ] **Critical Deadlock Check**:
+      - Submission returns directly to Program Chair queue (`overall_status = 'Pending'`).
+      - Research target still shows **"Approved by RET Chair"** (does **not** revert to "Awaiting RET Chair Approval").
+      - RET Chair queue remains unaffected (does not get stuck waiting for re-approval).
 
-### F3. Faculty resubmit
-Back as the faculty:
-- [ ] The returned IPCR is **editable again**, and the chair's remarks are visible.
-- [ ] Adjust and **resubmit** → returns to the chair's queue.
+### F4. Final approval and lock
+Program Chair → **Commitments**.
 
-### F4. Approve and lock
-- [ ] Program Chair **approves** → faculty sees approval.
-- [ ] Faculty presses **Lock My IPCR** → committed targets include instruction/support,
-      research, extension and the teaching load, with durations intact.
-- [ ] After locking, the IPCR can no longer be edited.
+- [ ] Program Chair clicks **Approve** → faculty dashboard updates to "Approved".
+- [ ] Faculty logs in and clicks **Lock My IPCR**.
+- [ ] Committed targets page displays all targets (Instruction, Support, Research, Extension, Teaching Load) with quantities, deadlines, and durations intact.
+- [ ] Once locked, the IPCR is read-only and cannot be re-submitted or modified.
 
 ---
 

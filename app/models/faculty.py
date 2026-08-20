@@ -212,7 +212,7 @@ def is_faculty_ret_eligible(cursor, emp_id, term_id):
     return cursor.fetchone()[0] > 0
 
 
-def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
+def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets):
     """
     selected_research_targets parameter format:
     [
@@ -220,20 +220,20 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
         ...
     ]
     """
+    if not term_id:
+        return False, "No active term specified."
+
+    active_term_id = int(term_id)
+    conn.autocommit = False
     try:
         # Check if they are resubmitting (meaning a review record already exists for the active term)
-        cursor.execute("SELECT term_id FROM tbl_academic_terms WHERE is_active = 1 LIMIT 1")
-        term_row = cursor.fetchone()
-        active_term_id = term_row[0] if term_row else None
-
         is_resubmission = False
-        if active_term_id:
-            cursor.execute("""
-                SELECT 1 FROM tbl_ipcr_chair_review 
-                WHERE emp_id = %s AND term_id = %s
-                LIMIT 1
-            """, (emp_id, active_term_id))
-            is_resubmission = cursor.fetchone() is not None
+        cursor.execute("""
+            SELECT 1 FROM tbl_ipcr_chair_review 
+            WHERE emp_id = %s AND term_id = %s
+            LIMIT 1
+        """, (emp_id, active_term_id))
+        is_resubmission = cursor.fetchone() is not None
 
         ret_eligible = is_faculty_ret_eligible(cursor, emp_id, active_term_id)
         ret_editable = False
@@ -460,13 +460,13 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
         # locked (not self-selectable), independent of Research eligibility. Rewrite from
         # the term's distribution so removed distributions disappear on resubmit. Extension
         # auto-flows to the Program Chair (it never enters RET review).
-        cursor.execute("""
-            DELETE dt FROM tbl_draft_targets dt
-            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
-            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-            WHERE dt.emp_id = %s AND tc.slug = 'extension'
-        """, (emp_id,))
         if active_term_id:
+            cursor.execute("""
+                DELETE dt FROM tbl_draft_targets dt
+                JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                WHERE dt.emp_id = %s AND tc.slug = 'extension'
+            """, (emp_id,))
             cursor.execute("""
                 SELECT indicator_id, target_quantity, target_description,
                        target_duration_value, target_duration_unit
@@ -561,6 +561,8 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
     except Exception as e:
         conn.rollback()
         return False, str(e)
+    finally:
+        conn.autocommit = True
 
 
 # ──────────────────────────────────────────────

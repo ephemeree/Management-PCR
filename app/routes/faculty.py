@@ -217,7 +217,7 @@ def faculty_submit_ipcr():
         selected_ret_targets = [{'indicator_id': int(x), 'proposed_quantity': 1} for x in selected_indicators]
 
         # Call submit pipeline (handles writing both chair allocations and RET selections to tbl_draft_targets)
-        success, msg = submit_faculty_ipcr(conn, cursor, emp_id, selected_ret_targets)
+        success, msg = submit_faculty_ipcr(conn, cursor, emp_id, int(term_id), selected_ret_targets)
 
         if success:
             flash(msg, "success")
