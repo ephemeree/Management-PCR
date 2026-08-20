@@ -5,39 +5,39 @@
 {% block sidebar_items %}
 <div class="nav-label">Dashboard</div>
 <button class="nav-item active" data-section="nav-overview" onclick="showSection('nav-overview')">
-    <i class="bi bi-grid-1x2-fill"></i>
+    <i class="ti ti-layout-dashboard"></i>
     <span class="nav-text">Overview</span>
 </button>
 
 <div class="nav-label">Phases</div>
 <button class="nav-item" data-section="nav-phase1" onclick="showSection('nav-phase1')">
-    <i class="bi bi-diagram-3-fill"></i>
+    <i class="ti ti-sitemap"></i>
     <span class="nav-text">Quota Cascading</span>
 </button>
 <button class="nav-item" data-section="nav-draft-ipcr" onclick="showSection('nav-draft-ipcr')">
-    <i class="bi bi-file-earmark-check-fill"></i>
+    <i class="ti ti-file-check"></i>
     <span class="nav-text">IPCR Draft Approval</span>
     {% set pending_drafts_dean = draft_submissions | rejectattr('review_status', 'equalto', 'Approved') | rejectattr('review_status', 'equalto', 'Rejected') | list | length if draft_submissions else 0 %}
     {% if pending_drafts_dean > 0 %}
-    <span class="badge bg-danger ms-auto rounded-pill">{{ pending_drafts_dean }}</span>
+    <span class="badge bg-danger ms-auto">{{ pending_drafts_dean }}</span>
     {% endif %}
 </button>
 
 <button class="nav-item" data-section="nav-target-assign" onclick="showSection('nav-target-assign')">
-    <i class="bi bi-person-plus-fill"></i>
+    <i class="ti ti-user-plus"></i>
     <span class="nav-text">Target Assignment</span>
 </button>
 <button class="nav-item" data-section="nav-final-verification" onclick="showSection('nav-final-verification')">
-    <i class="bi bi-file-earmark-diff-fill"></i>
+    <i class="ti ti-clipboard-check"></i>
     <span class="nav-text">Final Verification</span>
     {% if pending_dean_evidence_list|length > 0 %}
-    <span class="badge bg-danger ms-auto rounded-pill">{{ pending_dean_evidence_list|length }}</span>
+    <span class="badge bg-danger ms-auto">{{ pending_dean_evidence_list|length }}</span>
     {% endif %}
 </button>
 {% if has_own_ipcr %}
 <div class="nav-label">My Performance</div>
 <a class="nav-item text-decoration-none" href="{{ url_for('designated.designated_dashboard') }}">
-    <i class="bi bi-file-earmark-person-fill"></i>
+    <i class="ti ti-file-text"></i>
     <span class="nav-text">My IPCR</span>
 </a>
 {% endif %}
@@ -50,9 +50,9 @@
     /* Custom styling for disabled Dean decision buttons to easily distinguish them */
     #btnDeanApprove:disabled,
     #btnDeanReject:disabled {
-        background-color: #e9ecef !important;
-        border-color: #dee2e6 !important;
-        color: #adb5bd !important;
+        background-color: var(--c-surface-alt) !important;
+        border-color: var(--c-border) !important;
+        color: var(--c-text-muted) !important;
         opacity: 1 !important;
         cursor: not-allowed !important;
     }
@@ -116,7 +116,7 @@
         </div>
         {% if has_cascaded_quotas %}
         <span class="badge bg-secondary px-3 py-2" id="cascadeLockBadge">
-            <i class="bi bi-lock-fill me-1"></i>Cascaded &amp; Locked
+            <i class="ti ti-lock me-1"></i>Cascaded &amp; Locked
         </span>
         {% endif %}
     </div>
@@ -125,7 +125,7 @@
         <div class="card-body">
             {% if active_term %}
             <div class="alert alert-info shadow-sm border-0 mb-3 small py-2 rounded">
-                <strong><i class="bi bi-calendar-check me-1"></i>Active Term Target:</strong>
+                <strong><i class="ti ti-calendar-check me-1"></i>Active Term Target:</strong>
                 {{ active_term.academic_year }} ({{ active_term.semester }})
                 | Deadline: {{ active_term.deadline_date.strftime('%B %d, %Y') if active_term.deadline_date else 'N/A'
                 }}
@@ -133,7 +133,7 @@
 
             {% if has_cascaded_quotas %}
             <div class="alert alert-secondary border-0 small py-2 mb-3">
-                <i class="bi bi-lock-fill me-1"></i>Institutional targets have been cascaded for this academic term and are locked.
+                <i class="ti ti-lock me-1"></i>Institutional targets have been cascaded for this academic term and are locked.
             </div>
             {% endif %}
 
@@ -164,7 +164,7 @@
                             {% set current_category.name = indicator.category_name %}
                             <tr class="table-secondary">
                                 <td colspan="{{ 1 + (departments | length) + (special_roles | length) }}" class="fw-bold text-uppercase text-dark border-bottom border-2">
-                                    <i class="bi bi-folder2-open me-2"></i> {% if 'Instruction' in indicator.category_name or 'Strategic' in indicator.category_name %}Strategic Priorities{% else %}{{ indicator.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}
+                                    <i class="ti ti-folder-open me-2"></i> {% if 'Instruction' in indicator.category_name or 'Strategic' in indicator.category_name %}Strategic Priorities{% else %}{{ indicator.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}
                                 </td>
                             </tr>
                             {% endif %}
@@ -196,7 +196,7 @@
                 <div class="d-flex justify-content-end align-items-center gap-2 mt-3 border-top pt-3">
                     <button type="button" class="btn btn-primary fw-bold shadow-sm px-4" id="cascadeBtn"
                             onclick="confirmCascade()">
-                        Cascade Institutional Targets <i class="bi bi-arrow-right-circle-fill ms-1"></i>
+                        Cascade Institutional Targets <i class="ti ti-circle-arrow-right ms-1"></i>
                     </button>
                 </div>
                 {% endif %}
@@ -207,12 +207,12 @@
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title fw-bold"><i class="bi bi-broadcast me-2"></i>Cascade Institutional Targets</h5>
+                            <h5 class="modal-title fw-bold"><i class="ti ti-broadcast me-2"></i>Cascade Institutional Targets</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
                             <div id="cascadeBlockedBox" class="alert alert-danger border-0 small" style="display:none;">
-                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <i class="ti ti-alert-triangle me-2"></i>
                                 <strong>Cannot cascade yet.</strong> Every target must be assigned to at least
                                 one department. The following have no allocation:
                                 <ul class="mb-0 mt-2" id="cascadeUnassignedList"></ul>
@@ -221,7 +221,7 @@
                                 <p class="mb-2">This will distribute <strong id="cascadeTargetCount">0</strong>
                                     target(s) to the departments as entered.</p>
                                 <div class="alert alert-warning border-0 small py-2 mb-3">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    <i class="ti ti-alert-triangle me-1"></i>
                                     <strong>Please check inputs carefully:</strong> Cascading is a one-time action for this term. Once confirmed, these cascaded targets will be <strong>permanently locked</strong> and cannot be changed.
                                 </div>
                                 <p class="text-muted small mb-0">Program Chairs and the RET Chair will then be able
@@ -315,7 +315,7 @@
             lock them for the semester.</p>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #FFC107 !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
@@ -334,12 +334,12 @@
                             <td>Instructor I</td>
                             <td><span class="badge bg-secondary">10 Selected</span> + <span
                                     class="badge bg-info text-dark">1 Custom</span></td>
-                            <td><span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i>
+                            <td><span class="badge bg-warning text-dark"><i class="ti ti-hourglass"></i>
                                     Awaiting Review</span></td>
                             <td>
-                                <button class="btn btn-sm btn-outline-dark me-1"><i class="bi bi-eye"></i> View
+                                <button class="btn btn-sm btn-outline-dark me-1"><i class="ti ti-eye"></i> View
                                     IPCR</button>
-                                <button class="btn btn-sm btn-success"><i class="bi bi-lock-fill"></i> Lock
+                                <button class="btn btn-sm btn-success"><i class="ti ti-lock"></i> Lock
                                     Commitment</button>
                             </td>
                         </tr>
@@ -368,9 +368,9 @@
     {% set approved_drafts = draft_submissions | selectattr('review_status', 'equalto', 'Approved') | list if draft_submissions else [] %}
 
     <!-- Table 1: Pending Draft Submissions -->
-    <div class="card shadow-sm border-0 mb-5" style="border-top: 4px solid #FFC107 !important; border-radius: 14px; overflow: hidden;">
+    <div class="card shadow-sm border-0 mb-5" style="border-top: 3px solid var(--c-warning) !important; border-radius: 14px; overflow: hidden;">
         <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
-            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-hourglass-split text-warning me-2"></i>Pending Draft Submissions</h5>
+            <h5 class="fw-bold text-dark mb-0"><i class="ti ti-hourglass text-warning me-2"></i>Pending Draft Submissions</h5>
             <small class="text-muted">Draft IPCRs submitted by Designated Faculty awaiting review or returned for revisions.</small>
         </div>
         <div class="card-body p-0">
@@ -400,16 +400,16 @@
                             </td>
                             <td class="text-center" id="status-cell-{{ sub.emp_id }}">
                                 {% if sub.review_status == 'Rejected' %}
-                                <span class="badge bg-danger px-3 py-2"><i class="bi bi-x-circle-fill me-1"></i>Returned</span>
+                                <span class="badge bg-danger px-3 py-2"><i class="ti ti-circle-x me-1"></i>Returned</span>
                                 {% else %}
-                                <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Pending Review</span>
+                                <span class="badge bg-warning text-dark px-3 py-2"><i class="ti ti-hourglass me-1"></i>Pending Review</span>
                                 {% endif %}
                             </td>
                             <td class="text-center pe-4">
                                 <button class="btn btn-sm btn-outline-primary open-review-modal"
                                     data-emp-id="{{ sub.emp_id }}" data-bs-toggle="modal"
                                     data-bs-target="#reviewDeanModal">
-                                    <i class="bi bi-eye-fill me-1"></i> Review
+                                    <i class="ti ti-eye me-1"></i> Review
                                 </button>
                             </td>
                         </tr>
@@ -419,7 +419,7 @@
             </div>
             {% else %}
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                <i class="ti ti-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
                 <h6 class="fw-semibold mb-1">No Pending Draft Submissions</h6>
                 <p class="small mb-0">There are no pending draft IPCR submissions from Designated Faculty.</p>
             </div>
@@ -428,9 +428,9 @@
     </div>
 
     <!-- Table 2: Approved IPCRs -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #198754 !important; border-radius: 14px; overflow: hidden;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important; border-radius: 14px; overflow: hidden;">
         <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
-            <h5 class="fw-bold text-success mb-0"><i class="bi bi-check-circle-fill me-2"></i>Approved IPCR Drafts</h5>
+            <h5 class="fw-bold text-success mb-0"><i class="ti ti-circle-check me-2"></i>Approved IPCR Drafts</h5>
             <small class="text-muted">Draft IPCRs that have been verified and approved by the Dean.</small>
         </div>
         <div class="card-body p-0">
@@ -459,13 +459,13 @@
                                 <span class="badge bg-success bg-opacity-10 text-success fw-bold">{{ sub.total_targets }} target{{ 's' if sub.total_targets != 1 }} Approved</span>
                             </td>
                             <td class="text-center" id="status-cell-{{ sub.emp_id }}">
-                                <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                                <span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>Approved</span>
                             </td>
                             <td class="text-center pe-4">
                                 <button class="btn btn-sm btn-outline-success open-review-modal"
                                     data-emp-id="{{ sub.emp_id }}" data-bs-toggle="modal"
                                     data-bs-target="#reviewDeanModal" title="View Approved IPCR">
-                                    <i class="bi bi-eye-fill me-1"></i> View
+                                    <i class="ti ti-eye me-1"></i> View
                                 </button>
                             </td>
                         </tr>
@@ -475,7 +475,7 @@
             </div>
             {% else %}
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-check-circle fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                <i class="ti ti-circle-check fs-1 d-block mb-2 text-secondary opacity-50"></i>
                 <h6 class="fw-semibold mb-1">No Approved IPCRs Yet</h6>
                 <p class="small mb-0">No designated faculty draft IPCRs have been approved yet.</p>
             </div>
@@ -493,10 +493,10 @@
 
             <!-- Modal Header -->
             <div class="modal-header border-0 py-3"
-                style="background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);">
+                style="background: var(--c-indigo);">
                 <div>
                     <h5 class="modal-title text-white fw-bold mb-0" id="reviewDeanModalLabel">
-                        <i class="bi bi-file-earmark-person-fill me-2"></i>
+                        <i class="ti ti-file-text me-2"></i>
                         <span id="modalFacultyName">Loading...</span>
                     </h5>
                     <small class="text-white opacity-75" id="modalFacultyRank"></small>
@@ -516,12 +516,12 @@
             </div>
 
             <!-- Modal Body -->
-            <div class="modal-body p-4" id="modalBody" style="display:none; background-color: #f8f9fa;">
+            <div class="modal-body p-4" id="modalBody" style="display:none; background-color: var(--c-surface-alt);">
 
                 <!-- Section 1: Core Functions Card -->
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3 bg-light">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-star-fill text-warning me-2"></i>1. Core Functions</h5>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-star-filled text-warning me-2"></i>1. Core Functions</h5>
                         <p class="small mb-0 text-muted">Mandatory teaching load target (10 hrs) and cascaded instruction targets assigned by Program Chair (Locked)</p>
                     </div>
                     <div class="card-body p-0">
@@ -547,7 +547,7 @@
                 <!-- Section 2: Strategic Priorities & Support Functions Card -->
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3 bg-light">
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
                         <p class="small mb-0 text-muted">Uncascaded instructional options, support functions, and custom DPCR target items</p>
                     </div>
                     <div class="card-body p-0">
@@ -574,7 +574,7 @@
                 <div class="card border-0 shadow-sm mb-4" id="unselectedIndicatorsCard" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3 bg-light">
                         <h6 class="fw-bold text-secondary text-uppercase mb-0">
-                            <i class="bi bi-exclamation-circle me-2"></i>Unselected Indicators
+                            <i class="ti ti-alert-circle me-2"></i>Unselected Indicators
                         </h6>
                         <small class="text-muted">Indicators not picked by faculty. You can assign quantities here.</small>
                     </div>
@@ -600,7 +600,7 @@
                 <div class="card border-0 shadow-sm mb-4" id="collegeWideTargetsCard" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header border-0 py-3 bg-light">
                         <h6 class="fw-bold text-secondary text-uppercase mb-0">
-                            <i class="bi bi-globe me-2"></i>College-Wide Targets
+                            <i class="ti ti-world me-2"></i>College-Wide Targets
                         </h6>
                         <small class="text-muted">Cascaded college-wide targets. You can assign them to this faculty here.</small>
                     </div>
@@ -628,7 +628,7 @@
             <!-- Modal Footer: Decision -->
             <div class="modal-footer border-top bg-light px-4 py-3 d-block" id="modalFooter" style="display:none;">
                 <h6 class="fw-bold text-secondary text-uppercase mb-2">
-                    <i class="bi bi-stamp me-2"></i>Decision
+                    <i class="ti ti-stamp me-2"></i>Decision
                 </h6>
                 <input type="hidden" id="modalDeanReviewId">
                 <input type="hidden" id="modalDeanEmpId">
@@ -641,13 +641,13 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <button type="button" class="btn btn-outline-danger" id="btnDeanReject">
-                            <i class="bi bi-x-circle me-1"></i> Reject & Return to Faculty
+                            <i class="ti ti-circle-x me-1"></i> Reject & Return to Faculty
                         </button>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button type="button" class="btn btn-success" id="btnDeanApprove">
-                            <i class="bi bi-check-circle me-1"></i> Approve IPCR
+                            <i class="ti ti-circle-check me-1"></i> Approve IPCR
                         </button>
                     </div>
                 </div>
@@ -663,7 +663,7 @@
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 py-3"
-                style="background: linear-gradient(135deg, #374151 0%, #1f2937 100%);">
+                style="background: var(--c-text);">
                 <h6 class="modal-title text-white fw-bold mb-0" id="confirmModalTitle">Confirm</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -674,7 +674,7 @@
                 <input type="hidden" id="confirmAction" value="">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-success fw-bold" id="btnConfirmAction">
-                    <i class="bi bi-check-circle me-1"></i> Confirm
+                    <i class="ti ti-circle-check me-1"></i> Confirm
                 </button>
             </div>
         </div>
@@ -694,15 +694,15 @@
 
     {% if active_term %}
     <div class="alert alert-info shadow-sm border-0 mb-3 small py-2 rounded">
-        <strong><i class="bi bi-calendar-check me-1"></i>Active Term:</strong>
+        <strong><i class="ti ti-calendar-check me-1"></i>Active Term:</strong>
         {{ active_term.academic_year }} ({{ active_term.semester }})
     </div>
 
     {% if college_wide_quotas %}
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #10B981 !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="fw-bold mb-0 text-success">
-                <i class="bi bi-globe me-2"></i>College-Wide Targets with Quotas
+                <i class="ti ti-world me-2"></i>College-Wide Targets with Quotas
             </h5>
             <small class="text-muted">The following indicators have College-Wide target quotas set. Assign them to
                 designated faculty below.</small>
@@ -735,16 +735,16 @@
 
     {% if designated_faculty_list %}
     <!-- Designated Faculty & Chairs Assignment Table -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #0d6efd !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-accent) !important;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold mb-0 text-primary">
-                    <i class="bi bi-person-lines-fill me-2"></i>Assign College-Wide Targets to Designated Faculty &amp; Chairs
+                    <i class="ti ti-users-group me-2"></i>Assign College-Wide Targets to Designated Faculty &amp; Chairs
                 </h5>
                 <small class="text-muted">Directly assign College-Wide targets to Program Chairs, RET Chair, and other Designated Faculty members.</small>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-search text-muted"></i>
+                <i class="ti ti-search text-muted"></i>
                 <input type="text" id="assignDesignatedSearch" class="form-control form-control-sm"
                        placeholder="Search faculty or chair..." style="width: 240px;" onkeyup="filterDesignatedFacultyTable()">
             </div>
@@ -770,20 +770,20 @@
                             <td class="fw-bold text-dark ps-4">{{ f.first_name }} {{ f.last_name }}</td>
                             <td>
                                 {% if f.designation == 'Program Chair' %}
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-person-workspace me-1"></i>Program Chair</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="ti ti-user-cog me-1"></i>Program Chair</span>
                                 {% elif f.designation == 'RET Chair' %}
-                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="bi bi-mortarboard-fill me-1"></i>RET Chair</span>
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="ti ti-school me-1"></i>RET Chair</span>
                                 {% elif f.designation == 'Dean' %}
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="bi bi-shield-shaded me-1"></i>Dean</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="ti ti-shield me-1"></i>Dean</span>
                                 {% else %}
-                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="bi bi-person-badge me-1"></i>{{ f.designation or 'Designated Faculty' }}</span>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="ti ti-badge me-1"></i>{{ f.designation or 'Designated Faculty' }}</span>
                                 {% endif %}
                             </td>
                             <td><span class="badge bg-light text-dark border">{{ f.assigned_program or f.specialization or 'General' }}</span></td>
                             <td>{{ f.academic_rank or '—' }}</td>
                             <td class="text-center">
                                 {% if asg_count > 0 %}
-                                <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle me-1"></i>{{ asg_count }} Target(s)</span>
+                                <span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>{{ asg_count }} Target(s)</span>
                                 {% else %}
                                 <span class="badge bg-secondary bg-opacity-25 text-muted px-3 py-2">0 Assigned</span>
                                 {% endif %}
@@ -791,7 +791,7 @@
                             <td class="text-end pe-4">
                                 <button type="button" class="btn btn-sm btn-outline-primary"
                                         onclick="openDesignatedAssignmentEditor({{ f.emp_id }})">
-                                    <i class="bi bi-pencil-square me-1"></i>Assign
+                                    <i class="ti ti-pencil me-1"></i>Assign
                                     {% if asg_count > 0 %}
                                     <span class="badge bg-primary ms-1">{{ asg_count }}</span>
                                     {% endif %}
@@ -813,7 +813,7 @@
                     <input type="hidden" name="emp_id" id="designatedAssignEmpId">
                     <div class="modal-header bg-light">
                         <h5 class="modal-title fw-bold text-dark">
-                            <i class="bi bi-person-plus-fill text-primary me-2"></i>Assign College-Wide Targets
+                            <i class="ti ti-user-plus text-primary me-2"></i>Assign College-Wide Targets
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -828,13 +828,13 @@
                             <span class="badge bg-primary px-3 py-2" id="designatedAssignDesignation">Designated Faculty</span>
                         </div>
                         <p class="text-muted small mb-3">
-                            <i class="bi bi-info-circle me-1"></i>Check the College-Wide target(s) to assign to this chairperson / designated faculty member. These will appear on their IPCR under <strong>Strategic Priorities &amp; Support Functions</strong>.
+                            <i class="ti ti-info-circle me-1"></i>Check the College-Wide target(s) to assign to this chairperson / designated faculty member. These will appear on their IPCR under <strong>Strategic Priorities &amp; Support Functions</strong>.
                         </p>
                         <div id="designatedAssignModalBody"></div>
                     </div>
                     <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-floppy-fill me-1"></i>Save Assignments</button>
+                        <button type="submit" class="btn btn-primary fw-bold"><i class="ti ti-device-floppy me-1"></i>Save Assignments</button>
                     </div>
                 </form>
             </div>
@@ -862,7 +862,7 @@
         const modalEl = document.getElementById('designatedAssignmentModal');
         const body = document.getElementById('designatedAssignModalBody');
         document.getElementById('designatedAssignEmpId').value = empId;
-        body.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Loading College-Wide targets...</div>';
+        body.innerHTML = '<div class="text-center py-4 text-muted"><i class="ti ti-hourglass"></i> Loading College-Wide targets...</div>';
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
 
@@ -879,7 +879,7 @@
             document.getElementById('designatedAssignDesignation').textContent = data.designation || 'Designated Faculty';
 
             if (!data.targets || !data.targets.length) {
-                body.innerHTML = '<div class="alert alert-info py-3"><i class="bi bi-info-circle me-1"></i>No College-Wide cascaded targets found. Set College-Wide quotas in Quota Cascading first.</div>';
+                body.innerHTML = '<div class="alert alert-info py-3"><i class="ti ti-info-circle me-1"></i>No College-Wide cascaded targets found. Set College-Wide quotas in Quota Cascading first.</div>';
                 return;
             }
 
@@ -943,10 +943,10 @@
     }
     </script>
 
-    <div class="card shadow-sm border-0" style="border-top: 4px solid #4F8CFF !important;">
+    <div class="card shadow-sm border-0" style="border-top: 3px solid var(--c-accent) !important;">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="fw-bold mb-0 text-primary">
-                <i class="bi bi-pie-chart-fill me-2"></i>College-Wide Distribution Tracker
+                <i class="ti ti-chart-pie me-2"></i>College-Wide Distribution Tracker
             </h5>
             <small class="text-muted">Track how cascaded College-Wide targets are distributed across Designated Faculty
                 and if quotas are met.</small>
@@ -964,7 +964,7 @@
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                     <div style="flex: 1; min-width: 250px;">
                         <h6 class="fw-bold text-dark mb-1">
-                            <i class="bi bi-bullseye text-success me-1"></i> {{ q.indicator_description }}
+                            <i class="ti ti-target text-success me-1"></i> {{ q.indicator_description }}
                         </h6>
                         <span class="badge bg-secondary small">{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Instructions{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span>
                     </div>
@@ -978,11 +978,11 @@
                         </div>
                         <div>
                             {% if total_allocated.val >= q.total_target_value %}
-                            <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully
+                            <span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>Fully
                                 Distributed</span>
                             {% else %}
                             <span class="badge bg-warning text-dark px-3 py-2"><i
-                                    class="bi bi-hourglass-split me-1"></i>Under Allocated (-{{ q.total_target_value -
+                                    class="ti ti-hourglass me-1"></i>Under Allocated (-{{ q.total_target_value -
                                 total_allocated.val }})</span>
                             {% endif %}
                         </div>
@@ -1017,17 +1017,17 @@
                                     {% if a.review_status == 'Approved' %}
                                     <span
                                         class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
-                                        <i class="bi bi-check-circle-fill me-1"></i>Approved
+                                        <i class="ti ti-circle-check me-1"></i>Approved
                                     </span>
                                     {% elif a.review_status == 'Rejected' %}
                                     <span
                                         class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small">
-                                        <i class="bi bi-x-circle-fill me-1"></i>Returned
+                                        <i class="ti ti-circle-x me-1"></i>Returned
                                     </span>
                                     {% else %}
                                     <span
                                         class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small">
-                                        <i class="bi bi-hourglass-split me-1"></i>Pending Review
+                                        <i class="ti ti-hourglass me-1"></i>Pending Review
                                     </span>
                                     {% endif %}
                                 </td>
@@ -1038,7 +1038,7 @@
                 </div>
                 {% else %}
                 <div class="text-center py-3 bg-light rounded border border-dashed">
-                    <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>This target has not been
+                    <p class="text-muted small mb-0"><i class="ti ti-info-circle me-1"></i>This target has not been
                         allocated to any faculty yet. Review drafts to assign it.</p>
                 </div>
                 {% endif %}
@@ -1048,20 +1048,20 @@
     </div>
     {% else %}
     <div class="alert alert-warning border-0 shadow-sm">
-        <i class="bi bi-exclamation-triangle me-2"></i> No active Designated Faculty members found in the roster.
+        <i class="ti ti-alert-triangle me-2"></i> No active Designated Faculty members found in the roster.
     </div>
     {% endif %}
 
     {% else %}
     <div class="alert alert-warning border-0 shadow-sm">
-        <i class="bi bi-inbox me-2"></i> No College-Wide quotas have been set yet. Go to <strong>Quota
+        <i class="ti ti-inbox me-2"></i> No College-Wide quotas have been set yet. Go to <strong>Quota
             Cascading</strong> to set College-Wide target values first.
     </div>
     {% endif %}
 
     {% else %}
     <div class="alert alert-warning border-0 shadow-sm">
-        <i class="bi bi-exclamation-triangle me-2"></i> No active term. Please activate an academic term first.
+        <i class="ti ti-alert-triangle me-2"></i> No active term. Please activate an academic term first.
     </div>
     {% endif %}
 </div>
@@ -1072,7 +1072,7 @@
 <div id="nav-final-verification" class="dashboard-section">
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-diff-fill text-primary me-2"></i>Final Evidence Verification</h2>
+            <h2 class="fw-bold text-dark mb-1"><i class="ti ti-clipboard-check text-primary me-2"></i>Final Evidence Verification</h2>
             <p class="text-muted mb-0">Review and verify evidence packages submitted by Program Chairs across all categories.</p>
         </div>
     </div>
@@ -1082,11 +1082,11 @@
         <div class="card-header bg-white border-0 pt-4 pb-3 px-4 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold text-dark mb-0">
-                    <i class="bi bi-clock-history text-warning me-2"></i>Pending Final Verification
+                    <i class="ti ti-history text-warning me-2"></i>Pending Final Verification
                 </h5>
                 <small class="text-muted">Faculty evidence packages submitted by Program Chair awaiting Dean verification.</small>
             </div>
-            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill fw-bold">
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 fw-bold">
                 {{ pending_dean_evidence_list | length }} Pending
             </span>
         </div>
@@ -1115,12 +1115,12 @@
                                 <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.assigned_program or 'CIT' }}</span></td>
                                 <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
                                 <td class="text-center">
-                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-xs"><i class="bi bi-clock-history me-1"></i>Awaiting Final Verification</span>
+                                    <span class="badge bg-warning text-dark px-3 py-2 shadow-xs"><i class="ti ti-history me-1"></i>Awaiting Final Verification</span>
                                 </td>
                                 <td class="text-center pe-4">
-                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
                                         onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', true)">
-                                        <i class="bi bi-file-earmark-check-fill me-1"></i>Review IPCR
+                                        <i class="ti ti-file-check me-1"></i>Review IPCR
                                     </button>
                                 </td>
                             </tr>
@@ -1139,15 +1139,15 @@
     </div>
 
     <!-- Approved Designated Faculty & Chairs Final Verifications Table -->
-    <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #198754 !important; border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid var(--c-success) !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold text-success mb-0">
-                    <i class="bi bi-patch-check-fill text-success me-2"></i>Approved Designated Faculty &amp; Chairs Final Verifications
+                    <i class="ti ti-circle-check-filled text-success me-2"></i>Approved Designated Faculty &amp; Chairs Final Verifications
                 </h5>
                 <small class="text-muted">Designated faculty, Program Chairs, RET Chairs, and Dean evidence packages fully approved by the Dean.</small>
             </div>
-            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-bold">
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-bold">
                 {{ approved_designated_dean_evidence_list | length }} Approved
             </span>
         </div>
@@ -1176,12 +1176,12 @@
                                 <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.assigned_program or 'CIT' }}</span></td>
                                 <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
                                 <td class="text-center">
-                                    <span class="badge bg-success px-3 py-2 rounded-pill shadow-xs"><i class="bi bi-patch-check-fill me-1"></i>Dean Approved</span>
+                                    <span class="badge bg-success px-3 py-2 shadow-xs"><i class="ti ti-circle-check-filled me-1"></i>Dean Approved</span>
                                 </td>
                                 <td class="text-center pe-4">
-                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
                                         onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', false)">
-                                        <i class="bi bi-file-earmark-text-fill me-1"></i>View IPCR
+                                        <i class="ti ti-file-text me-1"></i>View IPCR
                                     </button>
                                 </td>
                             </tr>
@@ -1200,15 +1200,15 @@
     </div>
 
     <!-- Approved Regular Faculty Final Verifications Table -->
-    <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #0d6efd !important; border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid var(--c-accent) !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold text-primary mb-0">
-                    <i class="bi bi-patch-check-fill text-primary me-2"></i>Approved Regular Faculty Final Verifications
+                    <i class="ti ti-circle-check-filled text-primary me-2"></i>Approved Regular Faculty Final Verifications
                 </h5>
                 <small class="text-muted">Regular faculty evidence packages fully approved by the Dean.</small>
             </div>
-            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold">
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fw-bold">
                 {{ approved_regular_dean_evidence_list | length }} Approved
             </span>
         </div>
@@ -1237,12 +1237,12 @@
                                 <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.assigned_program or 'CIT' }}</span></td>
                                 <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
                                 <td class="text-center">
-                                    <span class="badge bg-success px-3 py-2 rounded-pill shadow-xs"><i class="bi bi-patch-check-fill me-1"></i>Dean Approved</span>
+                                    <span class="badge bg-success px-3 py-2 shadow-xs"><i class="ti ti-circle-check-filled me-1"></i>Dean Approved</span>
                                 </td>
                                 <td class="text-center pe-4">
-                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
                                         onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', false)">
-                                        <i class="bi bi-file-earmark-text-fill me-1"></i>View IPCR
+                                        <i class="ti ti-file-text me-1"></i>View IPCR
                                     </button>
                                 </td>
                             </tr>
@@ -1269,23 +1269,23 @@
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-primary text-white border-0 py-3 d-flex align-items-center" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
                 <h5 class="modal-title fw-bold fs-6 mb-0">
-                    <i class="bi bi-file-earmark-text-fill me-2"></i>Official IPCR Review: <span id="deanEvidenceModalFacultyName"></span>
+                    <i class="ti ti-file-text me-2"></i>Official IPCR Review: <span id="deanEvidenceModalFacultyName"></span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-0" id="deanEvidenceModalContainer" style="min-height: 70vh; background: #f8f9fa;">
+            <div class="modal-body p-0" id="deanEvidenceModalContainer" style="min-height: 70vh; background: var(--c-surface-alt);">
                 <!-- Loaded via iframe -->
             </div>
             <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-between" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
                 <div>
-                    <button type="button" class="btn btn-outline-danger fw-semibold px-4 rounded-pill" id="btnDeanReturnIPCR" style="display: none;">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reject &amp; Return
+                    <button type="button" class="btn btn-outline-danger fw-semibold px-4" id="btnDeanReturnIPCR" style="display: none;">
+                        <i class="ti ti-arrow-back-up me-1"></i>Reject &amp; Return
                     </button>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-success fw-bold px-4 rounded-pill shadow-sm" id="btnDeanApproveIPCR" style="display: none;">
-                        <i class="bi bi-check-all me-1"></i>Approve IPCR
+                    <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" id="btnDeanApproveIPCR" style="display: none;">
+                        <i class="ti ti-checks me-1"></i>Approve IPCR
                     </button>
                 </div>
             </div>
@@ -1297,7 +1297,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-arrow-counterclockwise me-2"></i>Reject &amp; Return IPCR to Faculty</h5>
+                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-arrow-back-up me-2"></i>Reject &amp; Return IPCR to Faculty</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 text-start">
@@ -1306,8 +1306,8 @@
                 <div id="deanReturnEvidenceReasonError" class="text-danger small mt-2" style="display:none;">A reason is required before returning.</div>
             </div>
             <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger fw-bold px-4 rounded-pill" onclick="confirmDeanReturnEvidence()">Confirm Return</button>
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger fw-bold px-4" onclick="confirmDeanReturnEvidence()">Confirm Return</button>
             </div>
         </div>
     </div>
@@ -1321,7 +1321,7 @@
         const container = document.getElementById('deanEvidenceModalContainer');
         container.innerHTML = `
             <iframe src="/dean/preview_ipcr/${empId}"
-                    style="width: 100%; height: 75vh; border: none; background: #fff;"
+                    style="width: 100%; height: 75vh; border: none; background: var(--c-surface);"
                     id="deanIpcrPreviewIframe"
                     title="IPCR Document Preview"></iframe>
         `;
@@ -1356,7 +1356,7 @@
             subText: "This action finalizes the IPCR ratings for this term.",
             confirmText: "Approve IPCR",
             confirmClass: "btn-success",
-            iconClass: "bi-check-all",
+            iconClass: "ti-checks",
             onConfirm: submitDeanApproval
         });
 
@@ -1385,7 +1385,7 @@
             subText: "This will return the targets for revision.",
             confirmText: "Return IPCR",
             confirmClass: "btn-danger",
-            iconClass: "bi-arrow-counterclockwise",
+            iconClass: "ti-arrow-back-up",
             onConfirm: submitReturn
         });
         
@@ -1453,7 +1453,7 @@
                 '<p class="mb-1">This will <strong>approve and lock</strong> the draft IPCR.</p>' +
                 '<p class="mb-0 text-muted small">The designated faculty will no longer be able to modify their targets.</p>';
             document.getElementById('btnConfirmAction').className = 'btn btn-success fw-bold';
-            document.getElementById('btnConfirmAction').innerHTML = '<i class="bi bi-check-circle me-1"></i> Yes, Approve';
+            document.getElementById('btnConfirmAction').innerHTML = '<i class="ti ti-circle-check me-1"></i> Yes, Approve';
             new bootstrap.Modal(document.getElementById('confirmDeanModal')).show();
         });
 
@@ -1471,7 +1471,7 @@
                 '<p class="mb-1">This will <strong>return</strong> the draft IPCR to the designated faculty.</p>' +
                 '<p class="mb-0 text-muted small">They will be able to review your remarks, make changes, and re-submit.</p>';
             document.getElementById('btnConfirmAction').className = 'btn btn-danger fw-bold';
-            document.getElementById('btnConfirmAction').innerHTML = '<i class="bi bi-x-circle me-1"></i> Yes, Return';
+            document.getElementById('btnConfirmAction').innerHTML = '<i class="ti ti-circle-x me-1"></i> Yes, Return';
             new bootstrap.Modal(document.getElementById('confirmDeanModal')).show();
         });
 
@@ -1715,9 +1715,9 @@
         const approveBtn = document.getElementById('btnDeanApprove');
         const rejectBtn = document.getElementById('btnDeanReject');
         approveBtn.disabled = false;
-        approveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve IPCR';
+        approveBtn.innerHTML = '<i class="ti ti-circle-check me-1"></i> Approve IPCR';
         rejectBtn.disabled = false;
-        rejectBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+        rejectBtn.innerHTML = '<i class="ti ti-circle-x me-1"></i> Reject & Return';
 
         const loader = document.getElementById('modalLoader');
         const body = document.getElementById('modalBody');
@@ -1765,13 +1765,13 @@
                 const statusEl = document.getElementById('modalStatusBadge');
                 if (data.overall_status === 'Approved') {
                     statusEl.className = 'badge bg-success fs-6 px-3 py-2';
-                    statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Approved';
+                    statusEl.innerHTML = '<i class="ti ti-circle-check me-1"></i>Approved';
                 } else if (data.overall_status === 'Rejected') {
                     statusEl.className = 'badge bg-danger fs-6 px-3 py-2';
-                    statusEl.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i>Returned';
+                    statusEl.innerHTML = '<i class="ti ti-circle-x me-1"></i>Returned';
                 } else {
                     statusEl.className = 'badge bg-warning text-dark fs-6 px-3 py-2';
-                    statusEl.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Pending Review';
+                    statusEl.innerHTML = '<i class="ti ti-hourglass me-1"></i>Pending Review';
                 }
 
                 document.getElementById('deanOverallRemarks').value = data.overall_remarks || '';
@@ -1795,12 +1795,12 @@
                     if (approveBtn) {
                         approveBtn.style.display = '';
                         approveBtn.disabled = false;
-                        approveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve IPCR';
+                        approveBtn.innerHTML = '<i class="ti ti-circle-check me-1"></i> Approve IPCR';
                     }
                     if (rejectBtn) {
                         rejectBtn.style.display = '';
                         rejectBtn.disabled = false;
-                        rejectBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                        rejectBtn.innerHTML = '<i class="ti ti-circle-x me-1"></i> Reject & Return';
                     }
                     if (remarksInput) remarksInput.disabled = false;
                     if (unselectedCard) unselectedCard.style.display = '';
@@ -1846,9 +1846,9 @@
         } else {
             coreItems.forEach(item => {
                 const origQtyDisplay = item.original_quantity === -1 ? '0' : item.original_quantity;
-                let badgeHtml = '<span class="badge bg-primary text-white border mb-1"><i class="bi bi-pin-angle-fill me-1"></i>Core Function</span>';
+                let badgeHtml = '<span class="badge bg-primary text-white border mb-1"><i class="ti ti-pin-filled me-1"></i>Core Function</span>';
                 if (item.is_cascaded) {
-                    badgeHtml += ' <span class="badge bg-info text-dark border mb-1 ms-1"><i class="bi bi-diagram-3 me-1"></i>Cascaded from Chair</span>';
+                    badgeHtml += ' <span class="badge bg-info text-dark border mb-1 ms-1"><i class="ti ti-sitemap me-1"></i>Cascaded from Chair</span>';
                 }
                 const descText = item.target_description || item.indicator_description;
 
@@ -1857,7 +1857,7 @@
                     <td class="py-3 ps-4">
                         ${badgeHtml}
                         <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
-                        <p class="mb-0 small text-dark"><i class="bi bi-text-paragraph text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>
+                        <p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>
                     </td>
                     <td class="text-center">
                         <span class="fw-bold fs-5 text-primary">${origQtyDisplay}</span>
@@ -1869,7 +1869,7 @@
                                ${isLocked ? 'disabled' : ''}>
                     </td>
                     <td class="text-center">
-                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
+                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
@@ -1880,7 +1880,7 @@
                             ${!isLocked ? `
                             <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn" 
                                     data-indicator-id="${item.indicator_id}" title="Remove target">
-                                <i class="bi bi-trash-fill"></i>
+                                <i class="ti ti-trash"></i>
                             </button>
                             ` : ''}
                         </div>
@@ -1915,7 +1915,7 @@
                     <td class="py-3 ps-4">
                         ${badgeHtml}
                         <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
-                        ${descText !== item.indicator_description ? `<p class="mb-0 small text-dark"><i class="bi bi-text-paragraph text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>` : ''}
+                        ${descText !== item.indicator_description ? `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>` : ''}
                     </td>
                     <td class="text-center">
                         <span class="fw-bold fs-5 text-warning">${origQtyDisplay}</span>
@@ -1927,7 +1927,7 @@
                                ${isLocked ? 'disabled' : ''}>
                     </td>
                     <td class="text-center">
-                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
+                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
@@ -1938,7 +1938,7 @@
                             ${!isLocked ? `
                             <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn" 
                                     data-indicator-id="${item.indicator_id}" title="Remove target">
-                                <i class="bi bi-trash-fill"></i>
+                                <i class="ti ti-trash"></i>
                             </button>
                             ` : ''}
                         </div>
@@ -1970,7 +1970,7 @@
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-unpicked-btn fw-bold"
                             data-indicator-id="${ind.indicator_id}">
-                        <i class="bi bi-plus-lg me-1"></i> Add
+                        <i class="ti ti-plus me-1"></i> Add
                     </button>
                 </td>
             </tr>
@@ -1999,7 +1999,7 @@
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-college-wide-btn fw-bold"
                             data-indicator-id="${ind.indicator_id}">
-                        <i class="bi bi-plus-lg me-1"></i> Add
+                        <i class="ti ti-plus me-1"></i> Add
                     </button>
                 </td>
             </tr>
@@ -2044,7 +2044,7 @@
                 if (!data.success) {
                     showToast('danger', data.message || 'Failed to save changes.');
                     btn.disabled = false;
-                    btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve IPCR' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                    btn.innerHTML = action === 'Approved' ? '<i class="ti ti-circle-check me-1"></i> Approve IPCR' : '<i class="ti ti-circle-x me-1"></i> Reject & Return';
                     return;
                 }
                 // Now submit the decision
@@ -2053,7 +2053,7 @@
             .catch(err => {
                 showToast('danger', 'Network error saving changes.');
                 btn.disabled = false;
-                btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve IPCR' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                btn.innerHTML = action === 'Approved' ? '<i class="ti ti-circle-check me-1"></i> Approve IPCR' : '<i class="ti ti-circle-x me-1"></i> Reject & Return';
             });
     }
 
@@ -2105,12 +2105,12 @@
                     showToast('danger', data.message);
                 }
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-save me-2"></i>Save All Changes';
+                btn.innerHTML = '<i class="ti ti-device-floppy me-2"></i>Save All Changes';
             })
             .catch(err => {
                 showToast('danger', 'Network error saving changes.');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-save me-2"></i>Save All Changes';
+                btn.innerHTML = '<i class="ti ti-device-floppy me-2"></i>Save All Changes';
             });
     }
 
@@ -2127,11 +2127,11 @@
             const btnReject = document.getElementById('btnDeanReject');
             if (btnApprove) {
                 btnApprove.disabled = false;
-                btnApprove.innerHTML = '<i class="bi bi-check-circle me-1"></i> Approve IPCR';
+                btnApprove.innerHTML = '<i class="ti ti-circle-check me-1"></i> Approve IPCR';
             }
             if (btnReject) {
                 btnReject.disabled = false;
-                btnReject.innerHTML = '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                btnReject.innerHTML = '<i class="ti ti-circle-x me-1"></i> Reject & Return';
             }
             return;
         }
@@ -2150,14 +2150,14 @@
                     // Update status badge in modal
                     const badge = document.getElementById('modalStatusBadge');
                     badge.className = 'badge ' + (action === 'Approved' ? 'bg-success' : 'bg-danger') + ' fs-6 px-3 py-2';
-                    badge.innerHTML = '<i class="bi ' + (action === 'Approved' ? 'bi-check-circle-fill' : 'bi-x-circle-fill') + ' me-1"></i>' + (action === 'Approved' ? 'Approved' : 'Returned');
+                    badge.innerHTML = '<i class="ti ' + (action === 'Approved' ? 'ti-circle-check' : 'ti-circle-x') + ' me-1"></i>' + (action === 'Approved' ? 'Approved' : 'Returned');
                     // Update row status in listing
                     const empId = document.getElementById('modalDeanEmpId').value;
                     const statusCell = document.getElementById('status-cell-' + empId);
                     if (statusCell) {
                         statusCell.innerHTML = action === 'Approved'
-                            ? '<span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>'
-                            : '<span class="badge bg-danger px-3 py-2"><i class="bi bi-x-circle-fill me-1"></i>Returned</span>';
+                            ? '<span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>Approved</span>'
+                            : '<span class="badge bg-danger px-3 py-2"><i class="ti ti-circle-x me-1"></i>Returned</span>';
                     }
                     // Close modal after 1s and reload page to move IPCR to Approved table
                     setTimeout(() => {
@@ -2170,13 +2170,13 @@
                     showToast('danger', data.message);
                     // Restore button state on error
                     btn.disabled = false;
-                    btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve IPCR' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                    btn.innerHTML = action === 'Approved' ? '<i class="ti ti-circle-check me-1"></i> Approve IPCR' : '<i class="ti ti-circle-x me-1"></i> Reject & Return';
                 }
             })
             .catch(err => {
                 showToast('danger', 'Network error submitting decision.');
                 btn.disabled = false;
-                btn.innerHTML = action === 'Approved' ? '<i class="bi bi-check-circle me-1"></i> Approve IPCR' : '<i class="bi bi-x-circle me-1"></i> Reject & Return';
+                btn.innerHTML = action === 'Approved' ? '<i class="ti ti-circle-check me-1"></i> Approve IPCR' : '<i class="ti ti-circle-x me-1"></i> Reject & Return';
             });
     }
 
@@ -2206,7 +2206,7 @@
         confirmTextSpan.textContent = confirmText;
 
         const icon = document.getElementById('confirmModalIcon');
-        icon.className = iconClass;
+        icon.className = 'ti ' + iconClass;
 
         // Reset any existing click handlers
         const newBtn = confirmBtn.cloneNode(true);
@@ -2245,14 +2245,14 @@
                 <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle"
                     style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
                 <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain"
-                    style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
+                    style="font-size: 0.95rem; line-height: 1.5; color: var(--c-text-sub) !important;">Main message</p>
                 <p class="text-muted small px-3 mb-0" id="confirmModalTextSub"
                     style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
             </div>
             <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
                 <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
                     id="confirmModalCancelBtn"
-                    style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                    style="border-radius: 10px; background-color: var(--bs-secondary); font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
                 <button type="button"
                     class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
                     id="confirmModalConfirmBtn"

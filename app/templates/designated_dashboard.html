@@ -12,7 +12,7 @@
 <div class="nav-label">{{ group_label }}</div>
 {% for section_id, text, icon in items %}
 <a class="nav-item text-decoration-none" href="{{ url_for(home_nav.endpoint) }}#{{ section_id }}">
-    <i class="bi {{ icon }}"></i>
+    <i class="ti {{ icon }}"></i>
     <span class="nav-text">{{ text }}</span>
 </a>
 {% endfor %}
@@ -20,25 +20,25 @@
 {% else %}
 <div class="nav-label">Dashboard</div>
 <button class="nav-item" data-section="designated-overview" onclick="showSection('designated-overview')">
-    <i class="bi bi-grid-1x2-fill"></i>
+    <i class="ti ti-layout-dashboard"></i>
     <span class="nav-text">Overview</span>
 </button>
 {% endif %}
 
 <div class="nav-label">My Performance</div>
 <button class="nav-item active" data-section="designated-dpcr" onclick="showSection('designated-dpcr')">
-    <i class="bi bi-file-earmark-text-fill"></i>
+    <i class="ti ti-file-text"></i>
     <span class="nav-text">My IPCR</span>
 </button>
 {% if is_committed %}
 <button class="nav-item" data-section="nav-evidence" onclick="showSection('nav-evidence')">
-    <i class="bi bi-cloud-upload-fill"></i>
+    <i class="ti ti-cloud-upload"></i>
     <span class="nav-text">Evidence Gathering</span>
 </button>
 {% endif %}
 {% if has_final_ipcr %}
 <button class="nav-item" data-section="nav-print-ipcr" onclick="showSection('nav-print-ipcr')">
-    <i class="bi bi-printer-fill"></i>
+    <i class="ti ti-printer"></i>
     <span class="nav-text">Print IPCR</span>
 </button>
 {% endif %}
@@ -60,9 +60,9 @@
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card shadow-sm border-0 border-start border-primary border-4"
-                style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                style="background: var(--c-surface-alt);">
                 <div class="card-body py-4">
-                    <h6 class="text-primary fw-bold text-uppercase mb-1"><i class="bi bi-person-badge me-2"></i>My
+                    <h6 class="text-primary fw-bold text-uppercase mb-1"><i class="ti ti-badge me-2"></i>My
                         Profile</h6>
                     <p class="mb-1 text-muted small"><strong>Rank:</strong> <span class="text-dark">{{ academic_rank or
                             'Not Assigned' }}</span></p>
@@ -75,7 +75,7 @@
             <div class="card shadow-sm border-0 border-start border-success border-4 h-100">
                 <div class="card-body py-4 d-flex flex-column justify-content-center">
                     <h6 class="text-success fw-bold text-uppercase mb-1"><i
-                            class="bi bi-calendar-check me-2"></i>Current Term</h6>
+                            class="ti ti-calendar-check me-2"></i>Current Term</h6>
                     {% if active_term %}
                     <h3 class="text-dark mb-1">{{ active_term.academic_year }}</h3>
                     <p class="text-muted small mb-0">{{ active_term.semester }}</p>
@@ -98,27 +98,27 @@
         {% if can_edit %}
         <button type="button" class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal"
             data-bs-target="#addTargetModal">
-            <i class="bi bi-plus-lg me-2"></i> Add Target
+            <i class="ti ti-plus me-2"></i> Add Target
         </button>
         {% elif is_committed %}
         <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-lock-fill me-2"></i>Approved &amp; Locked
+            <i class="ti ti-lock me-2"></i>Approved &amp; Locked
         </span>
         {% elif dean_review and dean_review.overall_status == 'Approved' %}
         <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-check-circle-fill me-2"></i>Dean Approved
+            <i class="ti ti-circle-check me-2"></i>Dean Approved
         </span>
         {% elif dean_review and dean_review.overall_status == 'Rejected' %}
         <span class="badge bg-danger px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-arrow-counterclockwise me-2"></i>Returned by Dean
+            <i class="ti ti-arrow-back-up me-2"></i>Returned by Dean
         </span>
         {% elif has_submitted %}
         <span class="badge bg-warning text-dark px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-hourglass-split me-2"></i>Waiting for Review
+            <i class="ti ti-hourglass me-2"></i>Waiting for Review
         </span>
         {% else %}
         <span class="badge bg-secondary px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-pencil-square me-2"></i>Draft Mode
+            <i class="ti ti-pencil me-2"></i>Draft Mode
         </span>
         {% endif %}
         {% endif %}
@@ -126,7 +126,7 @@
 
     {% if not active_term %}
     <div class="alert alert-warning border-0 shadow-sm" style="border-radius: 10px;">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i> There is no active term set by the administration. You
+        <i class="ti ti-alert-triangle me-2"></i> There is no active term set by the administration. You
         cannot manage targets right now.
     </div>
     {% else %}
@@ -134,9 +134,9 @@
     {# ── Dean Review Alerts ───────────────────────────────── #}
     {% if is_committed %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
-        style="background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%); border-left: 5px solid #212529 !important; border-radius: 10px;">
+        style="background: var(--c-surface-alt); border-left: 4px solid var(--c-text) !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-lock-fill text-dark fs-4 mt-1"></i>
+            <i class="ti ti-lock text-dark fs-4 mt-1"></i>
             <div>
                 <h6 class="fw-bold text-dark mb-1">Your IPCR has been Approved and Locked</h6>
                 <p class="mb-0 text-muted small">Your targets have been committed to your final evaluation. You may now proceed to evidence gathering.</p>
@@ -149,9 +149,9 @@
     </div>
     {% elif dean_review and dean_review.overall_status == 'Approved' %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
-        style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-left: 5px solid #10b981 !important; border-radius: 10px;">
+        style="background: rgba(63,125,88,0.06); border-left: 4px solid var(--c-success) !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-check-circle-fill text-success fs-4 mt-1"></i>
+            <i class="ti ti-circle-check text-success fs-4 mt-1"></i>
             <div>
                 <h6 class="fw-bold text-success mb-1">Your IPCR has been Approved by the Dean!</h6>
                 <p class="mb-0 text-dark small">Review your finalized commitment targets below and click <strong>"Lock My IPCR"</strong> to commit your targets and proceed to evidence gathering.</p>
@@ -164,11 +164,11 @@
     </div>
     {% elif dean_review and dean_review.overall_status == 'Rejected' %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
-        style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 5px solid #ffc107 !important; border-radius: 10px;">
+        style="background: rgba(184,132,46,0.08); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-exclamation-circle-fill text-warning fs-4 mt-1" style="color: #d97706 !important;"></i>
+            <i class="ti ti-alert-circle text-warning fs-4 mt-1" style="color: var(--c-warning) !important;"></i>
             <div>
-                <h6 class="fw-bold mb-1" style="color: #b45309 !important;">Your Draft IPCR was Returned by the Dean
+                <h6 class="fw-bold mb-1" style="color: var(--c-warning) !important;">Your Draft IPCR was Returned by the Dean
                 </h6>
                 {% if dean_review.overall_remarks %}
                 <p class="mb-1 text-dark"><strong>Remarks:</strong> {{ dean_review.overall_remarks }}</p>
@@ -179,8 +179,8 @@
     </div>
     {% elif has_submitted %}
     <div class="alert border-0 shadow-sm mb-4 text-center fw-bold"
-        style="background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); border-left: 5px solid #ff9800 !important; border-radius: 10px;">
-        <i class="bi bi-hourglass-split me-2"></i> Submitted — awaiting review by the Dean.
+        style="background: rgba(184,132,46,0.08); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
+        <i class="ti ti-hourglass me-2"></i> Submitted — awaiting review by the Dean.
     </div>
     {% endif %}
 
@@ -198,7 +198,7 @@
         {# Table 1: Core Functions (Mandatory 10hrs Teaching Load + Cascaded Instruction from Program Chair) #}
         <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
             <div class="card-header border-0 py-3 bg-light">
-                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-star-fill text-warning me-2"></i>1. Core Functions</h5>
+                <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-star-filled text-warning me-2"></i>1. Core Functions</h5>
                 <p class="small mb-0 text-muted">Mandatory teaching load target (10 hrs) and cascaded instruction targets assigned by Program Chair (Locked)</p>
             </div>
             <div class="card-body p-0">
@@ -230,20 +230,20 @@
                                 </td>
                                 {% endif %}
                                 <td class="py-3 {% if not can_edit %}ps-4{% endif %}">
-                                    <span class="badge bg-primary text-white border mb-1"><i class="bi bi-pin-angle-fill me-1"></i>Core Function</span>
+                                    <span class="badge bg-primary text-white border mb-1"><i class="ti ti-pin-filled me-1"></i>Core Function</span>
                                     {% if target.is_cascaded %}
-                                    <span class="badge bg-info text-dark border mb-1 ms-1"><i class="bi bi-diagram-3 me-1"></i>Cascaded from Chair</span>
+                                    <span class="badge bg-info text-dark border mb-1 ms-1"><i class="ti ti-sitemap me-1"></i>Cascaded from Chair</span>
                                     {% endif %}
                                     <p class="mb-1 small text-secondary fw-semibold">{{ target.indicator_description }}</p>
-                                    <p class="mb-0 small text-dark"><i class="bi bi-text-paragraph text-primary me-1"></i><strong>Target Description:</strong> {{ target.target_description or target.indicator_description }}</p>
+                                    <p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> {{ target.target_description or target.indicator_description }}</p>
                                     {% if can_edit %}
                                     <input type="hidden" name="target_desc_{{ target.indicator_id }}" value="{{ target.target_description or target.indicator_description }}">
                                     {% endif %}
 
                                     {# Show Dean's per-item remark if present #}
                                     {% if target.dean_remarks %}
-                                    <div class="mt-1 p-2 rounded" style="background: #e8f4ff; border-left: 3px solid #6366F1;">
-                                        <small class="text-dark"><i class="bi bi-chat-square-text-fill me-1" style="color: #6366F1;"></i><strong>Dean's note:</strong> {{ target.dean_remarks }}</small>
+                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 3px solid var(--c-indigo);">
+                                        <small class="text-dark"><i class="ti ti-message me-1" style="color: var(--c-indigo);"></i><strong>Dean's note:</strong> {{ target.dean_remarks }}</small>
                                     </div>
                                     {% endif %}
                                 </td>
@@ -254,7 +254,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>{{ target.target_deadline or '1 Semester' }}</span>
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>{{ target.target_deadline or '1 Semester' }}</span>
                                     {% if can_edit %}
                                     <input type="hidden" name="target_dur_value_{{ target.indicator_id }}" value="{{ target.target_duration_value or 1 }}">
                                     <input type="hidden" name="target_dur_unit_{{ target.indicator_id }}" value="{{ target.target_duration_unit or 'semesters' }}">
@@ -263,11 +263,11 @@
                                 {% if not (dean_review and dean_review.overall_status == 'Approved') %}
                                 <td class="text-center">
                                     {% if target.status == 'Approved' %}
-                                    <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                                    <span class="badge bg-success"><i class="ti ti-circle-check me-1"></i>Approved</span>
                                     {% elif target.status == 'Rejected' %}
-                                    <span class="badge bg-danger"><i class="bi bi-x-circle-fill me-1"></i>Returned</span>
+                                    <span class="badge bg-danger"><i class="ti ti-circle-x me-1"></i>Returned</span>
                                     {% elif target.status == 'Pending Review' %}
-                                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                    <span class="badge bg-warning text-dark"><i class="ti ti-hourglass me-1"></i>Pending</span>
                                     {% else %}
                                     <span class="badge bg-secondary">{{ target.status or 'Draft' }}</span>
                                     {% endif %}
@@ -294,7 +294,7 @@
         {# Table 2: Strategic Priorities & Support Functions (Uncascaded Instruction Targets, Support Functions & Custom Items) #}
         <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
             <div class="card-header border-0 py-3 bg-light">
-                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
+                <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
                 <p class="small mb-0 text-muted">Uncascaded instructional options, support functions, and custom DPCR target items</p>
             </div>
             <div class="card-body p-0">
@@ -347,13 +347,13 @@
                                                placeholder="Specify custom target description">
                                     </div>
                                     {% elif target.target_description and target.target_description != target.indicator_description %}
-                                    <p class="mb-0 small text-dark"><i class="bi bi-text-paragraph text-primary me-1"></i><strong>Target Description:</strong> {{ target.target_description }}</p>
+                                    <p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> {{ target.target_description }}</p>
                                     {% endif %}
 
                                     {# Show Dean's per-item remark if present #}
                                     {% if target.dean_remarks %}
-                                    <div class="mt-1 p-2 rounded" style="background: #e8f4ff; border-left: 3px solid #6366F1;">
-                                        <small class="text-dark"><i class="bi bi-chat-square-text-fill me-1" style="color: #6366F1;"></i><strong>Dean's note:</strong> {{ target.dean_remarks }}</small>
+                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 3px solid var(--c-indigo);">
+                                        <small class="text-dark"><i class="ti ti-message me-1" style="color: var(--c-indigo);"></i><strong>Dean's note:</strong> {{ target.dean_remarks }}</small>
                                     </div>
                                     {% endif %}
                                 </td>
@@ -361,7 +361,7 @@
                                     {% if can_edit %}
                                     <input type="number" class="form-control form-control-sm text-center fw-bold shadow-sm"
                                         name="target_qty_{{ target.indicator_id }}"
-                                        value="{{ target.total_target_value or 0 }}" min="0" {% if target.is_selected %}style="background-color: #e8f4ff; border-color: #0d6efd;" {% endif %}>
+                                        value="{{ target.total_target_value or 0 }}" min="0" {% if target.is_selected %}style="background-color: var(--c-accent-glow); border-color: var(--c-accent);" {% endif %}>
                                     {% else %}
                                     <span class="fw-bold fs-5 text-warning">{{ target.total_target_value or 0 }}</span>
                                     {% endif %}
@@ -382,7 +382,7 @@
                                     </div>
                                     {% else %}
                                     {% if target.target_deadline %}
-                                    <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>{{ target.target_deadline }}</span>
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>{{ target.target_deadline }}</span>
                                     {% else %}
                                     <span class="text-muted small">&mdash;</span>
                                     {% endif %}
@@ -391,11 +391,11 @@
                                 {% if not (dean_review and dean_review.overall_status == 'Approved') %}
                                 <td class="text-center">
                                     {% if target.status == 'Approved' %}
-                                    <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                                    <span class="badge bg-success"><i class="ti ti-circle-check me-1"></i>Approved</span>
                                     {% elif target.status == 'Rejected' %}
-                                    <span class="badge bg-danger"><i class="bi bi-x-circle-fill me-1"></i>Returned</span>
+                                    <span class="badge bg-danger"><i class="ti ti-circle-x me-1"></i>Returned</span>
                                     {% elif target.status == 'Pending Review' %}
-                                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                    <span class="badge bg-warning text-dark"><i class="ti ti-hourglass me-1"></i>Pending</span>
                                     {% else %}
                                     <span class="badge bg-secondary">{{ target.status or 'Draft' }}</span>
                                     {% endif %}
@@ -426,35 +426,35 @@
 
         {% if can_edit %}
         <div class="mt-4 text-end">
-            <button type="submit" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="submitBtn">
-                <i class="bi bi-send-check-fill me-2"></i>
+            <button type="submit" class="btn btn-primary btn-lg px-5 shadow fw-bold" id="submitBtn">
+                <i class="ti ti-send me-2"></i>
                 {% if has_submitted %}Re-submit IPCR for Approval{% else %}Submit IPCR for Approval{% endif %}
             </button>
         </div>
         {% else %}
         <div class="mt-4 text-end">
             {% if is_committed %}
-            <div class="alert alert-dark d-inline-block border-0 shadow-sm rounded-pill px-4">
-                <i class="bi bi-lock-fill me-2"></i> Your IPCR is locked and committed.
+            <div class="alert alert-dark d-inline-block border-0 shadow-sm px-4">
+                <i class="ti ti-lock me-2"></i> Your IPCR is locked and committed.
             </div>
             {% elif dean_review and dean_review.overall_status == 'Approved' %}
             <div class="d-inline-flex flex-column align-items-end gap-2">
-                <div class="alert alert-success border-0 shadow-sm rounded-pill px-4 py-2 m-0">
-                    <i class="bi bi-check-circle-fill me-2"></i> Your IPCR has been approved by the Dean!
+                <div class="alert alert-success border-0 shadow-sm px-4 py-2 m-0">
+                    <i class="ti ti-circle-check me-2"></i> Your IPCR has been approved by the Dean!
                 </div>
-                <button type="button" id="lockBtn" class="btn btn-warning btn-lg px-5 shadow fw-bold rounded-pill text-dark">
-                    <i class="bi bi-lock-fill me-2"></i>Lock My IPCR
+                <button type="button" id="lockBtn" class="btn btn-warning btn-lg px-5 shadow fw-bold text-dark">
+                    <i class="ti ti-lock me-2"></i>Lock My IPCR
                 </button>
             </div>
             {% elif dean_review and dean_review.overall_status == 'Rejected' %}
             <div class="d-inline-flex flex-column align-items-end gap-2">
-                <button type="submit" form="resubmitDraftForm" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" id="resubmitBtn">
-                    <i class="bi bi-send-check-fill me-2"></i> Re-submit IPCR for Approval
+                <button type="submit" form="resubmitDraftForm" class="btn btn-primary btn-lg px-5 shadow fw-bold" id="resubmitBtn">
+                    <i class="ti ti-send me-2"></i> Re-submit IPCR for Approval
                 </button>
             </div>
             {% else %}
-            <div class="alert alert-info d-inline-block border-0 shadow-sm rounded-pill px-4">
-                <i class="bi bi-info-circle-fill me-2"></i> Your IPCR is currently waiting for Approval.
+            <div class="alert alert-info d-inline-block border-0 shadow-sm px-4">
+                <i class="ti ti-info-circle me-2"></i> Your IPCR is currently waiting for Approval.
             </div>
             {% endif %}
         </div>
@@ -479,7 +479,7 @@
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i> Add Custom Target</h5>
+                <h5 class="modal-title fw-bold"><i class="ti ti-circle-plus me-2"></i> Add Custom Target</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
@@ -529,7 +529,7 @@
             <div class="modal-footer border-0 bg-light">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary fw-bold" id="addTargetBtn">
-                    <i class="bi bi-plus-lg me-2"></i> Add
+                    <i class="ti ti-plus me-2"></i> Add
                 </button>
             </div>
         </div>
@@ -542,13 +542,13 @@
     }
 
     .strategic-checkbox:checked {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
+        background-color: var(--c-accent);
+        border-color: var(--c-accent);
     }
 
     .form-control-sm:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        border-color: var(--c-accent);
+        box-shadow: 0 0 0 0.2rem var(--c-accent-glow);
     }
 </style>
 
@@ -560,7 +560,7 @@
             <p>Upload your evidence and report accomplishment details for your locked commitment targets.</p>
         </div>
         <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-lock-fill me-2"></i>Locked &amp; Committed
+            <i class="ti ti-lock me-2"></i>Locked &amp; Committed
         </span>
     </div>
 
@@ -570,7 +570,7 @@
             <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                 <div
                     class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-check-fill me-2"></i>My Evidence Submission Checklist</h5>
+                    <h5 class="mb-0 fw-bold"><i class="ti ti-file-check me-2"></i>My Evidence Submission Checklist</h5>
                     {% set selected_targets_count = namespace(count=0) %}
                     {% for target in dpcr_targets %}
                     {% if target.is_selected %}
@@ -578,7 +578,7 @@
                     {% endif %}
                     {% endfor %}
                     <span class="badge bg-light text-primary fw-bold fs-6">
-                        <i class="bi bi-card-checklist me-1"></i>Progress: {{ evidence_readiness.targets_met_qty if evidence_readiness else 0 }} / {{ evidence_readiness.total_targets if evidence_readiness else selected_targets_count.count }} Completed
+                        <i class="ti ti-clipboard-list me-1"></i>Progress: {{ evidence_readiness.targets_met_qty if evidence_readiness else 0 }} / {{ evidence_readiness.total_targets if evidence_readiness else selected_targets_count.count }} Completed
                     </span>
                 </div>
                 <div class="card-body p-0">
@@ -617,24 +617,24 @@
                                     <td class="text-center fw-bold fs-5">
                                         {% set actual_q = target.actual_quantity or 0 %}
                                         {% if actual_q >= (target.total_target_value or 0) %}
-                                        <span class="badge bg-success px-3 py-2 rounded-pill shadow-sm text-white"
-                                            style="font-size: 0.85rem;"><i class="bi bi-check-circle-fill me-1"></i>{{
+                                        <span class="badge bg-success px-3 py-2 shadow-sm text-white"
+                                            style="font-size: 0.85rem;"><i class="ti ti-circle-check me-1"></i>{{
                                             actual_q }}</span>
                                         {% else %}
-                                        <span class="badge bg-secondary px-3 py-2 rounded-pill shadow-sm text-white"
+                                        <span class="badge bg-secondary px-3 py-2 shadow-sm text-white"
                                             style="font-size: 0.85rem;">{{ actual_q }}</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-center pe-4 py-4">
                                         <button type="button"
-                                            class="btn {% if has_final_ipcr %}btn-outline-secondary{% elif evidence_readiness and evidence_readiness.evidence_submitted %}btn-secondary{% else %}btn-primary{% endif %} btn-sm px-4 py-2 fw-bold rounded-pill shadow-sm transition-all hover-shadow"
+                                            class="btn {% if has_final_ipcr %}btn-outline-secondary{% elif evidence_readiness and evidence_readiness.evidence_submitted %}btn-secondary{% else %}btn-primary{% endif %} btn-sm px-4 py-2 fw-bold shadow-sm transition-all hover-shadow"
                                             onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.total_target_value or 0 }}', '{{ target.actual_quantity or 0 }}')">
                                             {% if has_final_ipcr %}
-                                            <i class="bi bi-eye-fill me-1"></i>View Evidences (Approved)
+                                            <i class="ti ti-eye me-1"></i>View Evidences (Approved)
                                             {% elif evidence_readiness and evidence_readiness.evidence_submitted %}
-                                            <i class="bi bi-eye-fill me-1"></i>View Evidences
+                                            <i class="ti ti-eye me-1"></i>View Evidences
                                             {% else %}
-                                            <i class="bi bi-folder-plus me-1"></i>Add/View Evidence
+                                            <i class="ti ti-folder-plus me-1"></i>Add/View Evidence
                                             {% endif %}
                                         </button>
                                     </td>
@@ -651,13 +651,13 @@
             {% if ipcr_score %}
             <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-calculator-fill me-2 text-primary"></i>Summary of Ratings</h5>
+                    <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-calculator me-2 text-primary"></i>Summary of Ratings</h5>
                     <small class="text-muted">Live preview — updates as you report accomplishments.</small>
                 </div>
                 <div class="card-body p-0">
                     {% if not ipcr_score.weights_configured %}
                     <div class="alert alert-warning border-0 rounded-0 mb-0 small">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>No weight allocation has been configured
+                        <i class="ti ti-alert-triangle me-2"></i>No weight allocation has been configured
                         for Designated Faculty this term, so a final rating cannot be computed.
                     </div>
                     {% else %}
@@ -709,19 +709,19 @@
             {% if evidence_readiness %}
             <div class="mt-3 text-end">
                 {% if has_final_ipcr %}
-                <span class="badge bg-success-subtle text-success border border-success-subtle px-4 py-3 rounded-pill fs-6 fw-bold shadow-sm">
-                    <i class="bi bi-shield-check me-2"></i>Final Verification Completed &amp; Approved by Dean
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-4 py-3 fs-6 fw-bold shadow-sm">
+                    <i class="ti ti-shield-check me-2"></i>Final Verification Completed &amp; Approved by Dean
                 </span>
                 {% elif evidence_readiness.evidence_submitted %}
-                <span class="badge bg-success-subtle text-success border border-success-subtle px-4 py-3 rounded-pill fs-6 fw-bold shadow-sm">
-                    <i class="bi bi-check-circle-fill me-2"></i>Evidences Submitted for Verification
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-4 py-3 fs-6 fw-bold shadow-sm">
+                    <i class="ti ti-circle-check me-2"></i>Evidences Submitted for Verification
                 </span>
                 {% else %}
                 <form id="submitEvidenceForm" action="{{ url_for('designated.designated_submit_evidence') }}" method="POST" class="d-inline">
                     <button type="button" id="submitEvidenceBtn"
-                        class="btn {% if evidence_readiness.all_evidence_ready %}btn-success shadow-lg{% else %}btn-secondary opacity-75{% endif %} btn-lg px-5 fw-bold rounded-pill transition-all"
+                        class="btn {% if evidence_readiness.all_evidence_ready %}btn-success shadow-lg{% else %}btn-secondary opacity-75{% endif %} btn-lg px-5 fw-bold transition-all"
                         {% if not evidence_readiness.all_evidence_ready %}disabled title="Upload evidence to all targets and reach target quantities to unlock"{% endif %}>
-                        <i class="bi bi-send-check-fill me-2"></i>Submit Evidences
+                        <i class="ti ti-send me-2"></i>Submit Evidences
                     </button>
                 </form>
                 {% endif %}
@@ -736,20 +736,20 @@
 <div id="nav-print-ipcr" class="dashboard-section">
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2><i class="bi bi-printer-fill me-2 text-primary"></i>Finalized IPCR Details</h2>
+            <h2><i class="ti ti-printer me-2 text-primary"></i>Finalized IPCR Details</h2>
             <p class="text-muted mb-0">Your IPCR has been finalized and verified by the Dean. You may now review and print the final document.</p>
         </div>
-        <button class="btn btn-primary px-4 fw-bold rounded-pill shadow-sm" onclick="window.open('{{ url_for('designated.designated_print_ipcr') }}', '_blank');">
-            <i class="bi bi-printer me-2"></i>Print IPCR
+        <button class="btn btn-primary px-4 fw-bold shadow-sm" onclick="window.open('{{ url_for('designated.designated_print_ipcr') }}', '_blank');">
+            <i class="ti ti-printer me-2"></i>Print IPCR
         </button>
     </div>
 
     <div class="row g-4">
         <!-- Left Column: Targets Table -->
         <div class="col-xxl-8 col-xl-7">
-            <div class="table-responsive mb-4 shadow-sm bg-white" style="border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+            <div class="table-responsive mb-4 shadow-sm bg-white" style="border-radius: 12px; overflow: hidden; border: 1px solid var(--c-border);">
                 <table class="table table-hover mb-0 align-middle" style="font-size: 0.9rem;">
-                    <thead style="background-color: #f8fafc;">
+                    <thead style="background-color: var(--c-surface-alt);">
                         <tr>
                             <th rowspan="2" width="15%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Output / MFO</th>
                             <th rowspan="2" width="30%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Success Indicator<br>(Target + Measure)</th>
@@ -769,19 +769,19 @@
                         {% for t in dpcr_targets %}
                             {% set cat_name = t.category_name or 'General' %}
                             {% if cat_name != current_category.name %}
-                                <tr style="background-color: #f1f5f9;">
-                                    <td colspan="8" class="text-start fw-bold py-3 px-4" style="color: #334155; font-size: 0.95rem;">{{ cat_name }}</td>
+                                <tr style="background-color: var(--c-surface-alt);">
+                                    <td colspan="8" class="text-start fw-bold py-3 px-4" style="color: var(--c-text); font-size: 0.95rem;">{{ cat_name }}</td>
                                 </tr>
                                 {% set current_category.name = cat_name %}
                             {% endif %}
                             <tr>
                                 <td class="text-start px-4 text-muted border-end" style="font-size: 0.85rem;">{{ cat_name }}</td>
-                                <td class="text-start px-4 border-end" style="color: #475569;">{{ t.indicator_description }}</td>
-                                <td class="text-start px-4 border-end" style="color: #64748b;">{{ t.actual_accomplishment or '' }}</td>
+                                <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ t.indicator_description }}</td>
+                                <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ t.actual_accomplishment or '' }}</td>
                                 <td class="text-center fw-semibold text-primary border-end">{{ t.rating.q if t.rating and t.rating.q is not none else '-' }}</td>
                                 <td class="text-center fw-semibold text-primary border-end">{{ t.rating.e if t.rating and t.rating.e is not none else '-' }}</td>
                                 <td class="text-center fw-semibold text-primary border-end">{{ t.rating.t if t.rating and t.rating.t is not none else '-' }}</td>
-                                <td class="text-center fw-bold border-end" style="background-color: #f8fafc; color: #1e293b;">{{ t.rating.average if t.rating and t.rating.average is not none else '-' }}</td>
+                                <td class="text-center fw-bold border-end" style="background-color: var(--c-surface-alt); color: var(--c-text);">{{ t.rating.average if t.rating and t.rating.average is not none else '-' }}</td>
                                 <td class="text-start px-3"></td>
                             </tr>
                         {% endfor %}
@@ -792,9 +792,9 @@
 
         <!-- Right Column: Summary Table -->
         <div class="col-xxl-4 col-xl-5">
-            <div class="table-responsive shadow-sm bg-white w-100" style="border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+            <div class="table-responsive shadow-sm bg-white w-100" style="border-radius: 12px; overflow: hidden; border: 1px solid var(--c-border);">
                 <table class="table table-hover mb-0 align-middle" style="font-size: 0.9rem;">
-                    <thead style="background-color: #f8fafc;">
+                    <thead style="background-color: var(--c-surface-alt);">
                         <tr>
                             <th rowspan="2" width="45%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Category</th>
                             <th rowspan="2" width="15%" class="text-center align-middle border-bottom border-end text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 700;">Weight (%)</th>
@@ -809,23 +809,23 @@
                         {% if ipcr_score and ipcr_score.breakdown %}
                             {% for b in ipcr_score.breakdown %}
                             <tr>
-                                <td class="text-start px-4 fw-medium border-end" style="color: #334155;">{{ b.category_name }}</td>
+                                <td class="text-start px-4 fw-medium border-end" style="color: var(--c-text);">{{ b.category_name }}</td>
                                 <td class="text-center text-muted border-end">{{ b.weight_pct }}%</td>
                                 <td class="text-center fw-semibold text-dark border-end">{{ b.raw_avg if b.raw_avg is not none else '-' }}</td>
                                 <td class="text-center fw-bold text-primary">{{ b.weighted_value if b.weighted_value is not none else '-' }}</td>
                             </tr>
                             {% endfor %}
-                            <tr style="background-color: #f8fafc;">
-                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #475569;">Total Overall Rating</td>
-                                <td colspan="2" class="text-center fw-bold fs-6 py-3" style="color: #0f172a;">{{ ipcr_score.total_overall_rating if ipcr_score.total_overall_rating is not none else '-' }}</td>
+                            <tr style="background-color: var(--c-surface-alt);">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-text-sub);">Total Overall Rating</td>
+                                <td colspan="2" class="text-center fw-bold fs-6 py-3" style="color: var(--c-text);">{{ ipcr_score.total_overall_rating if ipcr_score.total_overall_rating is not none else '-' }}</td>
                             </tr>
-                            <tr style="background-color: #f1f5f9;">
-                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #334155;">Final Weighted Rating</td>
+                            <tr style="background-color: var(--c-surface-alt);">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-text);">Final Weighted Rating</td>
                                 <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">{{ ipcr_score.final_weighted_rating if ipcr_score.final_weighted_rating is not none else '-' }}</td>
                             </tr>
-                            <tr style="background-color: #ecfdf5;">
-                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: #065f46;">Adjectival Rating</td>
-                                <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: #059669;">{{ ipcr_score.adjectival_rating or '-' }}</td>
+                            <tr style="background-color: rgba(63,125,88,0.08);">
+                                <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-success);">Adjectival Rating</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: var(--c-success);">{{ ipcr_score.adjectival_rating or '-' }}</td>
                             </tr>
                         {% else %}
                             <tr>
@@ -853,9 +853,9 @@
             if (qtyInput) {
                 if (cb.checked) {
                     row.classList.add('table-active-row');
-                    row.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
+                    row.style.backgroundColor = 'rgba(62, 92, 130, 0.06)';
                     qtyInput.classList.add('border-primary');
-                    qtyInput.style.backgroundColor = '#e8f4ff';
+                    qtyInput.style.backgroundColor = 'rgba(62, 92, 130, 0.14)';
                 } else {
                     row.classList.remove('table-active-row');
                     row.style.backgroundColor = '';
@@ -947,7 +947,7 @@
                                 <input type="hidden" name="custom_duration_units[]" value="${durUnit}">
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('tr').remove(); checkEmptyTable('support');">
-                                <i class="bi bi-trash-fill"></i>
+                                <i class="ti ti-trash"></i>
                             </button>
                         </div>
                     </td>
@@ -956,7 +956,7 @@
                                name="custom_quantities[]" value="${quantity}" readonly style="width: 100%;">
                     </td>
                     <td class="text-center">
-                        ${deadline ? `<span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="bi bi-clock me-1 text-primary"></i>${deadline}</span>` : '<span class="text-muted small">&mdash;</span>'}
+                        ${deadline ? `<span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>${deadline}</span>` : '<span class="text-muted small">&mdash;</span>'}
                     </td>
                     <td class="text-center">
                         <span class="badge bg-secondary">Draft</span>
@@ -1082,7 +1082,7 @@
 
             const icon = document.getElementById('confirmModalIcon');
             if (iconClass) {
-                icon.className = `bi ${iconClass}`;
+                icon.className = `ti ${iconClass}`;
                 icon.style.display = '';
             } else {
                 icon.style.display = 'none';
@@ -1110,7 +1110,7 @@
                     subText: "Once locked, it is committed for final evaluation and cannot be edited. You can then proceed to evidence gathering.",
                     confirmText: "Yes, Lock IPCR",
                     confirmClass: "btn-warning text-dark",
-                    iconClass: "bi-lock-fill",
+                    iconClass: "ti-lock",
                     onConfirm: () => document.getElementById('lockForm').submit()
                 });
             });
@@ -1127,7 +1127,7 @@
                     subText: "Your department Dean will verify your evidence submissions. You will still be able to view your files.",
                     confirmText: "Yes, Submit Evidences",
                     confirmClass: "btn-success",
-                    iconClass: "bi-send-check-fill",
+                    iconClass: "ti-send",
                     onConfirm: () => document.getElementById('submitEvidenceForm').submit()
                 });
             });
@@ -1284,10 +1284,10 @@
             notice.style.display = isLocked ? '' : 'none';
             if (HAS_FINAL_IPCR) {
                 notice.className = 'alert alert-success border-0 small mb-0';
-                notice.innerHTML = '<i class="bi bi-shield-lock-fill me-2"></i>Your evidence submission has been fully verified and approved by the Dean. Evidence gathering is now locked.';
+                notice.innerHTML = '<i class="ti ti-shield-lock me-2"></i>Your evidence submission has been fully verified and approved by the Dean. Evidence gathering is now locked.';
             } else if (EVIDENCE_SUBMITTED) {
                 notice.className = 'alert alert-secondary border-0 small mb-0';
-                notice.innerHTML = '<i class="bi bi-lock-fill me-2"></i>Your evidences have been submitted for verification. Uploading is locked — you can still view your files below.';
+                notice.innerHTML = '<i class="ti ti-lock me-2"></i>Your evidences have been submitted for verification. Uploading is locked — you can still view your files below.';
             }
         }
         form.style.display = isLocked ? 'none' : '';
@@ -1382,7 +1382,7 @@
                             if (ev.verification_status !== 'Approved' && !HAS_FINAL_IPCR) {
                                 actionHtml = `
                                     <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
-                                        <i class="bi bi-trash-fill"></i>
+                                        <i class="ti ti-trash"></i>
                                     </button>
                                 `;
                             }
@@ -1392,7 +1392,7 @@
                             itemDiv.style.borderRadius = '10px';
                             itemDiv.innerHTML = `
                                 <div class="d-flex align-items-center gap-2 overflow-hidden text-start">
-                                    <i class="bi bi-file-earmark-arrow-up-fill text-primary fs-4"></i>
+                                    <i class="ti ti-file-upload text-primary fs-4"></i>
                                     <div class="text-start text-truncate" style="max-width: 250px;">
                                         <a href="/static/${ev.file_path}" target="_blank" class="small fw-semibold text-decoration-none text-dark" title="View/Download">${cleanName}</a>
                                         <div class="text-muted" style="font-size: 0.75rem;">
@@ -1427,7 +1427,7 @@
             subText: "This will delete the file and update your accomplished quantity.",
             confirmText: "Yes, Remove",
             confirmClass: "btn-danger",
-            iconClass: "bi-trash-fill",
+            iconClass: "ti-trash",
             onConfirm: () => {
                 const formData = new FormData();
                 formData.append('evidence_id', evidenceId);
@@ -1501,8 +1501,8 @@
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3"
-                style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
-                <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-check-fill me-2"></i>Evidence Gathering
+                style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
+                <h5 class="modal-title fw-bold"><i class="ti ti-file-check me-2"></i>Evidence Gathering
                     Checklist</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
@@ -1519,11 +1519,11 @@
                         </div>
                         <div class="col-md-4 text-md-end mt-2 mt-md-0">
                             <span
-                                class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 rounded-pill me-2">
+                                class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 me-2">
                                 Target Qty: <span id="evidenceTargetQty" class="fw-bold">0</span>
                             </span>
                             <span
-                                class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-3 py-2 rounded-pill">
+                                class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-3 py-2">
                                 Accomplished: <span id="evidenceActualQty" class="fw-bold">0</span>
                             </span>
                         </div>
@@ -1539,7 +1539,7 @@
                             style="border-radius: 12px; overflow: hidden;">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i
-                                        class="bi bi-cloud-upload-fill me-2 text-primary"></i>Upload New Evidence</h6>
+                                        class="ti ti-cloud-upload me-2 text-primary"></i>Upload New Evidence</h6>
                             </div>
                             <div class="card-body">
                                 <form id="uploadEvidenceForm" action="/designated/upload_evidence" method="POST"
@@ -1561,7 +1561,7 @@
                                     </div>
                                     <div class="text-start mt-2">
                                         <button type="submit"
-                                            class="btn btn-primary fw-semibold px-4 rounded-pill"><i class="bi bi-cloud-upload me-1"></i>Upload</button>
+                                            class="btn btn-primary fw-semibold px-4"><i class="ti ti-cloud-upload me-1"></i>Upload</button>
                                     </div>
                                 </form>
                             </div>
@@ -1573,7 +1573,7 @@
                         <div class="card border border-light shadow-xs h-100"
                             style="border-radius: 12px; overflow: hidden;">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
-                                <h6 class="fw-bold text-dark mb-0"><i class="bi bi-files me-2 text-success"></i>Current
+                                <h6 class="fw-bold text-dark mb-0"><i class="ti ti-files me-2 text-success"></i>Current
                                     Submissions</h6>
                             </div>
                             <div class="card-body">
@@ -1589,7 +1589,7 @@
                 <!-- Accomplishment Details: Timeliness (T) and, where applicable, Efficiency (E) -->
                 <div class="p-3 border border-light shadow-xs text-start" style="border-radius: 12px;">
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-stopwatch-fill me-2 text-primary"></i>Accomplishment Details</h6>
+                        <h6 class="fw-bold text-dark mb-0"><i class="ti ti-stopwatch me-2 text-primary"></i>Accomplishment Details</h6>
                         <span class="small text-muted">Used to compute your Timeliness rating.</span>
                     </div>
 
@@ -1655,27 +1655,27 @@
                             <span class="badge bg-light text-dark border px-3 py-2">Quantity <span id="ratingQ" class="fw-bold ms-1">—</span></span>
                             <span class="badge bg-light text-dark border px-3 py-2">Efficiency <span id="ratingE" class="fw-bold ms-1">—</span></span>
                             <span class="badge bg-light text-dark border px-3 py-2">Timeliness <span id="ratingT" class="fw-bold ms-1">—</span></span>
-                            <i class="bi bi-arrow-right text-muted"></i>
+                            <i class="ti ti-arrow-right text-muted"></i>
                             <span class="badge bg-primary px-3 py-2">Average <span id="ratingAvg" class="fw-bold ms-1">—</span></span>
                         </div>
                     </div>
 
                     <div class="text-end mt-3">
                         <span id="accomplishmentSaveMsg" class="small me-2"></span>
-                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-4"
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold px-4"
                                 onclick="saveAccomplishmentDetails()">
-                            <i class="bi bi-save me-1"></i>Save Details
+                            <i class="ti ti-device-floppy me-1"></i>Save Details
                         </button>
                     </div>
                 </div>
             </div>
             <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-end gap-2"
                 style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill"
+                <button type="button" class="btn btn-secondary fw-semibold px-4"
                     data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary fw-semibold px-4 rounded-pill"
+                <button type="button" class="btn btn-primary fw-semibold px-4"
                     id="submitAccomplishmentBtn" onclick="saveAccomplishmentDetails(true)">
-                    <i class="bi bi-check-circle-fill me-1"></i>Submit
+                    <i class="ti ti-circle-check me-1"></i>Submit
                 </button>
             </div>
         </div>
@@ -1694,14 +1694,14 @@
                 <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle"
                     style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
                 <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain"
-                    style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
+                    style="font-size: 0.95rem; line-height: 1.5; color: var(--c-text-sub) !important;">Main message</p>
                 <p class="text-muted small px-3 mb-0" id="confirmModalTextSub"
                     style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
             </div>
             <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
                 <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
                     id="confirmModalCancelBtn"
-                    style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                    style="border-radius: 10px; background-color: var(--bs-secondary); font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
                 <button type="button"
                     class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
                     id="confirmModalConfirmBtn"

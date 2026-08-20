@@ -17,14 +17,14 @@ HOME_NAV = {
         'label': 'Dean Dashboard',
         'groups': [
             ('Dashboard', [
-                ('nav-overview', 'Overview', 'bi-grid-1x2-fill'),
+                ('nav-overview', 'Overview', 'ti-layout-dashboard'),
             ]),
             ('Phases', [
-                ('nav-phase1', 'Quota Cascading', 'bi-diagram-3-fill'),
-                ('nav-draft-ipcr', 'IPCR Draft Approval', 'bi-file-earmark-check-fill'),
-                ('nav-phase6', 'Batch Approvals', 'bi-check-all'),
-                ('nav-target-assign', 'Target Assignment', 'bi-person-plus-fill'),
-                ('nav-final-verification', 'Final Verification', 'bi-file-earmark-diff-fill'),
+                ('nav-phase1', 'Quota Cascading', 'ti-sitemap'),
+                ('nav-draft-ipcr', 'IPCR Draft Approval', 'ti-file-check'),
+                ('nav-phase6', 'Batch Approvals', 'ti-checks'),
+                ('nav-target-assign', 'Target Assignment', 'ti-user-plus'),
+                ('nav-final-verification', 'Final Verification', 'ti-clipboard-check'),
             ]),
         ],
     },
@@ -33,15 +33,15 @@ HOME_NAV = {
         'label': 'Program Chair Dashboard',
         'groups': [
             ('Dashboard', [
-                ('nav-overview', 'Overview', 'bi-grid-1x2-fill'),
+                ('nav-overview', 'Overview', 'ti-layout-dashboard'),
             ]),
             ('Phases', [
-                ('nav-phase1', 'Target Allocation', 'bi-diagram-3-fill'),
-                ('nav-phase2', 'Commitments', 'bi-person-check-fill'),
-                ('nav-phase3', 'Grading Engine', 'bi-calculator'),
+                ('nav-phase1', 'Target Allocation', 'ti-sitemap'),
+                ('nav-phase2', 'Commitments', 'ti-user-check'),
+                ('nav-phase3', 'Grading Engine', 'ti-calculator'),
             ]),
             ('Verification', [
-                ('nav-evidence-verification', 'Evidence Verification', 'bi-file-earmark-check-fill'),
+                ('nav-evidence-verification', 'Evidence Verification', 'ti-file-check'),
             ]),
         ],
     },
@@ -50,16 +50,16 @@ HOME_NAV = {
         'label': 'RET Chair Dashboard',
         'groups': [
             ('Dashboard', [
-                ('nav-overview', 'Overview', 'bi-grid-1x2-fill'),
+                ('nav-overview', 'Overview', 'ti-layout-dashboard'),
             ]),
             ('Phases', [
-                ('nav-phase1', 'Cascaded Targets', 'bi-journal-arrow-down'),
-                ('nav-target-assignment', 'Target Assignment', 'bi-clipboard2-check-fill'),
-                ('nav-phase2', 'Menu Config', 'bi-list-check'),
-                ('nav-phase4', 'Commitments', 'bi-person-check-fill'),
+                ('nav-phase1', 'Cascaded Targets', 'ti-download'),
+                ('nav-target-assignment', 'Target Assignment', 'ti-clipboard-check'),
+                ('nav-phase2', 'Menu Config', 'ti-list-check'),
+                ('nav-phase4', 'Commitments', 'ti-user-check'),
             ]),
             ('Verification', [
-                ('nav-evidence-verification', 'Evidence Verification', 'bi-file-earmark-check-fill'),
+                ('nav-evidence-verification', 'Evidence Verification', 'ti-file-check'),
             ]),
         ],
     },

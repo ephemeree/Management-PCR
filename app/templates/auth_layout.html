@@ -6,17 +6,37 @@
     <title>D-IPCR - {% block title %}{% endblock %}</title>
     <!-- Bootstrap 5 CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Tabler Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --c-accent:      #3E5C82;
+            --c-accent-dark: #2F4767;
+            --c-accent-glow: rgba(62,92,130,0.14);
+            --c-text:        #2B2822;
+            --c-text-sub:    #6B6459;
+            --c-border:      #E7E4DD;
+            --c-surface-alt: #FAFAF9;
+            --font-heading:  'Lora', Georgia, 'Times New Roman', serif;
+            --font-body:     'Public Sans', 'Segoe UI', system-ui, sans-serif;
+        }
+
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
             background-color: #ffffff;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            color: #1e293b;
+            font-family: var(--font-body);
+            color: var(--c-text);
         }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-heading);
+        }
+
         .auth-split-wrapper {
             min-height: 100vh;
             display: flex;
@@ -24,10 +44,10 @@
         }
         /* Left Hero Panel */
         .auth-hero-panel {
-            background-color: #063175; /* Deep Navy Blue matching reference image */
+            background-color: var(--c-accent);
             color: #ffffff;
-            flex: 0 0 45%;
-            max-width: 45%;
+            flex: 0 0 42%;
+            max-width: 42%;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -40,38 +60,44 @@
             gap: 0.75rem;
         }
         .hero-logo-icon {
-            font-size: 2.4rem;
+            font-size: 1.7rem;
             line-height: 1;
-            font-weight: 800;
             color: #ffffff;
+            width: 42px;
+            height: 42px;
+            border: 1.5px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
         .hero-brand-title {
-            font-size: 1.6rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
+            font-size: 1.4rem;
+            font-weight: 600;
+            letter-spacing: 0;
             margin: 0;
             line-height: 1.1;
             color: #ffffff;
         }
         .hero-brand-subtitle {
             font-size: 0.78rem;
-            opacity: 0.8;
+            opacity: 0.75;
             margin: 0;
             color: #ffffff;
         }
         .hero-headline {
-            font-size: 2.15rem;
-            font-weight: 600;
-            line-height: 1.35;
-            letter-spacing: -0.5px;
+            font-size: 1.9rem;
+            font-weight: 500;
+            line-height: 1.4;
+            letter-spacing: 0;
             color: #ffffff;
-            max-width: 480px;
+            max-width: 460px;
         }
 
         /* Right Form Panel */
         .auth-form-panel {
-            flex: 0 0 55%;
-            max-width: 55%;
+            flex: 1 1 58%;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -81,7 +107,7 @@
         }
         .auth-form-container {
             width: 100%;
-            max-width: 460px;
+            max-width: 420px;
             margin: 0 auto;
         }
 
@@ -96,7 +122,7 @@
                 padding: 2.5rem 2rem;
             }
             .hero-headline {
-                font-size: 1.5rem;
+                font-size: 1.35rem;
                 margin-top: 1.5rem;
             }
             .auth-form-panel {
@@ -107,31 +133,30 @@
         }
 
         .btn-dipcr {
-            background-color: #063175;
+            background-color: var(--c-accent);
             color: white;
             padding: 12px;
-            border-radius: 10px;
+            border-radius: 8px;
             font-weight: 600;
-            transition: all 0.3s ease;
+            transition: background-color 0.15s ease;
             border: none;
         }
         .btn-dipcr:hover {
-            background-color: #042254;
+            background-color: var(--c-accent-dark);
             color: #ffffff;
-            box-shadow: 0 4px 12px rgba(6, 49, 117, 0.25);
         }
         .form-control {
             padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            border: 1px solid var(--c-border);
             font-size: 0.95rem;
         }
         .form-control:focus {
-            border-color: #063175;
-            box-shadow: 0 0 0 0.2rem rgba(6, 49, 117, 0.15);
+            border-color: var(--c-accent);
+            box-shadow: 0 0 0 3px var(--c-accent-glow);
         }
         a {
-            color: #063175;
+            color: var(--c-accent);
             text-decoration: none;
             font-weight: 600;
         }
@@ -143,7 +168,7 @@
         }
         .password-field-wrapper .form-control {
             padding-right: 42px;
-            border-radius: 10px;
+            border-radius: 8px;
             font-weight: 500;
         }
         .toggle-password-btn {
@@ -153,7 +178,7 @@
             transform: translateY(-50%);
             background: transparent;
             border: none;
-            color: #94a3b8;
+            color: var(--c-text-sub);
             cursor: pointer;
             padding: 4px;
             z-index: 10;
@@ -164,7 +189,7 @@
             transition: color 0.2s ease;
         }
         .toggle-password-btn:hover {
-            color: #063175;
+            color: var(--c-accent);
         }
         .toggle-password-btn:focus {
             box-shadow: none;
@@ -177,28 +202,28 @@
         .policy-title {
             font-size: 0.88rem;
             font-weight: 700;
-            color: #475569;
+            color: var(--c-text-sub);
             margin-bottom: 0.5rem;
         }
         .policy-item {
             font-size: 0.82rem;
             font-weight: 600;
-            color: #475569;
+            color: var(--c-text-sub);
             display: flex;
             align-items: center;
             margin-bottom: 0.35rem;
         }
         .policy-item.valid {
-            color: #1e293b;
+            color: var(--c-text);
         }
         .policy-item.valid i {
-            color: #16a34a;
+            color: #2E5F42;
         }
         .policy-item.invalid {
-            color: #64748b;
+            color: #A39D8F;
         }
         .policy-item.invalid i {
-            color: #cbd5e1;
+            color: var(--c-border);
         }
     </style>
 </head>
@@ -208,7 +233,7 @@
         <!-- Left Hero Panel -->
         <div class="auth-hero-panel">
             <div class="hero-brand">
-                <div class="hero-logo-icon"><i class="bi bi-shield-check"></i></div>
+                <div class="hero-logo-icon"><i class="ti ti-shield-check"></i></div>
                 <div>
                     <h1 class="hero-brand-title">D-IPCR</h1>
                     <p class="hero-brand-subtitle">Digital IPCR System</p>
@@ -247,7 +272,7 @@
             </div>
 
             <!-- Footer -->
-            <div class="text-center pt-3" style="border-top: 1px solid #f1f5f9;">
+            <div class="text-center pt-3" style="border-top: 1px solid var(--c-border);">
                 <p class="text-muted small mb-0" style="font-size: 0.76rem;">&copy; 2026 D-IPCR Performance Management. Institutional Security Level: <strong>HIGH</strong></p>
             </div>
         </div>
@@ -266,14 +291,14 @@
                         if (input.type === 'password') {
                             input.type = 'text';
                             if (icon) {
-                                icon.classList.remove('bi-eye');
-                                icon.classList.add('bi-eye-slash');
+                                icon.classList.remove('ti-eye');
+                                icon.classList.add('ti-eye-off');
                             }
                         } else {
                             input.type = 'password';
                             if (icon) {
-                                icon.classList.remove('bi-eye-slash');
-                                icon.classList.add('bi-eye');
+                                icon.classList.remove('ti-eye-off');
+                                icon.classList.add('ti-eye');
                             }
                         }
                     }
