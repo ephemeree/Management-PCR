@@ -306,9 +306,15 @@ def get_locked_faculty_ipcrs(cursor, specialization, term_id):
             CONCAT(ep.first_name, ' ', ep.last_name) AS faculty_name,
             ep.academic_rank,
             ep.specialization,
-            (SELECT COUNT(*) FROM tbl_committed_targets ct 
-             JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
-             WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s AND ct.assigned_quantity > 0) AS target_count,
+            COALESCE(
+                NULLIF((SELECT COUNT(*) FROM tbl_committed_targets ct 
+                        JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
+                        WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s AND ct.assigned_quantity > 0), 0),
+                (SELECT COUNT(*) FROM tbl_draft_targets dt2 
+                 JOIN tbl_master_indicators mi2 ON dt2.indicator_id = mi2.indicator_id 
+                 WHERE dt2.emp_id = ep.emp_id AND mi2.term_id = %s AND dt2.proposed_quantity > 0),
+                0
+            ) AS target_count,
             CASE
                 WHEN (SELECT COUNT(*) FROM tbl_committed_targets ct 
                       JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
@@ -322,7 +328,7 @@ def get_locked_faculty_ipcrs(cursor, specialization, term_id):
         FROM tbl_employee_profiles ep
         LEFT JOIN tbl_ipcr_chair_review cr
             ON cr.emp_id = ep.emp_id AND cr.term_id = %s
-        WHERE ep.specialization = %s
+        WHERE (ep.specialization = %s OR ep.assigned_program = %s)
           AND ep.designation = 'Regular Faculty'
           AND cr.overall_status = 'Approved'
         GROUP BY ep.emp_id, ep.first_name, ep.last_name,
@@ -330,9 +336,8 @@ def get_locked_faculty_ipcrs(cursor, specialization, term_id):
                  cr.review_id, cr.overall_remarks, cr.reviewed_at
         ORDER BY ep.last_name, ep.first_name
     """
-    cursor.execute(query, (term_id, term_id, term_id, specialization))
-    columns = [col[0] for col in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    from app.models.connection import timed_query
+    return timed_query(cursor, query, (term_id, term_id, term_id, term_id, specialization, specialization), label="get_locked_faculty_ipcrs")
 
 
 def get_or_create_chair_review(conn, cursor, emp_id, term_id, chair_emp_id):

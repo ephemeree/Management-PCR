@@ -1,0 +1,44 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}IPCR Targets Approved by Program Chair and RET Chair{% endblock %}
+
+{% block content %}
+<span class="badge-status badge-success">Targets Approved</span>
+
+<h2 style="font-size: 19px; color: #1e293b; margin-top: 0;">Your IPCR Targets Have Been Approved</h2>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    Dear <strong>{{ faculty_name }}</strong>,
+</p>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    Great news! Your Individual Performance Commitment and Review (IPCR) targets for <strong>{{ period_display }}</strong> have been approved by both the <strong>Program Chair</strong> and <strong>RET Chair</strong>.
+</p>
+
+<div class="info-card">
+    <div class="info-row">
+        <span class="info-label">Faculty Member:</span>
+        <span class="info-value">{{ faculty_name }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Program / Department:</span>
+        <span class="info-value">{{ department or 'N/A' }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Rating Period:</span>
+        <span class="info-value">{{ period_display }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Current Stage:</span>
+        <span class="info-value" style="color: #16a34a;">IPCR Targets Approved by Program Chair &amp; RET Chair (Ready to Lock)</span>
+    </div>
+</div>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    You may log in to your dashboard to view your approved targets, proceed with commitment locking, and prepare your evidence files.
+</p>
+
+<div style="text-align: center; margin: 30px 0 10px 0;">
+    <a href="{{ action_url }}" class="btn-action">View Dashboard &amp; Targets</a>
+</div>
+{% endblock %}

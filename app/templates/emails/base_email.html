@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}D-IPCR System Notification{% endblock %}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f9;
+            color: #2d3748;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+        .email-container {
+            max-width: 620px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+        .email-header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            padding: 28px 32px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .email-header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .email-header p {
+            margin: 6px 0 0 0;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        .email-body {
+            padding: 32px;
+        }
+        .badge-status {
+            display: inline-block;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+        .badge-success {
+            background-color: #dcfce7;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+        .badge-primary {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        .info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #e2e8f0;
+            font-size: 14px;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+        .info-value {
+            color: #0f172a;
+            font-weight: 600;
+            text-align: right;
+        }
+        .btn-action {
+            display: inline-block;
+            background: #2563eb;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            text-align: center;
+            margin-top: 24px;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+        }
+        .btn-action:hover {
+            background: #1d4ed8;
+        }
+        .email-footer {
+            background: #f1f5f9;
+            padding: 20px 32px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+        }
+        .email-footer p {
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h1>Strategic Performance Management System</h1>
+            <p>Individual Performance Commitment and Review (IPCR) Portal</p>
+        </div>
+        <div class="email-body">
+            {% block content %}{% endblock %}
+        </div>
+        <div class="email-footer">
+            <p><strong>College of Information and Communications Technology</strong></p>
+            <p>This is an automated system notification. Please do not reply directly to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

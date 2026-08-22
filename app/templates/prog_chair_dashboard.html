@@ -389,7 +389,7 @@
                                     Locked</span>
                                 {% elif draft.review_status == 'Approved' %}
                                 <span class="badge bg-success px-3 py-2"><i
-                                        class="ti ti-circle-check me-1"></i>Approved by Both</span>
+                                        class="ti ti-circle-check me-1"></i>Approved by Program Chair &amp; RET Chair</span>
                                 {% elif draft.review_status in ('Rejected', 'Returned') %}
                                 <span class="badge px-3 py-2"
                                     style="background-color: rgba(176,69,61,0.08) !important; border: 1px solid rgba(176,69,61,0.2); color: var(--c-danger) !important;">
@@ -502,7 +502,7 @@
                                     Locked</span>
                                 {% else %}
                                 <span class="badge bg-success px-3 py-2"><i
-                                        class="ti ti-circle-check me-1"></i>Approved by Both</span>
+                                        class="ti ti-circle-check me-1"></i>Approved by Program Chair &amp; RET Chair</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
@@ -1064,7 +1064,7 @@
             const badge = document.getElementById('modalStatusBadge');
             const statusMap = {
                 'Locked': ['bg-dark text-white', 'lock', 'Approved & Locked'],
-                'Approved': ['bg-success', 'circle-check', 'Approved by Both'],
+                'Approved': ['bg-success', 'circle-check', 'Approved by Program Chair & RET Chair'],
                 'Rejected': ['bg-danger', 'circle-x', 'Returned'],
                 'Pending': ['bg-warning text-dark', 'hourglass', 'Waiting for RET Review & Approval'],
                 'Waiting for Approval': ['bg-info text-dark', 'history', 'Waiting for Approval'],

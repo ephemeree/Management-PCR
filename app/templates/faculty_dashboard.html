@@ -86,13 +86,17 @@
             <h2>My IPCR Targets</h2>
             <p>Review your assigned targets and select your RET components.</p>
         </div>
-        {% if is_locked %}
+        {% if has_final_ipcr %}
+        <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
+            <i class="ti ti-circle-check me-2"></i>IPCR is approved by Dean and is ready for print
+        </span>
+        {% elif is_locked %}
         <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
             <i class="ti ti-lock me-2"></i>Approved &amp; Locked
         </span>
         {% elif chair_review and chair_review.overall_status == 'Approved' %}
         <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
-            <i class="ti ti-circle-check me-2"></i>Approved by Both
+            <i class="ti ti-circle-check me-2"></i>Approved by Program Chair &amp; RET Chair
         </span>
         {% elif chair_review and chair_review.overall_status == 'Rejected' %}
         <span class="badge bg-danger px-3 py-2 fs-6 shadow-sm">
@@ -209,9 +213,12 @@
         <div class="d-flex align-items-start gap-3">
             <i class="ti ti-circle-check text-success fs-4 mt-1"></i>
             <div>
-                <h6 class="fw-bold text-success mb-1">Your Draft IPCR has been Approved by your Program Chair</h6>
+                <h6 class="fw-bold text-success mb-1">Your Draft IPCR Targets have been Approved by your Program Chair and RET Chair</h6>
                 {% if chair_review and chair_review.overall_remarks %}
-                <p class="mb-0 text-dark"><strong>Remarks:</strong> {{ chair_review.overall_remarks }}</p>
+                <p class="mb-1 text-dark"><strong>Program Chair Remarks:</strong> {{ chair_review.overall_remarks }}</p>
+                {% endif %}
+                {% if ret_review and ret_review.overall_remarks %}
+                <p class="mb-0 text-dark"><strong>RET Chair Remarks:</strong> {{ ret_review.overall_remarks }}</p>
                 {% endif %}
             </div>
         </div>
@@ -472,7 +479,7 @@
             {% elif ipcr_status == 'approved_by_program_chair' %}
             <div class="d-inline-flex flex-column align-items-end gap-2">
                 <div class="alert alert-success border-0 shadow-sm px-4 py-2 m-0">
-                    <i class="ti ti-circle-check me-2"></i> Your IPCR has been approved by your Program Chair!
+                    <i class="ti ti-circle-check me-2"></i> Your IPCR targets have been approved by your Program Chair and RET Chair!
                 </div>
                 <button type="button" id="lockBtn" class="btn btn-warning btn-lg px-5 shadow fw-bold">
                     <i class="ti ti-lock me-2"></i>Lock My IPCR
@@ -502,9 +509,15 @@
             <h2>Evidence Gathering</h2>
             <p>Upload your evidence and report accomplishment details for your locked commitment targets.</p>
         </div>
+        {% if has_final_ipcr %}
+        <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
+            <i class="ti ti-circle-check me-2"></i>IPCR is approved by Dean and is ready for print
+        </span>
+        {% else %}
         <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
             <i class="ti ti-lock me-2"></i>Locked &amp; Committed
         </span>
+        {% endif %}
     </div>
 
     {# ── Returned Evidence Notification Alert ──────────────── #}
@@ -702,11 +715,16 @@
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2><i class="ti ti-printer me-2 text-primary"></i>Finalized IPCR Details</h2>
-            <p class="text-muted mb-0">Your IPCR has been finalized and verified by the Dean. You may now review and print the final document.</p>
+            <p class="text-muted mb-0">Your IPCR is approved by Dean and is ready for print.</p>
         </div>
-        <button class="btn btn-primary px-4 fw-bold shadow-sm" onclick="window.open('{{ url_for('faculty.faculty_print_ipcr') }}', '_blank');">
-            <i class="ti ti-printer me-2"></i>Print IPCR
-        </button>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
+                <i class="ti ti-circle-check me-2"></i>IPCR is approved by Dean and is ready for print
+            </span>
+            <button class="btn btn-primary px-4 fw-bold shadow-sm" onclick="window.open('{{ url_for('faculty.faculty_print_ipcr') }}', '_blank');">
+                <i class="ti ti-printer me-2"></i>Print IPCR
+            </button>
+        </div>
     </div>
 
     <div class="row g-4">

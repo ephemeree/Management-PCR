@@ -1,0 +1,60 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}IPCR is approved by Dean and is ready for print{% endblock %}
+
+{% block content %}
+<span class="badge-status badge-success">Approved by Dean (Ready for Print)</span>
+
+<h2 style="font-size: 19px; color: #1e293b; margin-top: 0;">IPCR is Approved by Dean and is Ready for Print</h2>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    Dear <strong>{{ recipient_name or faculty_name }}</strong>,
+</p>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    This is to officially confirm that the <strong>Individual Performance Commitment and Review (IPCR)</strong> package for <strong>{{ faculty_name }}</strong> has had all evidences approved by the Program Chair and RET Chair, and has received <strong>Final Approval by the College Dean</strong>.
+</p>
+
+<div class="info-card">
+    <div class="info-row">
+        <span class="info-label">Faculty Member:</span>
+        <span class="info-value">{{ faculty_name }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Academic Rank:</span>
+        <span class="info-value">{{ academic_rank or 'N/A' }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Program / Department:</span>
+        <span class="info-value">{{ department or 'N/A' }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Rating Period:</span>
+        <span class="info-value">{{ period_display }}</span>
+    </div>
+    {% if final_score %}
+    <div class="info-row">
+        <span class="info-label">Final Weighted Rating:</span>
+        <span class="info-value" style="color: #16a34a; font-size: 16px;">{{ final_score }}</span>
+    </div>
+    {% endif %}
+    {% if adjectival_rating %}
+    <div class="info-row">
+        <span class="info-label">Adjectival Rating:</span>
+        <span class="info-value" style="color: #2563eb;">{{ adjectival_rating }}</span>
+    </div>
+    {% endif %}
+    <div class="info-row">
+        <span class="info-label">Approval Status:</span>
+        <span class="info-value" style="color: #16a34a;"><strong>IPCR is approved by Dean and is ready for print</strong></span>
+    </div>
+</div>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    The official SPMS-compliant IPCR document is now generated and available to view, review ratings breakdown, and print / download for official records.
+</p>
+
+<div style="text-align: center; margin: 30px 0 10px 0;">
+    <a href="{{ action_url }}" class="btn-action">View Finalized IPCR Document</a>
+</div>
+{% endblock %}

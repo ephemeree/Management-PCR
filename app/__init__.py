@@ -34,6 +34,19 @@ app.secret_key = os.getenv('SECRET_KEY', 'dipcr_version_13_secret_key')
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads', 'evidence')
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB limit
 
+# Configure Flask-Mail
+from flask_mail import Mail
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER') or os.getenv('SMTP_HOST') or ''
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT') or os.getenv('SMTP_PORT') or 587)
+app.config['MAIL_USE_TLS'] = (os.getenv('MAIL_USE_TLS') or os.getenv('SMTP_USE_TLS') or 'true').lower() in ('1', 'true', 'yes')
+app.config['MAIL_USE_SSL'] = (os.getenv('MAIL_USE_SSL') or os.getenv('SMTP_USE_SSL') or 'false').lower() in ('1', 'true', 'yes')
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME') or os.getenv('SMTP_USER') or ''
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD') or os.getenv('SMTP_PASSWORD') or ''
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'D-IPCR System <no-reply@cict.edu.ph>')
+app.config['MAIL_SUPPRESS_SEND'] = (os.getenv('MAIL_SUPPRESS_SEND') or 'false').lower() in ('1', 'true', 'yes')
+
+mail = Mail(app)
+
 # Initialize DB connection pool at startup
 from app.models.connection import init_db_pool
 init_db_pool()
@@ -68,9 +81,11 @@ def inject_own_ipcr_flag():
     not by role — a Program Chair, RET Chair or Dean is a designated faculty member with
     an IPCR of their own.
     """
-    from flask import session
+    from flask import session, has_request_context
     from app.models.criteria import is_designated
     from app.navigation import home_nav_for
+    if not has_request_context():
+        return {'has_own_ipcr': False, 'home_nav': None}
     return {
         'has_own_ipcr': is_designated(session.get('designation')),
         # The visitor's home dashboard nav, so the shared IPCR page can show it as links

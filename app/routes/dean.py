@@ -643,6 +643,15 @@ def dean_approve_package():
             WHERE ct.emp_id = %s AND mi.term_id = %s AND ct.status = 'Submitted to Dean'
         """, (emp_id, term_id))
         conn.commit()
+
+        # Trigger Tier 2 (Final) email notification asynchronously
+        try:
+            from app.services.notification_service import check_and_trigger_tier2_notification
+            check_and_trigger_tier2_notification(conn, cursor, int(emp_id), int(term_id))
+        except Exception as notif_err:
+            import logging
+            logging.getLogger(__name__).error(f"Error triggering Tier 2 notification: {notif_err}")
+
         return jsonify({'success': True, 'message': 'Evidence package successfully approved!'})
     except Exception as e:
         conn.rollback()

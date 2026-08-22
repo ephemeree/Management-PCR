@@ -92,6 +92,10 @@ def prog_chair_dashboard():
             for draft in pending_drafts:
                 draft['ipcr_status'] = get_overall_ipcr_status(cursor, draft['emp_id'], term_id)
             pending_drafts_count = get_pending_drafts_count(cursor, specialization, term_id)
+            
+            # Fetch approved & locked IPCRs for the second table
+            locked_drafts = get_locked_faculty_ipcrs(cursor, specialization, term_id)
+
             evidence_faculty_list = get_program_chair_evidence_faculty(cursor, specialization, term_id)
             pending_evidence_faculty_list = [f for f in evidence_faculty_list if not f.get('is_both_approved')]
             approved_evidence_faculty_list = [f for f in evidence_faculty_list if f.get('is_both_approved')]
@@ -641,6 +645,22 @@ def decide_ipcr():
                 return redirect(url_for('prog_chair.prog_chair_dashboard'))
 
         success, msg = decide_chair_review(conn, cursor, int(review_id), action, overall_remarks)
+        if success and row:
+            if action == 'approve':
+                try:
+                    from app.services.notification_service import check_and_trigger_tier1_notification
+                    check_and_trigger_tier1_notification(conn, cursor, int(emp_id), int(term_id))
+                except Exception as notif_err:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error triggering Tier 1 notification: {notif_err}")
+            elif action == 'reject':
+                try:
+                    from app.services.notification_service import send_return_notification
+                    send_return_notification(conn, cursor, "Program Chair", int(review_id), int(emp_id), int(term_id), overall_remarks)
+                except Exception as notif_err:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error triggering Return notification: {notif_err}")
+
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error processing decision: {str(e)}", "danger")

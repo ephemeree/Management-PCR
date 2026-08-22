@@ -612,6 +612,22 @@ def decide_ipcr():
                 return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
         success, msg = decide_ret_review(conn, cursor, int(review_id), action, overall_remarks)
+        if success and row:
+            if action == 'approve':
+                try:
+                    from app.services.notification_service import check_and_trigger_tier1_notification
+                    check_and_trigger_tier1_notification(conn, cursor, int(emp_id), int(term_id))
+                except Exception as notif_err:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error triggering Tier 1 notification: {notif_err}")
+            elif action == 'reject':
+                try:
+                    from app.services.notification_service import send_return_notification
+                    send_return_notification(conn, cursor, "RET Chair", int(review_id), int(emp_id), int(term_id), overall_remarks)
+                except Exception as notif_err:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error triggering Return notification: {notif_err}")
+
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error processing decision: {str(e)}", "danger")
