@@ -194,19 +194,28 @@ def prog_chair_faculty_evidence_details(emp_id):
 
         term_id = active_term['term_id']
 
-        cursor.execute("SELECT first_name, last_name, academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        cursor.execute("SELECT first_name, last_name, academic_rank, designation FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
         fac_row = cursor.fetchone()
         if not fac_row:
             return jsonify({'success': False, 'message': 'Faculty member not found'}), 404
         faculty_name = f"{fac_row[0]} {fac_row[1]}"
 
+        from app.models.criteria import is_designated
         from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
         targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+        designated = is_designated(fac_row[3])
 
         for t in targets:
             cat_name = t.get('category_name', '')
             is_ret = ('Research' in cat_name) or ('Extension' in cat_name)
             t['is_ret'] = is_ret
+            # A designated faculty/chair's Core Functions vs Strategic Priorities & Support
+            # Functions split is driven by is_admin_function, not category — the same
+            # indicator (e.g. Instruction) can be either depending on whether this is their
+            # personal teaching share or their departmental oversight quota. See "My IPCR"
+            # (designated_dashboard.html) for the same rule.
+            if designated:
+                t['is_core'] = not bool(t.get('is_admin_function'))
 
             # Program Chair can ONLY view evidence files for Instructions & Support, NOT Research & Extension
             if not is_ret:
@@ -219,6 +228,7 @@ def prog_chair_faculty_evidence_details(emp_id):
             'success': True,
             'faculty_name': faculty_name,
             'academic_rank': fac_row[2] or '',
+            'is_designated': designated,
             'targets': targets
         })
     except Exception as e:

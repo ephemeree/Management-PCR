@@ -206,6 +206,7 @@ def get_dean_review_items(cursor, review_id):
             mi.is_custom,
             COALESCE(dt.target_description, da.custom_description, mi.indicator_description) as target_description,
             COALESCE(dt.target_deadline, da.target_deadline, '1 Semester') as target_deadline,
+            dt.is_admin_function,
             CASE WHEN da.allocation_id IS NOT NULL THEN 1 ELSE 0 END as is_cascaded
         FROM tbl_ipcr_dean_review_items dri
         JOIN tbl_ipcr_dean_review dr ON dri.review_id = dr.review_id
@@ -220,10 +221,17 @@ def get_dean_review_items(cursor, review_id):
     for item in items:
         if item.get('category_name') == 'Custom Target Items':
             item['category_name'] = 'Support Functions'
+        is_admin_function = bool(item.get('is_admin_function'))
         is_tl = 'Teaching Load' in (item.get('indicator_description') or '')
-        is_cascaded = bool(item.get('is_cascaded'))
-        item['is_core'] = is_tl or is_cascaded
+        # da.allocation_id matches on emp_id + indicator_id alone, so a chair's Departmental
+        # Oversight item (is_admin_function=1) for an indicator they also personally hold —
+        # e.g. Instruction 1, both a personal Core Function share and the WST-wide oversight
+        # quota — would otherwise be flagged as cascaded/Core too, same as the real personal
+        # row. Only the non-oversight row can be Core Function.
+        is_cascaded = bool(item.get('is_cascaded')) and not is_admin_function
+        item['is_core'] = (not is_admin_function) and (is_tl or is_cascaded)
         item['is_cascaded'] = is_cascaded
+        item['is_admin_function'] = is_admin_function
     return items
 
 
@@ -318,11 +326,16 @@ def save_dean_review_items(cursor, conn, review_id, items):
                 if not r:
                     continue
                 emp_id, term_id = r
-                # Insert draft target
+                # Insert draft target. Duration defaults to 1 semester since the Dean's
+                # quick-add here doesn't collect one — without it the target has no deadline
+                # at all, which Timeliness scoring needs.
+                from app.models.scoring import format_duration
+                dur_value, dur_unit = 1, 'semesters'
                 cursor.execute("""
-                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                    VALUES (%s, %s, %s, 'Pending Review')
-                """, (emp_id, indicator_id, reviewed_qty))
+                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
+                                                   target_duration_value, target_duration_unit, target_deadline)
+                    VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s)
+                """, (emp_id, indicator_id, reviewed_qty, dur_value, dur_unit, format_duration(dur_value, dur_unit)))
                 new_draft_id = cursor.lastrowid
                 # Insert review item linked to new draft
                 cursor.execute("""
@@ -612,15 +625,15 @@ def get_dean_evidence_faculty(cursor, term_id):
         LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
         WHERE mi.term_id = %s
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program, ep.designation, sa.system_role
-        HAVING (
-            MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
-            OR (
-                (sa.system_role IN ('RET_CHAIR', 'PROGRAM_CHAIR', 'DESIGNATED_FACULTY', 'DEAN') 
-                 OR (ep.designation IS NOT NULL AND ep.designation <> ''
-                    AND ep.designation NOT IN ('Regular Faculty', 'Admin')))
-                AND MAX(CASE WHEN ct.status IN ('Submitted', 'Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
-            )
-        )
+        -- A plain Designated Faculty member's evidence must clear Program Chair review first
+        -- (get_program_chair_evidence_faculty lists them there) and only reaches 'Submitted to
+        -- Dean' once the Program Chair submits the package — same status transition Regular
+        -- Faculty goes through. A Program Chair/RET Chair/Dean's own evidence has no one else
+        -- to review it, so submit_designated_evidences sends theirs straight to 'Submitted to
+        -- Dean' too. Either way, 'Submitted to Dean'/'Dean Approved' is the correct, sole gate
+        -- for landing here — a prior broader OR-branch let anyone with a non-Regular-Faculty
+        -- designation in at the earlier 'Submitted' status, before Program Chair sign-off.
+        HAVING MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name
     """
     rows = timed_query(cursor, query, (term_id,), label="get_dean_evidence_faculty")

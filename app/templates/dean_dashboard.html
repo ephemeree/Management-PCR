@@ -1508,7 +1508,8 @@
                             is_core: origInfo.is_core,
                             is_cascaded: origInfo.is_cascaded,
                             is_custom: origInfo.is_custom,
-                            is_new: false
+                            is_new: false,
+                            _key: 'i' + origInfo.item_id
                         });
                     } else {
                         deanReviewItems.push({
@@ -1519,7 +1520,8 @@
                             original_quantity: -1,
                             reviewed_quantity: 1,
                             item_remarks: '',
-                            is_new: true
+                            is_new: true,
+                            _key: 'n' + ind.indicator_id + '_' + Date.now()
                         });
                     }
 
@@ -1557,7 +1559,8 @@
                             is_cascaded: origInfo.is_cascaded,
                             is_custom: origInfo.is_custom,
                             total_target_value: ind.total_target_value,
-                            is_new: false
+                            is_new: false,
+                            _key: 'i' + origInfo.item_id
                         });
                     } else {
                         deanReviewItems.push({
@@ -1569,7 +1572,8 @@
                             reviewed_quantity: 1,
                             item_remarks: '',
                             total_target_value: ind.total_target_value,
-                            is_new: true
+                            is_new: true,
+                            _key: 'n' + ind.indicator_id + '_' + Date.now()
                         });
                     }
 
@@ -1584,14 +1588,23 @@
         document.getElementById('modalBody')?.addEventListener('click', function (e) {
             const btn = e.target.closest('.remove-review-item-btn');
             if (btn) {
+                // Match by row key, not indicator_id — a chair's personal Core Function row
+                // and their Strategic Priorities oversight row can share an indicator_id, and
+                // this must remove only the specific row that was clicked.
+                const key = btn.getAttribute('data-key');
                 const indId = parseInt(btn.getAttribute('data-indicator-id'), 10);
-                const index = deanReviewItems.findIndex(x => parseInt(x.indicator_id, 10) === indId);
+                const index = deanReviewItems.findIndex(x => x._key === key);
                 if (index > -1) {
                     const item = deanReviewItems[index];
                     deanReviewItems.splice(index, 1);
+                    // Another row for the same indicator (e.g. the personal Core Function
+                    // share) may still be present — don't offer it as addable again.
+                    const stillPresent = deanReviewItems.some(x => parseInt(x.indicator_id, 10) === indId);
 
                     // Check if this indicator is originally a College-Wide target
-                    if (deanReviewData.college_wide_ids && deanReviewData.college_wide_ids.includes(indId)) {
+                    if (stillPresent) {
+                        // no-op — indicator still represented by another row
+                    } else if (deanReviewData.college_wide_ids && deanReviewData.college_wide_ids.includes(indId)) {
                         if (!deanReviewData.college_wide_unpicked.some(x => parseInt(x.indicator_id, 10) === indId)) {
                             deanReviewData.college_wide_unpicked.push({
                                 indicator_id: item.indicator_id,
@@ -1630,19 +1643,22 @@
             }
         });
 
-        // Event delegation for updating input values in memory and real-time validation
+        // Event delegation for updating input values in memory and real-time validation.
+        // Keyed by row (data-key), not indicator_id — see the _key note where it's assigned —
+        // otherwise editing one of two same-indicator rows silently overwrote the other's
+        // in-memory value.
         document.getElementById('modalBody')?.addEventListener('input', function (e) {
             const input = e.target;
             if (input.classList.contains('review-qty')) {
-                const indId = parseInt(input.getAttribute('data-indicator-id'), 10);
+                const key = input.getAttribute('data-key');
                 const val = parseInt(input.value, 10) || 0;
-                const item = deanReviewItems.find(x => parseInt(x.indicator_id, 10) === indId);
+                const item = deanReviewItems.find(x => x._key === key);
                 if (item) item.reviewed_quantity = val;
                 checkDeanEdits();
             } else if (input.classList.contains('review-remark')) {
-                const indId = parseInt(input.getAttribute('data-indicator-id'), 10);
+                const key = input.getAttribute('data-key');
                 const val = input.value;
-                const item = deanReviewItems.find(x => parseInt(x.indicator_id, 10) === indId);
+                const item = deanReviewItems.find(x => x._key === key);
                 if (item) item.item_remarks = val;
             }
         });
@@ -1672,29 +1688,29 @@
         if (deanReviewItems.length !== initialReviewSnapshot.items.length) {
             hasEdits = true;
         } else {
-            // 2. Read live values directly from DOM review-qty inputs
+            // 2. Read live values directly from DOM review-qty inputs, keyed by row (data-key),
+            // not indicator_id — two rows can share an indicator_id (see the _key note above),
+            // and keying by indicator_id here silently overwrote one row's value with the
+            // other's, comparing the wrong number and permanently locking Approve.
             const currentInputs = document.querySelectorAll('.review-qty:not([disabled])');
             const currentItemsMap = {};
             currentInputs.forEach(function (inp) {
-                const indId = parseInt(inp.getAttribute('data-indicator-id'), 10);
+                const key = inp.getAttribute('data-key');
                 const val = parseInt(inp.value, 10);
-                if (!isNaN(indId)) {
-                    currentItemsMap[indId] = isNaN(val) ? 0 : val;
+                if (key) {
+                    currentItemsMap[key] = isNaN(val) ? 0 : val;
                 }
             });
 
             // Compare each snapshot item against current live input value
             for (const snapItem of initialReviewSnapshot.items) {
-                const snapIndId = parseInt(snapItem.indicator_id, 10);
-                const snapQty = parseInt(snapItem.quantity, 10);
-
-                if (!(snapIndId in currentItemsMap)) {
+                if (!(snapItem.key in currentItemsMap)) {
                     hasEdits = true;
                     break;
                 }
 
-                const liveQty = currentItemsMap[snapIndId];
-                if (liveQty !== snapQty) {
+                const liveQty = currentItemsMap[snapItem.key];
+                if (liveQty !== snapItem.quantity) {
                     hasEdits = true;
                     break;
                 }
@@ -1742,6 +1758,13 @@
 
                 deanReviewData = data;
                 deanReviewItems = data.items || [];
+                // A designated faculty/chair can legitimately have two review items sharing the
+                // same indicator_id — their personal Core Function share of an indicator and
+                // their departmental Strategic Priorities oversight of that same indicator (see
+                // get_dean_review_items). Every existing item has a real, unique item_id, so
+                // that's the key used everywhere below a *specific row* needs to be identified
+                // — indicator_id alone can no longer be assumed unique per person.
+                deanReviewItems.forEach(item => { item._key = 'i' + item.item_id; });
 
                 // Store permanent map of original submitted items for this modal session
                 originalSubmittedItemsMap = {};
@@ -1752,7 +1775,7 @@
                 // Capture initial snapshot when modal opens to detect modifications
                 initialReviewSnapshot = {
                     items: deanReviewItems.map(item => ({
-                        indicator_id: parseInt(item.indicator_id, 10),
+                        key: item._key,
                         quantity: parseInt(item.reviewed_quantity != null ? item.reviewed_quantity : item.original_quantity, 10)
                     }))
                 };
@@ -1864,7 +1887,7 @@
                     </td>
                     <td class="text-center">
                         <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
-                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-original="${item.original_quantity}"
+                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" data-original="${item.original_quantity}"
                                value="${item.reviewed_quantity}" min="0"
                                ${isLocked ? 'disabled' : ''}>
                     </td>
@@ -1874,12 +1897,12 @@
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             <input type="text" class="form-control form-control-sm review-remark shadow-sm"
-                                   data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
+                                   data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
                                    value="${item.item_remarks || ''}"
                                    placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
                             ${!isLocked ? `
-                            <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn" 
-                                    data-indicator-id="${item.indicator_id}" title="Remove target">
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn"
+                                    data-indicator-id="${item.indicator_id}" data-key="${item._key}" title="Remove target">
                                 <i class="ti ti-trash"></i>
                             </button>
                             ` : ''}
@@ -1907,6 +1930,9 @@
                 if (item.original_quantity === -1) {
                     badgeHtml += ' <span class="badge bg-info text-dark mb-1 ms-1">Added by Dean</span>';
                 }
+                if (item.is_admin_function) {
+                    badgeHtml += ' <span class="badge bg-info text-dark border mb-1 ms-1"><i class="ti ti-sitemap me-1"></i>Departmental Oversight</span>';
+                }
 
                 const descText = item.target_description || item.indicator_description;
 
@@ -1922,7 +1948,7 @@
                     </td>
                     <td class="text-center">
                         <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
-                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-original="${item.original_quantity}"
+                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" data-original="${item.original_quantity}"
                                value="${item.reviewed_quantity}" min="0"
                                ${isLocked ? 'disabled' : ''}>
                     </td>
@@ -1932,12 +1958,12 @@
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             <input type="text" class="form-control form-control-sm review-remark shadow-sm"
-                                   data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" 
+                                   data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
                                    value="${item.item_remarks || ''}"
                                    placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
                             ${!isLocked ? `
-                            <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn" 
-                                    data-indicator-id="${item.indicator_id}" title="Remove target">
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn"
+                                    data-indicator-id="${item.indicator_id}" data-key="${item._key}" title="Remove target">
                                 <i class="ti ti-trash"></i>
                             </button>
                             ` : ''}

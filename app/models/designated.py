@@ -23,7 +23,16 @@ def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True, 
               AND tc.review_lane = 'RET'
             ORDER BY tc.category_name, mi.indicator_id
         """
-        return timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators_ret")
+        rows = timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators_ret")
+        if exclude_claimed:
+            # An indicator the Dean cascades to "RET / Extension" is already carried whole
+            # as the RET Chair's oversight target (get_oversight_targets) — unlike Instruction,
+            # there is no personal-allocation table for RET, so there's no legitimate reason
+            # for it to also appear as a free pick here. Leaving it in let the same indicator
+            # be selected twice under two different categories (see submit_designated_ipcr).
+            claimed = get_claimed_indicator_ids(cursor, term_id)
+            rows = [r for r in rows if r['indicator_id'] not in claimed]
+        return rows
 
     query = """
         SELECT mi.indicator_id, mi.indicator_description, tc.category_name
@@ -168,23 +177,37 @@ def get_oversight_targets(cursor, emp_id, term_id):
         r['target_deadline'] = r.get('target_deadline') or ''
         r['status'] = r.get('review_status') or 'Draft'
         r['is_admin_function'] = True
+        # Narrower than is_admin_function: this row is specifically a chair's departmental
+        # oversight quota (not just "not Core Function" — a freely-picked pool item is also
+        # is_admin_function=1 after submission). The template uses this one for anything
+        # UI-specific to the oversight row: the badge, locking the quantity, and picking the
+        # `_adm`-suffixed deadline field name that avoids colliding with a personal Core
+        # Function row that happens to share this indicator_id.
+        r['is_oversight_cascade'] = True
         r['is_cascaded'] = True
         r['is_selected'] = True
         r['is_core'] = False
+        # The quantity is fixed (the department's/RET's whole cascaded quota, not a share
+        # the chair can adjust), but the deadline is real chair-provided input the Timeliness
+        # score needs — see the duration handling in submit_designated_ipcr.
         r['is_locked'] = False
         r['is_custom'] = False
     return rows
 
 
-def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, custom_targets):
+def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, custom_targets, oversight_durations=None):
     """
-    Transactionally processes standard baseline selections and inserts custom ad-hoc targets 
+    Transactionally processes standard baseline selections and inserts custom ad-hoc targets
     upstream before compiling all submissions securely inside tbl_draft_targets.
     Also resets any prior Dean review so the Dean can review again.
-    
+
     selected_targets: [{'indicator_id': int, 'proposed_quantity': int, 'target_description': str, 'target_deadline': str}]
     custom_targets: [{'description': str, 'proposed_quantity': int, 'category_name': str, 'target_deadline': str}]
+    oversight_durations: {indicator_id: {'target_duration_value', 'target_duration_unit', 'target_deadline'}} —
+        the chair's deadline input for their departmental oversight targets (see get_oversight_targets).
+        Quantity/description for those targets is never taken from the form, only the deadline.
     """
+    oversight_durations = oversight_durations or {}
     try:
         # 0. Clear any prior Dean review so Dean can re-review fresh
         cursor.execute(
@@ -217,8 +240,26 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
         """, (emp_id, term_id))
         core_indicator_ids = {r[0] for r in cursor.fetchall()}
 
+        # A chair's/RET chair's departmental oversight quota (see get_oversight_targets) can
+        # be the *same indicator* as their personal Core Function allocation above — e.g. the
+        # Dean cascades "Instruction 1" to WST, the WST chair keeps a personal teaching share
+        # of it (Core Function, in core_indicator_ids) and separately answers for the
+        # department's full quota (Strategic Priorities, inserted below from oversight_rows,
+        # never trusted from the form). An indicator with *no* personal allocation — Support/
+        # Admin/Innovation quotas, or any RET/Extension quota — only ever appears here as a
+        # stray, data-less submission (the template renders no qty/duration fields for a pure
+        # oversight row), so it's dropped; one *with* a personal allocation is real Core
+        # Function input and must still be processed normally below.
+        oversight_rows = get_oversight_targets(cursor, emp_id, term_id)
+        oversight_indicator_ids = {r['indicator_id'] for r in oversight_rows}
+        pure_oversight_ids = oversight_indicator_ids - core_indicator_ids
+
         # 2. Process Standard Baseline Selected Targets
         for target in selected_targets:
+            if target['indicator_id'] in pure_oversight_ids:
+                # A stray submission for an oversight-only row (see above) — the real
+                # oversight target is inserted separately below.
+                continue
             desc = target.get('target_description') or None
             dead = target.get('target_deadline') or None
             dur_value = target.get('target_duration_value')
@@ -232,10 +273,28 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
                 VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, %s)
             """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead, dur_value, dur_unit, is_admin))
 
-        # Ensure the mandatory Teaching Load target is saved, using the Admin's configured
-        # hours and duration for Designated faculty (previously hardcoded at 10 hours).
         from app.models.institution import resolve_teaching_load, teaching_load_description
         from app.models.scoring import format_duration
+
+        # 2b. Insert the chair's/RET chair's departmental oversight targets. Quantity and
+        # description come from get_oversight_targets (the cascade total — never the form, see
+        # the note above); the deadline is real chair input, submitted separately in
+        # oversight_durations (the `_adm`-suffixed fields) precisely because it can't be
+        # derived from anywhere else and Timeliness scoring needs it.
+        for r in oversight_rows:
+            ov_input = oversight_durations.get(r['indicator_id'], {})
+            ov_dur_value = (ov_input.get('target_duration_value') or r.get('target_duration_value') or 1)
+            ov_dur_unit = (ov_input.get('target_duration_unit') or r.get('target_duration_unit') or 'semesters')
+            ov_deadline = (ov_input.get('target_deadline') or r.get('target_deadline')
+                           or format_duration(ov_dur_value, ov_dur_unit))
+            cursor.execute("""
+                INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
+                                               target_duration_value, target_duration_unit, is_admin_function)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1)
+            """, (emp_id, r['indicator_id'], r['total_target_value'], r['target_description'], ov_deadline, ov_dur_value, ov_dur_unit))
+
+        # Ensure the mandatory Teaching Load target is saved, using the Admin's configured
+        # hours and duration for Designated faculty (previously hardcoded at 10 hours).
         cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
         tl_rank_row = cursor.fetchone()
         tl_hours, tl_dur_value, tl_dur_unit = resolve_teaching_load(
@@ -344,6 +403,7 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         LEFT JOIN tbl_draft_targets dt ON dt.emp_id = ct.emp_id AND dt.indicator_id = ct.indicator_id
+              AND dt.is_admin_function = ct.is_admin_function
         WHERE ct.emp_id = %s AND mi.term_id = %s
         ORDER BY tc.category_name, mi.indicator_id
     """
@@ -419,14 +479,27 @@ def submit_designated_evidences(conn, cursor, emp_id, term_id):
     if not readiness['all_evidence_ready']:
         return False, "All targets must have uploaded evidence and meet target quantities before submitting."
 
+    # A plain Designated Faculty member reports to a Program Chair, same as Regular Faculty —
+    # their evidence must go through that Program Chair's review (get_program_chair_evidence_
+    # faculty already lists them there) before it reaches the Dean. A Program Chair/RET Chair/
+    # Dean has no one else positioned to review their own evidence, so theirs goes straight to
+    # the Dean, same as before.
+    cursor.execute("SELECT designation FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+    row = cursor.fetchone()
+    designation = (row[0] or '').strip() if row else ''
+    is_chair = designation in ('Program Chair', 'RET Chair', 'Dean')
+    new_status = 'Submitted to Dean' if is_chair else 'Submitted'
+    success_msg = ("Evidences successfully submitted to Dean for verification." if is_chair
+                   else "Evidences successfully submitted to the Program Chair for verification.")
+
     try:
         target_ids = [t['target_id'] for t in dpcr_targets if t.get('target_id')]
         if target_ids:
             placeholders = ','.join(['%s'] * len(target_ids))
-            update_sql = f"UPDATE tbl_committed_targets SET status = 'Submitted to Dean' WHERE emp_id = %s AND target_id IN ({placeholders})"
-            cursor.execute(update_sql, [emp_id] + target_ids)
+            update_sql = f"UPDATE tbl_committed_targets SET status = %s WHERE emp_id = %s AND target_id IN ({placeholders})"
+            cursor.execute(update_sql, [new_status, emp_id] + target_ids)
             conn.commit()
-            return True, "Evidences successfully submitted to Dean for verification."
+            return True, success_msg
     except Exception as e:
         conn.rollback()
         return False, f"Error submitting evidences: {str(e)}"

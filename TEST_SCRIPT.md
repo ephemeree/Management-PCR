@@ -457,6 +457,18 @@ Log in as DESIGNATED_FACULTY.
       — *even when their target type is Instruction*.
 - [ ] Neither weighted category shows **0 targets** while the other holds them all.
 
+**Evidence submission routing — plain Designated Faculty goes through the Program Chair:**
+- [ ] Upload evidence for all committed targets and **Submit Evidences**.
+- [ ] Log in as the Program Chair of this person's department → **Evidence Verification** →
+      this Designated Faculty appears in the **pending** queue (not yet Dean-visible).
+- [ ] Log in as Dean → **Final Verification** → this person is **absent** until the Program
+      Chair submits the package to the Dean.
+- [ ] Program Chair reviews the files and clicks **Submit to Dean** → *now* the Dean sees them
+      in the pending queue.
+- [ ] Repeat for a Program Chair's / RET Chair's / Dean's **own** evidence: it should reach the
+      Dean's queue directly on submit, skipping Program Chair review (no one else is positioned
+      to review a chair's own evidence).
+
 ---
 
 ## Phase J — Program Chair / RET Chair / Dean own IPCR
@@ -481,8 +493,15 @@ Run after B and C so there are cascades and allocations to pick up.
 ### J3. Strategic Priorities/Support — oversight cascades
 - [ ] **Program Chair**: pre-filled with **every** target the Dean cascaded to their
       department, at **full quota** (cascade `5` to WST → the WST chair reads **5**).
-- [ ] Rows are **editable**, not locked.
-- [ ] **RET Chair**: pre-filled with everything cascaded to **RET / Extension**, full quantity.
+- [ ] Rows are badged **"Departmental Oversight — Fixed Quota"**; the **quantity is locked**
+      (not editable — it's the department's/RET's whole cascade, not a share), but the
+      **checkbox is pre-checked** (not disabled) like any other row, and the **deadline
+      (duration value + unit) is editable** — there's no other source for it, and Timeliness
+      scoring needs it.
+- [ ] Leaving an oversight row's deadline blank and submitting is **refused**, same as any
+      other target.
+- [ ] **RET Chair**: pre-filled with everything cascaded to **RET / Extension**, full quantity,
+      same locked-quantity / editable-deadline behaviour.
 - [ ] **Dean**: **no auto-selected targets at all** — the section starts empty.
 - [ ] All of them can still add from the selectable pool.
 
@@ -490,12 +509,26 @@ Run after B and C so there are cascades and allocations to pick up.
 - [ ] A target cascaded to a department or to RET does **not** appear in the pool anyone
       else can select from.
 - [ ] Another Designated Faculty sees only unclaimed instruction/support targets.
+- [ ] The RET Chair's own free-pick pool likewise excludes anything already cascaded to
+      RET / Extension — it has no personal-allocation table the way Instruction does for a
+      Program Chair, so there's no legitimate reason for it to be pickable there too.
 
 ### J5. The same indicator, both ways
-- [ ] A chair may hold one indicator **twice** — the oversight copy (full quota) and their
-      own allocated teaching work.
+- [ ] A chair may hold one indicator **twice** — the oversight copy (full quota, Strategic
+      Priorities/Support) and their own allocated teaching work (Core Functions). Submit and
+      confirm **exactly one row of each** appears — not two of either.
 - [ ] In Summary of Ratings the oversight copy sits under **Strategic Priorities/Support
       (75%)** and the personal copy under **Core Functions (25%)**.
+- [ ] Dean's **IPCR Draft Approval** modal shows the same split — the oversight copy under
+      Strategic Priorities, not duplicated into Core Functions.
+- [ ] In that modal, with nothing touched, **Approve IPCR is enabled** (not permanently
+      disabled by a false "quantities were modified" detection).
+- [ ] Edit a quantity in the modal → Approve correctly becomes disabled ("must return to
+      faculty"); revert it → Approve re-enables.
+- [ ] **Program Chair's evidence-verification modal** for this chair/faculty shows the same
+      two tables — Core Functions, then Strategic Priorities & Support Functions — matching
+      their own My IPCR page, not a category-based breakdown (Strategic/Research/Extension/
+      Support) with the oversight row under the wrong heading.
 
 ### J6. Dean sees the chairs & assigns College-Wide targets
 - [ ] Dean → **Target Assignment** lists Program Chairs and the RET Chair among designated faculty with their assigned targets count.
@@ -638,6 +671,12 @@ Each of these should be **refused**. They are the checks that matter most.
     references them, since co-author tagging was removed.
 12. **108 evidence PDFs are tracked in git.** They are runtime uploads and will keep
     accumulating; `app/uploads/evidence/` should be gitignored and untracked.
+13. **A designated faculty/chair cannot self-correct a Dean-rejected submission's data** —
+    "Re-submit IPCR for Approval" only flips status back to Pending Review, it does not reopen
+    the target-selection form. If the Dean adds a target with no deadline while reviewing (or
+    any other field needs fixing before resubmission), the chair has no UI path to fix it
+    themselves; someone has to correct the data directly. Not touched in the 2026-08-22 fixes
+    (see `old MDS/updates.md` §4) — flagged there, scoped as a separate feature gap.
 
 ---
 

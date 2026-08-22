@@ -1775,7 +1775,21 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                 return;
             }
 
-            function getCategoryHeaderInfo(rawCat) {
+            // A designated faculty/chair's IPCR ("My IPCR") only ever shows two tables —
+            // Core Functions, then Strategic Priorities & Support Functions — driven by
+            // is_core (from is_admin_function), not category_name: the same category
+            // (Instruction) can land in either depending on whether it's their personal
+            // teaching share or their departmental oversight quota. Grouping by category_name
+            // here instead produced a different table breakdown than what the faculty member
+            // themselves sees, and could put an oversight item under the wrong heading.
+            // Regular Faculty has no such split, so they keep the category-based grouping.
+            function getCategoryHeaderInfo(t) {
+                if (data.is_designated) {
+                    return t.is_core
+                        ? { key: 'CORE', title: '1. CORE FUNCTIONS' }
+                        : { key: 'STRATEGIC_SUPPORT', title: '2. STRATEGIC PRIORITIES & SUPPORT FUNCTIONS' };
+                }
+                const rawCat = t.category_name;
                 if (!rawCat) return { key: 'OTHERS', title: 'OTHER TARGETS' };
                 const lower = rawCat.toLowerCase();
                 if (lower.includes('instruction')) return { key: 'STRATEGIC', title: 'STRATEGIC PRIORITIES' };
@@ -1785,11 +1799,11 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                 return { key: rawCat.toUpperCase(), title: rawCat.toUpperCase() };
             }
 
-            const order = ['STRATEGIC', 'RESEARCH', 'EXTENSION', 'SUPPORT'];
+            const order = ['CORE', 'STRATEGIC_SUPPORT', 'STRATEGIC', 'RESEARCH', 'EXTENSION', 'SUPPORT'];
             const groups = {};
 
             data.targets.forEach(t => {
-                const info = getCategoryHeaderInfo(t.category_name);
+                const info = getCategoryHeaderInfo(t);
                 if (!groups[info.key]) {
                     groups[info.key] = { title: info.title, items: [] };
                 }

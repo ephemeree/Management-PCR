@@ -89,15 +89,29 @@ def designated_dashboard():
             """, (emp_id, term_id))
             alloc_ids = {r[0] for r in cursor.fetchall()}
 
+            # is_admin_function (a committed/draft row's own flag) means "not this person's
+            # personal Core Function work" broadly — it's also 1 for a freely-picked Strategic
+            # Priorities/Support item, not just a chair's departmental oversight quota. The
+            # "Departmental Oversight" badge needs the narrower set: only indicators actually
+            # cascaded to this chair's role.
+            from app.models.designated import get_oversight_targets
+            oversight_ids = {r['indicator_id'] for r in get_oversight_targets(cursor, emp_id, term_id)}
+
             dpcr_targets = get_designated_committed_targets(cursor, emp_id, term_id)
             for t in dpcr_targets:
                 t['is_selected'] = True
                 t['total_target_value'] = t['assigned_quantity']
                 if t.get('category_name') == 'Custom Target Items':
                     t['category_name'] = 'Support Functions'
-                if 'Teaching Load' in (t.get('indicator_description') or '') or t['indicator_id'] in alloc_ids:
+                # A chair's oversight row (is_admin_function) can share an indicator_id with
+                # their own personal Core Function allocation of that same indicator — only
+                # the personal row belongs in Core Functions; the oversight row stays a
+                # Strategic Priorities/Support Function target regardless of alloc_ids.
+                if not t.get('is_admin_function') and (
+                        'Teaching Load' in (t.get('indicator_description') or '') or t['indicator_id'] in alloc_ids):
                     t['is_core'] = True
                     t['is_locked'] = True
+                t['is_oversight_cascade'] = bool(t.get('is_admin_function')) and t['indicator_id'] in oversight_ids
                 t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             evidence_readiness = check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets)
             has_final_ipcr = any(t.get('status') == 'Dean Approved' for t in dpcr_targets) if dpcr_targets else False
@@ -280,10 +294,15 @@ def designated_dashboard():
             """, (emp_id, term_id))
             alloc_ids = {r[0] for r in cursor.fetchall()}
 
+            # See the is_committed branch above for why this is narrower than is_admin_function.
+            from app.models.designated import get_oversight_targets
+            oversight_ids = {r['indicator_id'] for r in get_oversight_targets(cursor, emp_id, term_id)}
+
             # If they cannot edit, we just load their submitted drafts
             dpcr_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
                        dt.target_description, dt.target_deadline, dt.target_duration_value, dt.target_duration_unit,
+                       dt.is_admin_function,
                        mi.indicator_description, tc.category_name, mi.is_custom,
                        dri.item_remarks as dean_remarks, dri.original_quantity, dri.reviewed_quantity
                 FROM tbl_draft_targets dt
@@ -297,9 +316,14 @@ def designated_dashboard():
                 t['is_selected'] = True
                 if t['category_name'] == 'Custom Target Items':
                     t['category_name'] = 'Support Functions'
-                if 'Teaching Load' in t['indicator_description'] or t['indicator_id'] in alloc_ids:
+                # See the is_committed branch above: an oversight row can share an
+                # indicator_id with the chair's own personal Core Function allocation, so
+                # alloc_ids membership alone isn't enough to call it Core.
+                if not t.get('is_admin_function') and (
+                        'Teaching Load' in t['indicator_description'] or t['indicator_id'] in alloc_ids):
                     t['is_core'] = True
                     t['is_locked'] = True
+                t['is_oversight_cascade'] = bool(t.get('is_admin_function')) and t['indicator_id'] in oversight_ids
 
     cursor.close()
     conn.close()
@@ -461,8 +485,21 @@ def submit_designated_ipcr_route():
         flash("No active academic term found.", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
-    # Parse baseline target checkboxes
-    selected_ids = request.form.getlist('selected_indicators[]')
+    # Departmental Oversight rows (get_oversight_targets) render an `admin_indicator_ids[]`
+    # marker in the template. Their indicator_id can be the *same* as a personal Core
+    # Function row above (e.g. the chair's own Instruction share) — Table 1 always submits
+    # that personal row's own selected_indicators[]/target_qty_<id>, so the same id can
+    # legitimately appear twice in the form. Quantity/category for the oversight instance is
+    # never trusted from the form regardless — see submit_designated_ipcr.
+    admin_ids = {int(x) for x in request.form.getlist('admin_indicator_ids[]') if x}
+
+    # Parse baseline target checkboxes. dict.fromkeys dedupes while keeping order: an id
+    # shared between a personal Core row (Table 1's hidden field) and an oversight row
+    # (Table 2's checkbox) must produce exactly one entry here, built from the single
+    # target_qty_<id>/target_desc_<id>/target_dur_value_<id> fields Table 1 rendered for it —
+    # Table 2 no longer renders those for oversight rows, so there's no second, conflicting
+    # source to accidentally merge in.
+    selected_ids = list(dict.fromkeys(request.form.getlist('selected_indicators[]')))
     selected_targets = []
     for ind_id in selected_ids:
         qty_val = request.form.get(f'target_qty_{ind_id}', '0')
@@ -478,7 +515,19 @@ def submit_designated_ipcr_route():
             'target_duration_value': dur_value,
             'target_duration_unit': dur_unit
         })
-        
+
+    # Departmental Oversight deadlines — the chair's own input, kept in the `_adm`-suffixed
+    # fields (see the template) so they never collide with a same-indicator Core Function row.
+    oversight_durations = {}
+    for ind_id in admin_ids:
+        dur_value, dur_unit, dead_label = parse_duration_fields(
+            request.form, f'target_dur_value_{ind_id}_adm', f'target_dur_unit_{ind_id}_adm')
+        oversight_durations[ind_id] = {
+            'target_duration_value': dur_value,
+            'target_duration_unit': dur_unit,
+            'target_deadline': dead_label,
+        }
+
     # Parse custom targets added on the frontend
     custom_descriptions = request.form.getlist('custom_descriptions[]')
     custom_quantities = request.form.getlist('custom_quantities[]')
@@ -501,8 +550,16 @@ def submit_designated_ipcr_route():
                 'target_duration_unit': dur_unit
             })
 
-    # Validate that every selected target has a positive quantity and a specified deadline
+    # Validate that every selected target has a positive quantity and a specified deadline.
+    # Departmental Oversight ids are skipped here regardless of whether they also have a
+    # personal Core Function counterpart: a pure-oversight id has no target_qty_<id>/
+    # target_dur_value_<id> fields at all (Table 2 doesn't render them for admin rows), so
+    # they'd always fail this check; a dual id's Core Function fields are already guaranteed
+    # valid by construction (Table 1 only shows an id here when its allocation is > 0). The
+    # oversight deadline itself is validated separately below, from oversight_durations.
     for t in selected_targets:
+        if t['indicator_id'] in admin_ids:
+            continue
         if t.get('proposed_quantity', 0) <= 0:
             flash("All selected targets must have a quantity greater than 0.", "danger")
             return redirect(url_for('designated.designated_dashboard'))
@@ -518,11 +575,17 @@ def submit_designated_ipcr_route():
             flash("All custom targets must have a valid deadline (target duration) specified.", "danger")
             return redirect(url_for('designated.designated_dashboard'))
 
+    for ov in oversight_durations.values():
+        if not ov.get('target_duration_value') or int(ov['target_duration_value']) <= 0:
+            flash("All Departmental Oversight targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        success, msg = submit_designated_ipcr(conn, cursor, emp_id, int(term_id), selected_targets, custom_targets)
+        success, msg = submit_designated_ipcr(conn, cursor, emp_id, int(term_id), selected_targets, custom_targets,
+                                               oversight_durations=oversight_durations)
         if success:
             flash(msg, "success")
         else:

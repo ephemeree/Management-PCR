@@ -325,6 +325,9 @@
                                     <input type="checkbox" name="selected_indicators[]"
                                         class="form-check-input strategic-checkbox" value="{{ target.indicator_id }}"
                                         style="transform: scale(1.3);" {% if target.is_selected %}checked{% endif %}>
+                                    {% if target.is_oversight_cascade %}
+                                    <input type="hidden" name="admin_indicator_ids[]" value="{{ target.indicator_id }}">
+                                    {% endif %}
                                 </td>
                                 {% endif %}
                                 <td class="py-3 {% if not can_edit %}ps-4{% endif %}">
@@ -337,8 +340,11 @@
                                     <span class="badge bg-light text-dark border mb-1">Support</span>
                                     {% endif %}
                                     {% endif %}
+                                    {% if target.is_oversight_cascade %}
+                                    <span class="badge bg-info text-dark border mb-1 ms-1"><i class="ti ti-sitemap me-1"></i>Departmental Oversight — Fixed Quota</span>
+                                    {% endif %}
                                     <p class="mb-1 small text-secondary fw-semibold">{{ target.indicator_description }}</p>
-                                    {% if can_edit and not target.is_custom %}
+                                    {% if can_edit and not target.is_custom and not target.is_oversight_cascade %}
                                     <div class="mt-1">
                                         <label class="form-label text-muted mb-0 style-xs" style="font-size: 11px;">IPCR Target Description:</label>
                                         <input type="text" class="form-control form-control-sm text-dark shadow-sm"
@@ -358,7 +364,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
-                                    {% if can_edit %}
+                                    {% if can_edit and not target.is_oversight_cascade %}
                                     <input type="number" class="form-control form-control-sm text-center fw-bold shadow-sm"
                                         name="target_qty_{{ target.indicator_id }}"
                                         value="{{ target.total_target_value or 0 }}" min="0" {% if target.is_selected %}style="background-color: var(--c-accent-glow); border-color: var(--c-accent);" {% endif %}>
@@ -368,13 +374,18 @@
                                 </td>
                                 <td class="text-center">
                                     {% if can_edit and not target.is_custom %}
+                                    {# Departmental Oversight rows use a distinct _adm field name: their indicator_id can be
+                                       the same as a personal Core Function row above (e.g. the chair's own Instruction share),
+                                       and a shared name would collide in the submitted form. See submit_designated_ipcr. #}
+                                    {% set dur_value_name = 'target_dur_value_' ~ target.indicator_id ~ ('_adm' if target.is_oversight_cascade else '') %}
+                                    {% set dur_unit_name = 'target_dur_unit_' ~ target.indicator_id ~ ('_adm' if target.is_oversight_cascade else '') %}
                                     <div class="d-flex gap-1 justify-content-center">
                                         <input type="number" class="form-control form-control-sm text-center shadow-sm"
-                                               name="target_dur_value_{{ target.indicator_id }}"
+                                               name="{{ dur_value_name }}"
                                                value="{{ target.target_duration_value or '' }}"
                                                min="1" placeholder="e.g. 6" style="width: 72px; flex: 0 0 72px;">
                                         <select class="form-select form-select-sm shadow-sm"
-                                                name="target_dur_unit_{{ target.indicator_id }}" style="flex: 1 1 auto;">
+                                                name="{{ dur_unit_name }}" style="flex: 1 1 auto;">
                                             {% for u in ['days', 'weeks', 'months', 'semesters'] %}
                                             <option value="{{ u }}" {% if target.target_duration_unit == u %}selected{% elif not target.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
                                             {% endfor %}
