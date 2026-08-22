@@ -293,14 +293,14 @@ def ret_chair_save_rule():
             request.form, f'research_dur_value_{r_id}', f'research_dur_unit_{r_id}')
         research_indicators.append((int(r_id), qty, desc, dur_value, dur_unit))
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         success, msg = save_ret_rule(conn, cursor, int(term_id), academic_rank,
                                      int(research_selections), 0,
                                      research_indicators, [])
-        cursor.close()
-        conn.close()
 
         if success:
             flash(msg, "success")
@@ -308,6 +308,11 @@ def ret_chair_save_rule():
             flash(msg, "danger")
     except Exception as e:
         flash(f"Error saving rule: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
     return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
@@ -317,18 +322,23 @@ def ret_chair_save_rule():
 def ret_chair_delete_rule():
     rule_id = request.form.get('rule_id')
     category_type = request.form.get('category_type')
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         success = delete_ret_rule(conn, cursor, rule_id, category_type)
-        cursor.close()
-        conn.close()
         if success:
             flash("Rule deleted successfully.", "success")
         else:
             flash("Failed to delete rule.", "danger")
     except Exception as e:
         flash(f"Error deleting rule: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
 

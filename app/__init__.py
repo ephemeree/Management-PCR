@@ -55,6 +55,23 @@ def log_request_time(response):
             logger.info(f"REQUEST: {request.method} {request.path} — {elapsed:.2f}s")
     return response
 
+
+@app.teardown_request
+def close_db_connection(exc):
+    """Safety net: return any pooled DB connection on EVERY request, even on errors.
+
+    Prevents 'Too many connections' / pool exhaustion if a route raises before its
+    manual conn.close() runs. get_db_connection() registers the connection on `g`,
+    so this returns it to the pool no matter what happened in the route.
+    """
+    conn = getattr(g, '_db_conn', None)
+    if conn is not None:
+        try:
+            if conn.is_connected():
+                conn.close()
+        except Exception:
+            logger.exception("Failed to close DB connection during teardown")
+
 # Register route blueprints
 from app.routes import register_blueprints
 register_blueprints(app)
@@ -68,15 +85,17 @@ def serve_evidence(evidence_id):
     from app.models.connection import get_db_connection
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT er.file_path, ct.emp_id
-        FROM tbl_evidence_repo er
-        JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
-        WHERE er.evidence_id = %s
-    """, (evidence_id,))
-    row = cursor.fetchone()
-    cursor.close()
-    conn.close()
+    try:
+        cursor.execute("""
+            SELECT er.file_path, ct.emp_id
+            FROM tbl_evidence_repo er
+            JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+            WHERE er.evidence_id = %s
+        """, (evidence_id,))
+        row = cursor.fetchone()
+    finally:
+        cursor.close()
+        conn.close()
     if not row:
         abort(404)
     file_path, owner_emp_id = row

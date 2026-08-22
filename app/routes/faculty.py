@@ -12,103 +12,104 @@ def faculty_dashboard():
     cursor = conn.cursor()
     from app.models.connection import timed_query
 
-    emp_id = session.get('user_id')
+    try:
+        emp_id = session.get('user_id')
 
-    emp_result = timed_query(cursor, "SELECT academic_rank, specialization FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,), label="faculty_profile")
-    academic_rank = emp_result[0]['academic_rank'] if emp_result else ''
-    specialization = emp_result[0]['specialization'] if emp_result else ''
+        emp_result = timed_query(cursor, "SELECT academic_rank, specialization FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,), label="faculty_profile")
+        academic_rank = emp_result[0]['academic_rank'] if emp_result else ''
+        specialization = emp_result[0]['specialization'] if emp_result else ''
 
-    terms = get_all_terms(cursor)
-    active_term = next((t for t in terms if t['is_active'] == 1), None)
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
 
-    assigned_targets = []
-    ret_menu = {'required_selections': 0, 'indicators': []}
-    has_submitted = False
-    is_locked = False
-    chair_review = None
-    is_ret_eligible = False
-    ret_assigned_ids = []
-    extension_targets = []
-
-    if active_term:
-        term_id = active_term['term_id']
-        is_ret_eligible = is_faculty_ret_eligible(cursor, emp_id, term_id)
-        assigned_targets = get_faculty_assigned_targets(cursor, emp_id, term_id)
-        # Extension is distributed to all regular faculty (read-only), regardless of research eligibility
-        from app.models.ret_chair import get_distributed_extension_targets
-        extension_targets = get_distributed_extension_targets(cursor, term_id)
-        if academic_rank and is_ret_eligible:
-            ret_menu = get_faculty_ret_menu(cursor, academic_rank, term_id)
-            # Research targets directly assigned by the RET Chair — locked on the faculty side
-            cursor.execute(
-                "SELECT indicator_id FROM tbl_ret_assignments WHERE emp_id = %s AND term_id = %s",
-                (emp_id, term_id)
-            )
-            ret_assigned_ids = [r[0] for r in cursor.fetchall()]
-
-        # Check if the faculty member has submitted
-        sub_result = timed_query(cursor, """
-            SELECT COUNT(*) as cnt
-            FROM tbl_draft_targets dt
-            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
-            WHERE dt.emp_id = %s AND mi.term_id = %s AND dt.review_status IN ('Pending Review', 'Waiting for Approval')
-        """, (emp_id, term_id), label="faculty_submit_check")
-        has_submitted = sub_result[0]['cnt'] > 0 if sub_result else False
-        # Fetch the Program Chair's review decision (if any)
-        chair_review = get_faculty_chair_review_status(cursor, emp_id, term_id)
-        # Fetch the RET Chair's review decision (if any)
-        ret_review = get_faculty_ret_review_status(cursor, emp_id, term_id)
-        # Fetch the overall IPCR status (dynamically computed)
-        from app.models.connection import get_overall_ipcr_status
-        ipcr_status = get_overall_ipcr_status(cursor, emp_id, term_id)
-
-        # Check if locked
-        cursor.execute("""
-            SELECT COUNT(*) FROM tbl_committed_targets ct
-            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
-            WHERE ct.emp_id = %s AND mi.term_id = %s
-        """, (emp_id, term_id))
-        is_locked = cursor.fetchone()[0] > 0
-
-        # Determine submission state based on overall status
-        if ipcr_status == 'draft':
-            has_submitted = False
-        else:
-            has_submitted = True
-
+        assigned_targets = []
+        ret_menu = {'required_selections': 0, 'indicators': []}
+        has_submitted = False
+        is_locked = False
+        chair_review = None
+        is_ret_eligible = False
+        ret_assigned_ids = []
+        extension_targets = []
         evidence_readiness = None
         ipcr_score = None
-        if is_locked:
-            has_submitted = True
-            from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target, check_faculty_evidence_readiness
-            assigned_targets = get_faculty_committed_targets(cursor, emp_id, term_id)
-            # Fetch evidence for each target
-            for target in assigned_targets:
-                target['evidence_list'] = get_evidence_by_target(cursor, target['target_id'], emp_id, target['indicator_id'])
-            evidence_readiness = check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets)
-            # Live IPCR summary (computed, not persisted — the record is written on finalize)
-            from app.models.scoring import compute_ipcr_score
-            ipcr_score = compute_ipcr_score(cursor, emp_id, term_id)
 
-    cursor.close()
-    conn.close()
+        if active_term:
+            term_id = active_term['term_id']
+            is_ret_eligible = is_faculty_ret_eligible(cursor, emp_id, term_id)
+            assigned_targets = get_faculty_assigned_targets(cursor, emp_id, term_id)
+            # Extension is distributed to all regular faculty (read-only), regardless of research eligibility
+            from app.models.ret_chair import get_distributed_extension_targets
+            extension_targets = get_distributed_extension_targets(cursor, term_id)
+            if academic_rank and is_ret_eligible:
+                ret_menu = get_faculty_ret_menu(cursor, academic_rank, term_id)
+                # Research targets directly assigned by the RET Chair — locked on the faculty side
+                cursor.execute(
+                    "SELECT indicator_id FROM tbl_ret_assignments WHERE emp_id = %s AND term_id = %s",
+                    (emp_id, term_id)
+                )
+                ret_assigned_ids = [r[0] for r in cursor.fetchall()]
 
-    return render_template('faculty_dashboard.html',
-                           active_term=active_term,
-                           assigned_targets=assigned_targets,
-                           ret_menu=ret_menu,
-                           academic_rank=academic_rank,
-                           specialization=specialization,
-                           has_submitted=has_submitted,
-                           is_locked=is_locked,
-                           is_ret_eligible=is_ret_eligible,
-                           ret_assigned_ids=ret_assigned_ids,
-                           extension_targets=extension_targets,
-                           chair_review=chair_review,
-                           ret_review=ret_review,
-                           ipcr_status=ipcr_status,
-                           evidence_readiness=evidence_readiness,
-                           ipcr_score=ipcr_score)
+            # Check if the faculty member has submitted
+            sub_result = timed_query(cursor, """
+                SELECT COUNT(*) as cnt
+                FROM tbl_draft_targets dt
+                JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+                WHERE dt.emp_id = %s AND mi.term_id = %s AND dt.review_status IN ('Pending Review', 'Waiting for Approval')
+            """, (emp_id, term_id), label="faculty_submit_check")
+            has_submitted = sub_result[0]['cnt'] > 0 if sub_result else False
+            # Fetch the Program Chair's review decision (if any)
+            chair_review = get_faculty_chair_review_status(cursor, emp_id, term_id)
+            # Fetch the RET Chair's review decision (if any)
+            ret_review = get_faculty_ret_review_status(cursor, emp_id, term_id)
+            # Fetch the overall IPCR status (dynamically computed)
+            from app.models.connection import get_overall_ipcr_status
+            ipcr_status = get_overall_ipcr_status(cursor, emp_id, term_id)
+
+            # Check if locked
+            cursor.execute("""
+                SELECT COUNT(*) FROM tbl_committed_targets ct
+                JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+                WHERE ct.emp_id = %s AND mi.term_id = %s
+            """, (emp_id, term_id))
+            is_locked = cursor.fetchone()[0] > 0
+
+            # Determine submission state based on overall status
+            if ipcr_status == 'draft':
+                has_submitted = False
+            else:
+                has_submitted = True
+
+            if is_locked:
+                has_submitted = True
+                from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target, check_faculty_evidence_readiness
+                assigned_targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+                # Fetch evidence for each target
+                for target in assigned_targets:
+                    target['evidence_list'] = get_evidence_by_target(cursor, target['target_id'], emp_id, target['indicator_id'])
+                evidence_readiness = check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets)
+                # Live IPCR summary (computed, not persisted — the record is written on finalize)
+                from app.models.scoring import compute_ipcr_score
+                ipcr_score = compute_ipcr_score(cursor, emp_id, term_id)
+
+        return render_template('faculty_dashboard.html',
+                               active_term=active_term,
+                               assigned_targets=assigned_targets,
+                               ret_menu=ret_menu,
+                               academic_rank=academic_rank,
+                               specialization=specialization,
+                               has_submitted=has_submitted,
+                               is_locked=is_locked,
+                               is_ret_eligible=is_ret_eligible,
+                               ret_assigned_ids=ret_assigned_ids,
+                               extension_targets=extension_targets,
+                               chair_review=chair_review,
+                               ret_review=ret_review,
+                               ipcr_status=ipcr_status,
+                               evidence_readiness=evidence_readiness,
+                               ipcr_score=ipcr_score)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 

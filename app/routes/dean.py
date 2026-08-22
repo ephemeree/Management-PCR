@@ -11,93 +11,92 @@ def dean_dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    dean_id = session.get('user_id')
-    terms = get_all_terms(cursor)
-    active_term = next((t for t in terms if t['is_active'] == 1), None)
+    try:
+        dean_id = session.get('user_id')
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
 
-    if not active_term:
-        flash('No active academic term found.', 'warning')
+        if not active_term:
+            flash('No active academic term found.', 'warning')
+            return render_template('dean_dashboard.html',
+                                   active_term=None,
+                                   departments=[],
+                                   special_roles=SPECIAL_CASCADE_ROLES,
+                                   master_indicators=[],
+                                   existing_quotas={},
+                                   completion_rate=0,
+                                   pending_count=0,
+                                   top_dept="N/A",
+                                   pending_approvals=[],
+                                   draft_submissions=[],
+                                   college_wide_quotas=[],
+                                   designated_faculty_list=[])
+
+        term_id = active_term['term_id']
+
+        # Use timed_query helper for all queries
+        from app.models.connection import timed_query
+
+        indicators = get_master_indicators(cursor, term_id)
+
+        existing_quotas_raw = get_existing_cascaded_quotas(cursor, term_id)
+
+        existing_quotas = {}
+        for quota in existing_quotas_raw:
+            ind_id = quota['indicator_id']
+            if ind_id not in existing_quotas:
+                existing_quotas[ind_id] = {}
+            existing_quotas[ind_id][quota['assigned_to_role']] = quota['total_target_value']
+
+        # Consolidated KPI query — 1 round-trip instead of 3
+        completion_rate, pending_count, top_dept = get_dean_dashboard_kpis(cursor, term_id)
+
+        pending_approvals = get_pending_final_approvals(cursor, term_id)
+
+        # ── New: Draft IPCR submissions from designated faculty ──
+        draft_submissions = get_designated_draft_submissions(cursor, term_id)
+
+        # ── New: College-Wide quotas for target assignment ──
+        college_wide_quotas = get_college_wide_cascaded_quotas(cursor, term_id)
+
+        # ── New: Designated faculty list ──
+        designated_faculty_list = get_designated_faculty_list(cursor)
+
+        # Get ALL assignments in ONE batch query (replaces N+1 loop)
+        emp_ids = [fac['emp_id'] for fac in designated_faculty_list]
+        designated_assignments = get_designated_faculty_assignments_batch(cursor, term_id, emp_ids)
+
+        # Fetch college-wide allocations for tracking
+        allocations_list = get_college_wide_allocations_tracker(cursor, term_id)
+
+        # Structure them by indicator_id: {indicator_id: [allocations]}
+        college_wide_allocations = {}
+        for alloc in allocations_list:
+            ind_id = alloc['indicator_id']
+            if ind_id not in college_wide_allocations:
+                college_wide_allocations[ind_id] = []
+            college_wide_allocations[ind_id].append(alloc)
+
+        departments = get_departments(cursor)
+
+        return render_template('dean_dashboard.html',
+                               active_term=active_term,
+                               departments=departments,
+                               special_roles=SPECIAL_CASCADE_ROLES,
+                               master_indicators=indicators,
+                               existing_quotas=existing_quotas,
+                               completion_rate=completion_rate,
+                               pending_count=pending_count,
+                               top_dept=top_dept,
+                               pending_approvals=pending_approvals,
+                               draft_submissions=draft_submissions,
+                               college_wide_quotas=college_wide_quotas,
+                               designated_faculty_list=designated_faculty_list,
+                               designated_assignments=designated_assignments,
+                               college_wide_allocations=college_wide_allocations)
+    finally:
         cursor.close()
         conn.close()
-        return render_template('dean_dashboard.html',
-                               active_term=None,
-                               departments=[],
-                               special_roles=SPECIAL_CASCADE_ROLES,
-                               master_indicators=[],
-                               existing_quotas={},
-                               completion_rate=0,
-                               pending_count=0,
-                               top_dept="N/A",
-                               pending_approvals=[],
-                               draft_submissions=[],
-                               college_wide_quotas=[],
-                               designated_faculty_list=[])
-
-    term_id = active_term['term_id']
-
-    # Use timed_query helper for all queries
-    from app.models.connection import timed_query
-
-    indicators = get_master_indicators(cursor, term_id)
-
-    existing_quotas_raw = get_existing_cascaded_quotas(cursor, term_id)
-
-    existing_quotas = {}
-    for quota in existing_quotas_raw:
-        ind_id = quota['indicator_id']
-        if ind_id not in existing_quotas:
-            existing_quotas[ind_id] = {}
-        existing_quotas[ind_id][quota['assigned_to_role']] = quota['total_target_value']
-
-    # Consolidated KPI query — 1 round-trip instead of 3
-    completion_rate, pending_count, top_dept = get_dean_dashboard_kpis(cursor, term_id)
-
-    pending_approvals = get_pending_final_approvals(cursor, term_id)
-
-    # ── New: Draft IPCR submissions from designated faculty ──
-    draft_submissions = get_designated_draft_submissions(cursor, term_id)
-
-    # ── New: College-Wide quotas for target assignment ──
-    college_wide_quotas = get_college_wide_cascaded_quotas(cursor, term_id)
-
-    # ── New: Designated faculty list ──
-    designated_faculty_list = get_designated_faculty_list(cursor)
-
-    # Get ALL assignments in ONE batch query (replaces N+1 loop)
-    emp_ids = [fac['emp_id'] for fac in designated_faculty_list]
-    designated_assignments = get_designated_faculty_assignments_batch(cursor, term_id, emp_ids)
-
-    # Fetch college-wide allocations for tracking
-    allocations_list = get_college_wide_allocations_tracker(cursor, term_id)
-    
-    # Structure them by indicator_id: {indicator_id: [allocations]}
-    college_wide_allocations = {}
-    for alloc in allocations_list:
-        ind_id = alloc['indicator_id']
-        if ind_id not in college_wide_allocations:
-            college_wide_allocations[ind_id] = []
-        college_wide_allocations[ind_id].append(alloc)
-
-    departments = get_departments(cursor)
-
-    cursor.close()
-    conn.close()
-
-    return render_template('dean_dashboard.html',
-                           active_term=active_term,
-                           departments=departments,
-                           special_roles=SPECIAL_CASCADE_ROLES,
-                           master_indicators=indicators,
-                           existing_quotas=existing_quotas,
-                           completion_rate=completion_rate,
-                           pending_count=pending_count,
-                           top_dept=top_dept,
-                           pending_approvals=pending_approvals,
-                           draft_submissions=draft_submissions,
-                           college_wide_quotas=college_wide_quotas,
-                           designated_faculty_list=designated_faculty_list,
-                           designated_assignments=designated_assignments,
-                           college_wide_allocations=college_wide_allocations)
 
 
 @dean_bp.route('/cascade_quotas', methods=['POST'])

@@ -12,23 +12,25 @@ prog_chair_bp = Blueprint('prog_chair', __name__, url_prefix='/prog_chair')
 @prog_chair_bp.route('/')
 @role_required('PROGRAM_CHAIR')
 def prog_chair_dashboard():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    specialization = session.get('specialization')
-    if not specialization:
-        cursor.execute(
-            "SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s",
-            (session.get('user_id'),)
-        )
-        spec_rows = cursor.fetchall()
-        specialization = spec_rows[0][0] if spec_rows else ''
-        session['specialization'] = specialization
-
-    if not specialization:
-        flash("Your account does not have a designated specialization. Please contact HR/Admin.", "warning")
-
+    conn = None
+    cursor = None
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        specialization = session.get('specialization')
+        if not specialization:
+            cursor.execute(
+                "SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s",
+                (session.get('user_id'),)
+            )
+            spec_rows = cursor.fetchall()
+            specialization = spec_rows[0][0] if spec_rows else ''
+            session['specialization'] = specialization
+
+        if not specialization:
+            flash("Your account does not have a designated specialization. Please contact HR/Admin.", "warning")
+
         terms = get_all_terms(cursor)
         active_term = next((t for t in terms if t['is_active'] == 1), None)
 
@@ -110,8 +112,10 @@ def prog_chair_dashboard():
             evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else []
         )
     finally:
-        cursor.close()
-        conn.close()
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 @prog_chair_bp.route('/verify_evidence', methods=['POST'])

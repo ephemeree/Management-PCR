@@ -12,49 +12,53 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 def admin_dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
-    profiles = get_all_profiles(cursor)
-    terms = get_all_terms(cursor)
-    active_term = next((t for t in terms if t['is_active'] == 1), None)
-    indicators = get_master_indicators(cursor, active_term['term_id']) if active_term else []
-    criteria = get_all_criteria(cursor)
-    ipcr_categories = {dt: get_ipcr_categories(cursor, dt) for dt in DESIGNATION_TYPES}
-    category_types = {dt: get_category_type_map(cursor, dt) for dt in DESIGNATION_TYPES}
-    weights_grid = {
-        dt: (get_criteria_weights_grid(cursor, active_term['term_id'], dt) if active_term else {})
-        for dt in DESIGNATION_TYPES
-    }
-    weights_mode = {
-        dt: (get_weights_mode(cursor, active_term['term_id'], dt) if active_term else MODE_GENERAL)
-        for dt in DESIGNATION_TYPES
-    }
-    departments = get_departments(cursor, active_only=False)
-    teaching_load = {
-        dt: (get_teaching_load_grid(cursor, active_term['term_id'], dt) if active_term else {})
-        for dt in DESIGNATION_TYPES
-    }
-    teaching_load_mode = {
-        dt: (get_teaching_load_mode(cursor, active_term['term_id'], dt) if active_term else 'GENERAL')
-        for dt in DESIGNATION_TYPES
-    }
-    audit_logs = get_recent_audit_logs(cursor)
-    security_users = get_all_users_for_security(cursor)
-    kpis = get_admin_kpis(cursor)
-    cursor.close()
-    conn.close()
-    return render_template('admin_dashboard.html', profiles=profiles, terms=terms, active_term=active_term,
-                           indicators=indicators, criteria=criteria,
-                           ipcr_categories=ipcr_categories, category_types=category_types,
-                           weights_grid=weights_grid, weights_mode=weights_mode,
-                           departments=departments, teaching_load=teaching_load,
-                           teaching_load_mode=teaching_load_mode,
-                           rank_bands=RANK_BANDS, general_band=GENERAL_BAND,
-                           designation_types=DESIGNATION_TYPES, audit_logs=audit_logs,
-                           security_users=security_users, kpis=kpis)
+    try:
+        profiles = get_all_profiles(cursor)
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        indicators = get_master_indicators(cursor, active_term['term_id']) if active_term else []
+        criteria = get_all_criteria(cursor)
+        ipcr_categories = {dt: get_ipcr_categories(cursor, dt) for dt in DESIGNATION_TYPES}
+        category_types = {dt: get_category_type_map(cursor, dt) for dt in DESIGNATION_TYPES}
+        weights_grid = {
+            dt: (get_criteria_weights_grid(cursor, active_term['term_id'], dt) if active_term else {})
+            for dt in DESIGNATION_TYPES
+        }
+        weights_mode = {
+            dt: (get_weights_mode(cursor, active_term['term_id'], dt) if active_term else MODE_GENERAL)
+            for dt in DESIGNATION_TYPES
+        }
+        departments = get_departments(cursor, active_only=False)
+        teaching_load = {
+            dt: (get_teaching_load_grid(cursor, active_term['term_id'], dt) if active_term else {})
+            for dt in DESIGNATION_TYPES
+        }
+        teaching_load_mode = {
+            dt: (get_teaching_load_mode(cursor, active_term['term_id'], dt) if active_term else 'GENERAL')
+            for dt in DESIGNATION_TYPES
+        }
+        audit_logs = get_recent_audit_logs(cursor)
+        security_users = get_all_users_for_security(cursor)
+        kpis = get_admin_kpis(cursor)
+        return render_template('admin_dashboard.html', profiles=profiles, terms=terms, active_term=active_term,
+                               indicators=indicators, criteria=criteria,
+                               ipcr_categories=ipcr_categories, category_types=category_types,
+                               weights_grid=weights_grid, weights_mode=weights_mode,
+                               departments=departments, teaching_load=teaching_load,
+                               teaching_load_mode=teaching_load_mode,
+                               rank_bands=RANK_BANDS, general_band=GENERAL_BAND,
+                               designation_types=DESIGNATION_TYPES, audit_logs=audit_logs,
+                               security_users=security_users, kpis=kpis)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @admin_bp.route('/backup')
 @role_required('ADMIN')
 def admin_backup():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -99,9 +103,6 @@ def admin_backup():
 
         output.write("SET FOREIGN_KEY_CHECKS=1;\n")
 
-        cursor.close()
-        conn.close()
-
         filename = f"ipcr_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
         return Response(
             output.getvalue(),
@@ -112,6 +113,11 @@ def admin_backup():
     except Exception as e:
         flash(f"Backup failed: {str(e)}", "danger")
         return redirect(url_for('admin.admin_dashboard'))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 @admin_bp.route('/open_term', methods=['POST'])
@@ -121,6 +127,8 @@ def admin_open_term():
     semester = request.form.get('semester')
     deadline_date = request.form.get('deadline_date')
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -128,11 +136,14 @@ def admin_open_term():
         log_audit_action(conn, cursor, session.get('user_id'), 'Term Opened',
                          f"New term opened: {academic_year} {semester} (Deadline: {deadline_date})",
                          request.remote_addr)
-        cursor.close()
-        conn.close()
         flash("New Academic Term opened successfully.", "success")
     except Exception as e:
         flash(f"Error opening term: {e}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
     return redirect(url_for('admin.admin_dashboard'))
 
@@ -153,15 +164,20 @@ def save_faculty():
         'designation': request.form.get('designation') or None
     }
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         save_single_profile(conn, cursor, data)
-        cursor.close()
-        conn.close()
         flash("Faculty profile saved successfully.", "success")
     except Exception as e:
         flash(f"Error saving profile: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
     return redirect(url_for('admin.admin_dashboard'))
 
@@ -174,18 +190,23 @@ def toggle_status():
         flash("Employee ID missing.", "danger")
         return redirect(url_for('admin.admin_dashboard'))
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         new_status = toggle_profile_status(conn, cursor, emp_id)
-        cursor.close()
-        conn.close()
         if new_status:
             flash(f"Profile status updated to {new_status}.", "success")
         else:
             flash("Profile not found.", "danger")
     except Exception as e:
         flash(f"Error toggling status: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
     return redirect(url_for('admin.admin_dashboard'))
 
@@ -213,13 +234,15 @@ def import_csv():
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        success, new_added, updated, unchanged = import_csv_roster(conn, cursor, rows)
-        if success:
-            log_audit_action(conn, cursor, session.get('user_id'), 'CSV Roster Import',
-                             f"Import complete: {new_added} added, {updated} updated, {unchanged} unchanged.",
-                             request.remote_addr)
-        cursor.close()
-        conn.close()
+        try:
+            success, new_added, updated, unchanged = import_csv_roster(conn, cursor, rows)
+            if success:
+                log_audit_action(conn, cursor, session.get('user_id'), 'CSV Roster Import',
+                                 f"Import complete: {new_added} added, {updated} updated, {unchanged} unchanged.",
+                                 request.remote_addr)
+        finally:
+            cursor.close()
+            conn.close()
 
         if success:
             flash(f"CSV Import Complete: {new_added} New Hires Added, {updated} Profiles Updated, {unchanged} Unchanged.",
@@ -239,15 +262,20 @@ def admin_add_indicator():
     category_name = request.form.get('category_name')
     description = request.form.get('description')
     efficiency_type = request.form.get('efficiency_type')
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         add_master_indicator(conn, cursor, category_name, description, efficiency_type, term_id)
-        cursor.close()
-        conn.close()
         flash("Master Indicator added successfully.", "success")
     except Exception as e:
         flash(f"Error adding indicator: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-indicators')
 
 
@@ -258,15 +286,20 @@ def admin_edit_indicator():
     category_name = request.form.get('category_name')
     description = request.form.get('description')
     efficiency_type = request.form.get('efficiency_type')
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         edit_master_indicator(conn, cursor, indicator_id, category_name, description, efficiency_type)
-        cursor.close()
-        conn.close()
         flash("Master Indicator updated successfully.", "success")
     except Exception as e:
         flash(f"Error updating indicator: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-indicators')
 
 
@@ -274,37 +307,49 @@ def admin_edit_indicator():
 @role_required('ADMIN')
 def admin_delete_indicator():
     indicator_id = request.form.get('indicator_id')
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         delete_master_indicator(conn, cursor, indicator_id)
-        cursor.close()
-        conn.close()
         flash("Master Indicator deleted successfully.", "success")
     except Exception as e:
         flash(f"Error deleting indicator: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-indicators')
 
 
 @admin_bp.route('/indicators/import', methods=['POST'])
 @role_required('ADMIN')
 def admin_import_indicators():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         active_term_id = request.form.get('term_id')
         success, message = import_previous_term_indicators(conn, cursor, active_term_id)
-        cursor.close()
-        conn.close()
         flash(message, "success" if success else "warning")
     except Exception as e:
         flash(f"Error importing indicators: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-indicators')
 
 
 @admin_bp.route('/criteria/add', methods=['POST'])
 @role_required('ADMIN')
 def admin_add_criteria():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -316,17 +361,22 @@ def admin_add_criteria():
             request.form.get('is_core') == 'on',
             request.form.get('display_order') or 100,
         )
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error adding criterion: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
 @admin_bp.route('/criteria/edit', methods=['POST'])
 @role_required('ADMIN')
 def admin_edit_criteria():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -338,27 +388,35 @@ def admin_edit_criteria():
             request.form.get('is_core') == 'on',
             request.form.get('display_order') or 100,
         )
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error updating criterion: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
 @admin_bp.route('/criteria/toggle_active', methods=['POST'])
 @role_required('ADMIN')
 def admin_toggle_criteria():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         is_active = request.form.get('is_active') == '1'
         success, msg = set_criteria_active(conn, cursor, request.form.get('category_id'), is_active)
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error updating criterion status: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
@@ -366,6 +424,8 @@ def admin_toggle_criteria():
 @role_required('ADMIN')
 def admin_save_category():
     """Create or update an IPCR category and its assigned target types."""
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -377,34 +437,44 @@ def admin_save_category():
             request.form.getlist('type_ids[]'),
             request.form.get('ipcr_category_id') or None,
         )
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error saving category: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-categories')
 
 
 @admin_bp.route('/categories/toggle_active', methods=['POST'])
 @role_required('ADMIN')
 def admin_toggle_category():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         is_active = request.form.get('is_active') == '1'
         success, msg = set_ipcr_category_active(conn, cursor,
                                                 request.form.get('ipcr_category_id'), is_active)
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error updating category status: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-categories')
 
 
 @admin_bp.route('/departments/save', methods=['POST'])
 @role_required('ADMIN')
 def admin_save_department():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -415,27 +485,35 @@ def admin_save_department():
             request.form.get('display_order') or 100,
             request.form.get('department_id') or None,
         )
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error saving department: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
 
 
 @admin_bp.route('/departments/toggle_active', methods=['POST'])
 @role_required('ADMIN')
 def admin_toggle_department():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         is_active = request.form.get('is_active') == '1'
         success, msg = set_department_active(conn, cursor, request.form.get('department_id'), is_active)
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error updating department: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
 
 
@@ -455,6 +533,8 @@ def admin_save_teaching_load():
         except (TypeError, ValueError):
             return default
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -469,11 +549,14 @@ def admin_save_teaching_load():
                              _int(f'tl_{idx}_duration', 6),
                              request.form.get(f'tl_{idx}_unit') or 'months'))
         success, msg = save_teaching_load(conn, cursor, int(term_id), designation_type, mode, rows)
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error saving teaching load: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
 
 
@@ -493,6 +576,8 @@ def admin_save_weights():
         except (ValueError, TypeError):
             return 0
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -508,11 +593,14 @@ def admin_save_weights():
                     cid = c['ipcr_category_id']
                     rows.append((band, cid, _pct(f'w_{idx}_{cid}')))
         success, msg = save_criteria_weights(conn, cursor, int(term_id), designation_type, mode, rows)
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error saving weights: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
@@ -524,15 +612,20 @@ def admin_copy_weights():
     if not term_id or designation_type not in DESIGNATION_TYPES:
         flash("No term or designation type specified.", "danger")
         return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         success, msg = copy_weights_from_previous_term(conn, cursor, int(term_id), designation_type)
-        cursor.close()
-        conn.close()
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error copying weights: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
@@ -546,13 +639,15 @@ def admin_reset_password():
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        new_hash = hash_pass(temp_password)
-        emergency_reset_password(conn, cursor, emp_id, new_hash)
-        log_audit_action(conn, cursor, session.get('user_id'), 'Emergency Password Reset',
-                         f"Temporary password issued for emp_id: {emp_id}",
-                         request.remote_addr)
-        cursor.close()
-        conn.close()
+        try:
+            new_hash = hash_pass(temp_password)
+            emergency_reset_password(conn, cursor, emp_id, new_hash)
+            log_audit_action(conn, cursor, session.get('user_id'), 'Emergency Password Reset',
+                             f"Temporary password issued for emp_id: {emp_id}",
+                             request.remote_addr)
+        finally:
+            cursor.close()
+            conn.close()
         flash(f"Password for account #{emp_id} has been reset. Temporary password (show once): {temp_password}", "warning")
     except Exception as e:
         flash(f"Error resetting password: {str(e)}", "danger")
@@ -566,12 +661,14 @@ def admin_lock_account():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        emergency_lock_account(conn, cursor, emp_id)
-        log_audit_action(conn, cursor, session.get('user_id'), 'Emergency Account Lock',
-                         f"Force locked account for emp_id: {emp_id}",
-                         request.remote_addr)
-        cursor.close()
-        conn.close()
+        try:
+            emergency_lock_account(conn, cursor, emp_id)
+            log_audit_action(conn, cursor, session.get('user_id'), 'Emergency Account Lock',
+                             f"Force locked account for emp_id: {emp_id}",
+                             request.remote_addr)
+        finally:
+            cursor.close()
+            conn.close()
         flash(f"Account #{emp_id} has been locked.", "warning")
     except Exception as e:
         flash(f"Error locking account: {str(e)}", "danger")

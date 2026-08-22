@@ -27,27 +27,26 @@ def authenticate():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    result = get_user_by_email(cursor, email)
+    try:
+        result = get_user_by_email(cursor, email)
 
-    if not result:
+        if not result:
+            time.sleep(0.5)
+            flash("Invalid Credentials.", "danger")
+            return redirect(url_for('auth.login'))
+
+        emp_id, stored_hash, verification, role = result[0]
+
+        # Check if account has been soft-deleted/deactivated
+        cursor.execute("SELECT account_status FROM tbl_system_access WHERE emp_id = %s", (emp_id,))
+        acc_status_row = cursor.fetchone()
+
+        cursor.execute("SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        spec_rows = cursor.fetchall()
+        specialization = spec_rows[0][0] if spec_rows else ''
+    finally:
         cursor.close()
         conn.close()
-        time.sleep(0.5)
-        flash("Invalid Credentials.", "danger")
-        return redirect(url_for('auth.login'))
-
-    emp_id, stored_hash, verification, role = result[0]
-
-    # Check if account has been soft-deleted/deactivated
-    cursor.execute("SELECT account_status FROM tbl_system_access WHERE emp_id = %s", (emp_id,))
-    acc_status_row = cursor.fetchone()
-
-    cursor.execute("SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
-    spec_rows = cursor.fetchall()
-    specialization = spec_rows[0][0] if spec_rows else ''
-
-    cursor.close()
-    conn.close()
 
     if acc_status_row and acc_status_row[0] == 'Inactive':
         flash("Your account has been deactivated. Please contact the administrator.", "danger")
@@ -104,14 +103,13 @@ def register():
 
         hashed_pw = hash_pass(password)
 
+        conn = None
+        cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
             register_user(conn, cursor, employee_id_number, email, hashed_pw)
-
-            cursor.close()
-            conn.close()
 
             flash("Account claimed successfully! You have been auto-approved and may now log in.", "success")
             return redirect(url_for('auth.login'))
@@ -122,5 +120,10 @@ def register():
         except Exception as e:
             flash(f"An unexpected error occurred: {str(e)}", "danger")
             return redirect(url_for('auth.register'))
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
 
     return render_template('register.html')

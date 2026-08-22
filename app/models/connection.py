@@ -153,6 +153,15 @@ def get_db_connection():
         if elapsed > 0.5:
             logger.warning(f"Slow pool checkout: {elapsed:.2f}s")
         if connection.is_connected():
+            # Register on the request context so the app's teardown_request handler
+            # ALWAYS returns this connection to the pool — even if the route raises
+            # before its manual conn.close() runs. This prevents pool exhaustion
+            # ("Too many connections" / slow checkouts) from leaked connections.
+            try:
+                from flask import g
+                g._db_conn = connection
+            except Exception:
+                pass  # Outside a request context — caller is responsible for closing
             return connection
         raise RuntimeError("Database connection could not be established.")
     except Error as e:
