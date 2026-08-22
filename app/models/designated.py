@@ -1,8 +1,8 @@
 def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True, emp_id=None):
     """
     The pool a designated faculty / chair member can add targets from.
-    - If RET Chair: only Research and Extension (review_lane = 'RET').
-    - If Program Chair / Designated Faculty: Instruction and Support (review_lane = 'CHAIR' AND is_core = 1).
+    - If RET Chair: only Research and Extension (review_lane = 'RET') plus their allocated instruction.
+    - If Program Chair / Designated Faculty / Dean: Instruction and Support plus their allocated instruction.
     """
     from app.models.connection import timed_query
     
@@ -12,6 +12,21 @@ def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True, 
         row = cursor.fetchone()
         if row and (row[0] or '').strip() == 'RET Chair':
             is_ret = True
+
+    allocated_indicators = []
+    if emp_id:
+        cursor.execute("""
+            SELECT mi.indicator_id, mi.indicator_description, tc.category_name
+            FROM tbl_draft_allocation da
+            JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE da.emp_id = %s AND mi.term_id = %s
+              AND COALESCE(da.assigned_quantity, 0) > 0
+        """, (emp_id, term_id))
+        allocated_indicators = [
+            {'indicator_id': r[0], 'indicator_description': r[1], 'category_name': r[2]}
+            for r in cursor.fetchall()
+        ]
 
     if is_ret:
         query = """
@@ -23,7 +38,16 @@ def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True, 
               AND tc.review_lane = 'RET'
             ORDER BY tc.category_name, mi.indicator_id
         """
-        return timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators_ret")
+        rows = timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators_ret")
+        if exclude_claimed:
+            claimed = get_claimed_indicator_ids(cursor, term_id)
+            rows = [r for r in rows if r['indicator_id'] not in claimed]
+
+        existing_ids = {r['indicator_id'] for r in rows}
+        for ai in allocated_indicators:
+            if ai['indicator_id'] not in existing_ids:
+                rows.insert(0, ai)
+        return rows
 
     query = """
         SELECT mi.indicator_id, mi.indicator_description, tc.category_name
@@ -38,25 +62,13 @@ def get_designated_selectable_indicators(cursor, term_id, exclude_claimed=True, 
     rows = timed_query(cursor, query, (term_id,), label="get_designated_selectable_indicators")
     if exclude_claimed:
         claimed = get_claimed_indicator_ids(cursor, term_id)
+        allocated_ids = {ai['indicator_id'] for ai in allocated_indicators}
+        rows = [r for r in rows if r['indicator_id'] not in claimed or r['indicator_id'] in allocated_ids]
 
-        # An indicator the Program Chair explicitly allocated to *this* person stays in the
-        # list even though the department also holds it. The claimed rule exists to stop
-        # someone picking up work that already has an owner — but for their own allocated
-        # share they are the owner. Dropping it left the allocation with no row to attach
-        # to, so a chair's Core Functions showed only the teaching load.
-        allocated = set()
-        if emp_id:
-            cursor.execute(
-                "SELECT da.indicator_id "
-                "FROM tbl_draft_allocation da "
-                "JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id "
-                "WHERE da.emp_id = %s AND mi.term_id = %s "
-                "  AND COALESCE(da.assigned_quantity, 0) > 0",
-                (emp_id, term_id))
-            allocated = {r[0] for r in cursor.fetchall()}
-
-        rows = [r for r in rows
-                if r['indicator_id'] not in claimed or r['indicator_id'] in allocated]
+    existing_ids = {r['indicator_id'] for r in rows}
+    for ai in allocated_indicators:
+        if ai['indicator_id'] not in existing_ids:
+            rows.insert(0, ai)
     return rows
 
 
@@ -165,7 +177,9 @@ def get_oversight_targets(cursor, emp_id, term_id):
         # Pre-filled from the cascade; a saved draft value wins so an edit survives a reload.
         r['total_target_value'] = r.get('proposed_quantity') or r['total_target_value']
         r['target_description'] = r.get('target_description') or r['indicator_description']
-        r['target_deadline'] = r.get('target_deadline') or ''
+        r['target_duration_value'] = r.get('target_duration_value') or 6
+        r['target_duration_unit'] = r.get('target_duration_unit') or 'months'
+        r['target_deadline'] = r.get('target_deadline') or f"{r['target_duration_value']} {r['target_duration_unit']}"
         r['status'] = r.get('review_status') or 'Draft'
         r['is_admin_function'] = True
         r['is_cascaded'] = True
@@ -420,13 +434,25 @@ def submit_designated_evidences(conn, cursor, emp_id, term_id):
         return False, "All targets must have uploaded evidence and meet target quantities before submitting."
 
     try:
+        # Check if the user is a Sector Head / Chair who submits directly to Dean
+        cursor.execute("SELECT system_role FROM tbl_system_access WHERE emp_id = %s", (emp_id,))
+        role_row = cursor.fetchone()
+        system_role = role_row[0] if role_row else 'DESIGNATED_FACULTY'
+
         target_ids = [t['target_id'] for t in dpcr_targets if t.get('target_id')]
         if target_ids:
             placeholders = ','.join(['%s'] * len(target_ids))
-            update_sql = f"UPDATE tbl_committed_targets SET status = 'Submitted to Dean' WHERE emp_id = %s AND target_id IN ({placeholders})"
-            cursor.execute(update_sql, [emp_id] + target_ids)
+            if system_role in ('PROGRAM_CHAIR', 'RET_CHAIR', 'DEAN'):
+                new_status = 'Submitted to Dean'
+                msg = "Evidences successfully submitted to Dean for verification."
+            else:
+                new_status = 'Submitted'
+                msg = "Evidences successfully submitted to Program Chair for verification."
+
+            update_sql = f"UPDATE tbl_committed_targets SET status = %s WHERE emp_id = %s AND target_id IN ({placeholders})"
+            cursor.execute(update_sql, [new_status, emp_id] + target_ids)
             conn.commit()
-            return True, "Evidences successfully submitted to Dean for verification."
+            return True, msg
     except Exception as e:
         conn.rollback()
         return False, f"Error submitting evidences: {str(e)}"

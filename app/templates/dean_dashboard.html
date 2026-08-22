@@ -406,11 +406,18 @@
                                 {% endif %}
                             </td>
                             <td class="text-center pe-4">
+                                {% if sub.review_status == 'Rejected' %}
+                                <button class="btn btn-sm btn-outline-secondary" disabled
+                                    title="Awaiting designated faculty resubmission.">
+                                    <i class="ti ti-hourglass me-1"></i> Awaiting Resubmission
+                                </button>
+                                {% else %}
                                 <button class="btn btn-sm btn-outline-primary open-review-modal"
                                     data-emp-id="{{ sub.emp_id }}" data-bs-toggle="modal"
                                     data-bs-target="#reviewDeanModal">
                                     <i class="ti ti-eye me-1"></i> Review
                                 </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -809,7 +816,7 @@
     <div class="modal fade" id="designatedAssignmentModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <form action="{{ url_for('dean.save_designated_assignments') }}" method="POST">
+                <form action="{{ url_for('dean.save_designated_assignments') }}" method="POST" onsubmit="return validateDeanAssignmentForm(this, event)">
                     <input type="hidden" name="emp_id" id="designatedAssignEmpId">
                     <div class="modal-header bg-light">
                         <h5 class="modal-title fw-bold text-dark">
@@ -842,6 +849,81 @@
     </div>
 
     <script>
+    function showDeanWarningModal(title, headline, message) {
+        const titleEl = document.getElementById('deanWarningModalTitle');
+        const headEl = document.getElementById('deanWarningModalHeadline');
+        const msgEl = document.getElementById('deanWarningModalMessage');
+        if (titleEl) titleEl.innerHTML = `<i class="ti ti-alert-triangle me-2"></i>${title || 'Incomplete Fields'}`;
+        if (headEl) headEl.textContent = headline || 'Missing Required Information';
+        if (msgEl) msgEl.textContent = message || 'Please fill in all required fields.';
+        const modalEl = document.getElementById('deanWarningModal');
+        if (modalEl) {
+            if (modalEl.parentNode !== document.body) {
+                document.body.appendChild(modalEl);
+            }
+            modalEl.addEventListener('shown.bs.modal', function onShown() {
+                modalEl.removeEventListener('shown.bs.modal', onShown);
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                if (backdrops.length > 1) {
+                    backdrops[backdrops.length - 1].style.zIndex = '1990';
+                }
+            });
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    }
+
+    function validateDeanAssignmentForm(form, event) {
+        const checked = form.querySelectorAll('input[name="assign_indicator_ids[]"]:checked');
+        if (checked.length === 0) {
+            if (event) event.preventDefault();
+            showDeanWarningModal(
+                'No Targets Selected',
+                'No College-Wide Targets Selected',
+                'Please select at least one College-Wide target checkbox to assign before saving.'
+            );
+            return false;
+        }
+
+        let isValid = true;
+        checked.forEach(cb => {
+            const id = cb.value;
+            const qtyInp = form.querySelector(`input[name="assign_quantity_${id}"]`);
+            const descInp = form.querySelector(`input[name="assign_description_${id}"]`);
+            const durInp = form.querySelector(`input[name="assign_dur_value_${id}"]`);
+            
+            const qty = qtyInp ? parseInt(qtyInp.value, 10) || 0 : 0;
+            const dur = durInp ? parseInt(durInp.value, 10) || 0 : 0;
+            const desc = descInp ? descInp.value.trim() : '';
+            
+            if (qty <= 0) {
+                isValid = false;
+                if (qtyInp) qtyInp.classList.add('is-invalid', 'border-danger');
+            } else if (qtyInp) qtyInp.classList.remove('is-invalid', 'border-danger');
+            
+            if (!durInp || isNaN(dur) || dur <= 0) {
+                isValid = false;
+                if (durInp) durInp.classList.add('is-invalid', 'border-danger');
+            } else if (durInp) durInp.classList.remove('is-invalid', 'border-danger');
+            
+            if (!descInp || !desc) {
+                isValid = false;
+                if (descInp) descInp.classList.add('is-invalid', 'border-danger');
+            } else if (descInp) descInp.classList.remove('is-invalid', 'border-danger');
+        });
+
+        if (!isValid) {
+            if (event) event.preventDefault();
+            showDeanWarningModal(
+                'Missing Required Fields',
+                'Incomplete Target Assignment',
+                'Every assigned College-Wide target must have a valid Target Description and Deadline Duration (positive number and unit).'
+            );
+            return false;
+        }
+        return true;
+    }
+
     function filterDesignatedFacultyTable() {
         const filter = (document.getElementById('assignDesignatedSearch').value || '').toLowerCase();
         const rows = document.querySelectorAll('#assignDesignatedTable tbody tr.designated-faculty-row');
@@ -1779,6 +1861,7 @@
                 document.getElementById('modalDeanEmpId').value = data.emp_id;
 
                 const isApproved = (data.overall_status === 'Approved' || data.overall_status === 'Locked');
+                const isReturned = (data.overall_status === 'Rejected');
                 const approveBtn = document.getElementById('btnDeanApprove');
                 const rejectBtn = document.getElementById('btnDeanReject');
                 const remarksInput = document.getElementById('deanOverallRemarks');
@@ -1791,16 +1874,32 @@
                     if (remarksInput) remarksInput.disabled = true;
                     if (unselectedCard) unselectedCard.style.display = 'none';
                     if (collegeWideCard) collegeWideCard.style.display = 'none';
+                } else if (isReturned) {
+                    if (approveBtn) {
+                        approveBtn.style.display = '';
+                        approveBtn.disabled = true;
+                        approveBtn.setAttribute('title', 'Awaiting designated faculty resubmission.');
+                    }
+                    if (rejectBtn) {
+                        rejectBtn.style.display = '';
+                        rejectBtn.disabled = true;
+                        rejectBtn.setAttribute('title', 'Awaiting designated faculty resubmission.');
+                    }
+                    if (remarksInput) remarksInput.disabled = true;
+                    if (unselectedCard) unselectedCard.style.display = 'none';
+                    if (collegeWideCard) collegeWideCard.style.display = 'none';
                 } else {
                     if (approveBtn) {
                         approveBtn.style.display = '';
                         approveBtn.disabled = false;
                         approveBtn.innerHTML = '<i class="ti ti-circle-check me-1"></i> Approve IPCR';
+                        approveBtn.removeAttribute('title');
                     }
                     if (rejectBtn) {
                         rejectBtn.style.display = '';
                         rejectBtn.disabled = false;
                         rejectBtn.innerHTML = '<i class="ti ti-circle-x me-1"></i> Reject & Return';
+                        rejectBtn.removeAttribute('title');
                     }
                     if (remarksInput) remarksInput.disabled = false;
                     if (unselectedCard) unselectedCard.style.display = '';
@@ -2275,4 +2374,24 @@
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12) !important;
     }
 </style>
+
+<!-- Global Dean Validation Warning Modal (z-index 2000 to always appear in front of all open modals) -->
+<div class="modal fade" id="deanWarningModal" tabindex="-1" aria-hidden="true" style="z-index: 2000 !important;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px; z-index: 2005 !important;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-warning text-dark border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold" id="deanWarningModalTitle"><i class="ti ti-alert-triangle me-2"></i>Incomplete Fields</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <i class="ti ti-alert-circle text-warning display-4 d-block mb-3"></i>
+                <h6 class="fw-bold text-dark mb-2" id="deanWarningModalHeadline">Missing Required Information</h6>
+                <p class="text-secondary small mb-0" id="deanWarningModalMessage">Every assigned College-Wide target must have a valid Target Description and Deadline Duration (positive number and unit).</p>
+            </div>
+            <div class="modal-footer border-0 p-3 justify-content-center bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-warning fw-bold px-4" data-bs-dismiss="modal">OK, I'll Complete It</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

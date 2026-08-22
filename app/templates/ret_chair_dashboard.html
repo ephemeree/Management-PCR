@@ -216,13 +216,64 @@ function openAssignmentEditor(empId) {
         body.innerHTML = '<div class="alert alert-danger">Error: ' + err + '</div>';
     });
 }
-</script>
 
-<!-- Assignment Editor Modal (Dual Assignment Workflow) -->
-<div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <form action="{{ url_for('ret_chair.save_assignments') }}" method="POST">
+function validateRetAssignmentForm(form, event) {
+        const checked = form.querySelectorAll('.assign-check:checked');
+        if (checked.length === 0) {
+            if (event) event.preventDefault();
+            showRetWarningModal(
+                'No Targets Selected',
+                'No Research Targets Selected',
+                'Please select at least one Research target checkbox to assign to this faculty member before saving.'
+            );
+            return false;
+        }
+
+        let isValid = true;
+        checked.forEach(cb => {
+            const id = cb.value;
+            const qtyInp = form.querySelector(`input[name="assign_quantity_${id}"]`);
+            const descInp = form.querySelector(`input[name="assign_description_${id}"]`);
+            const durInp = form.querySelector(`input[name="assign_dur_value_${id}"]`);
+            
+            const qty = qtyInp ? parseInt(qtyInp.value, 10) || 0 : 0;
+            const dur = durInp ? parseInt(durInp.value, 10) || 0 : 0;
+            const desc = descInp ? descInp.value.trim() : '';
+            
+            if (qty <= 0) {
+                isValid = false;
+                if (qtyInp) qtyInp.classList.add('is-invalid', 'border-danger');
+            } else if (qtyInp) qtyInp.classList.remove('is-invalid', 'border-danger');
+            
+            if (!durInp || isNaN(dur) || dur <= 0) {
+                isValid = false;
+                if (durInp) durInp.classList.add('is-invalid', 'border-danger');
+            } else if (durInp) durInp.classList.remove('is-invalid', 'border-danger');
+            
+            if (!descInp || !desc) {
+                isValid = false;
+                if (descInp) descInp.classList.add('is-invalid', 'border-danger');
+            } else if (descInp) descInp.classList.remove('is-invalid', 'border-danger');
+        });
+
+        if (!isValid) {
+            if (event) event.preventDefault();
+            showRetWarningModal(
+                'Missing Required Fields',
+                'Incomplete Research Target Assignment',
+                'Every assigned research target must have a valid Target Description and Deadline Duration (positive number and unit).'
+            );
+            return false;
+        }
+        return true;
+    }
+    </script>
+
+    <!-- Assignment Editor Modal (Dual Assignment Workflow) -->
+    <div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <form action="{{ url_for('ret_chair.save_assignments') }}" method="POST" onsubmit="return validateRetAssignmentForm(this, event)">
                 <input type="hidden" name="emp_id" id="assignmentEditorEmpId">
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="ti ti-list-check me-2"></i>Assign Research Targets</h5>
@@ -644,13 +695,134 @@ function openAssignmentEditor(empId) {
             </div>
         </div>
     </div>
+
     <script>
+    function showRetWarningModal(title, headline, message) {
+        const titleEl = document.getElementById('retWarningModalTitle');
+        const headEl = document.getElementById('retWarningModalHeadline');
+        const msgEl = document.getElementById('retWarningModalMessage');
+        if (titleEl) titleEl.innerHTML = `<i class="ti ti-alert-triangle me-2"></i>${title || 'Incomplete Fields'}`;
+        if (headEl) headEl.textContent = headline || 'Missing Required Information';
+        if (msgEl) msgEl.textContent = message || 'Please fill in all required fields.';
+        const modalEl = document.getElementById('retWarningModal');
+        if (modalEl) {
+            if (modalEl.parentNode !== document.body) {
+                document.body.appendChild(modalEl);
+            }
+            modalEl.addEventListener('shown.bs.modal', function onShown() {
+                modalEl.removeEventListener('shown.bs.modal', onShown);
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                if (backdrops.length > 1) {
+                    backdrops[backdrops.length - 1].style.zIndex = '1990';
+                }
+            });
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    }
+
     function showConfirmExtDistModal() {
+        const form = document.querySelector('form[action="{{ url_for('ret_chair.save_extension_distribution') }}"]');
+        if (!form) return;
+        let isValid = true;
+        const items = form.querySelectorAll('.list-group-item');
+        items.forEach(item => {
+            const qtyInp = item.querySelector('input[name^="ext_quantity_"]');
+            const descInp = item.querySelector('input[name^="ext_description_"]');
+            const durInp = item.querySelector('input[name^="ext_dur_value_"]');
+            
+            const qty = qtyInp ? parseInt(qtyInp.value, 10) || 0 : 0;
+            if (qty > 0) {
+                const durVal = durInp ? parseInt(durInp.value, 10) : 0;
+                const descVal = descInp ? descInp.value.trim() : '';
+                if (!durInp || isNaN(durVal) || durVal <= 0) {
+                    isValid = false;
+                    if (durInp) durInp.classList.add('is-invalid', 'border-danger');
+                } else {
+                    if (durInp) durInp.classList.remove('is-invalid', 'border-danger');
+                }
+                if (!descInp || !descVal) {
+                    isValid = false;
+                    if (descInp) descInp.classList.add('is-invalid', 'border-danger');
+                } else {
+                    if (descInp) descInp.classList.remove('is-invalid', 'border-danger');
+                }
+            }
+        });
+
+        if (!isValid) {
+            showRetWarningModal(
+                'Missing Required Fields',
+                'Incomplete Extension Target',
+                'Every distributed extension target must have a valid Target Description and Deadline Duration (positive number and unit).'
+            );
+            return;
+        }
         new bootstrap.Modal(document.getElementById('confirmExtDistModal')).show();
     }
     function submitExtDistForm() {
         const form = document.querySelector('form[action="{{ url_for('ret_chair.save_extension_distribution') }}"]');
         if (form) form.submit();
+    }
+
+    function validateResearchRuleForm(form, event) {
+        const rank = form.querySelector('#academic_rank');
+        if (!rank || !rank.value) {
+            if (event) event.preventDefault();
+            showRetWarningModal(
+                'Select Academic Rank',
+                'Academic Rank Required',
+                'Please select an Academic Rank before saving this research rule.'
+            );
+            return false;
+        }
+        const checked = form.querySelectorAll('.research-indicator-checkbox:checked');
+        if (checked.length === 0) {
+            if (event) event.preventDefault();
+            showRetWarningModal(
+                'Select Research Options',
+                'Research Options Required',
+                'Please check at least one Research Option for this rank rule.'
+            );
+            return false;
+        }
+        let isValid = true;
+        checked.forEach(cb => {
+            const id = cb.value;
+            const qtyInp = form.querySelector(`#qty_${id}`);
+            const descInp = form.querySelector(`[name="research_description_${id}"]`);
+            const durInp = form.querySelector(`[name="research_dur_value_${id}"]`);
+            
+            const qty = qtyInp ? parseInt(qtyInp.value, 10) || 0 : 0;
+            const dur = durInp ? parseInt(durInp.value, 10) || 0 : 0;
+            const desc = descInp ? descInp.value.trim() : '';
+            
+            if (qty <= 0) {
+                isValid = false;
+                if (qtyInp) qtyInp.classList.add('is-invalid', 'border-danger');
+            } else if (qtyInp) qtyInp.classList.remove('is-invalid', 'border-danger');
+            
+            if (!durInp || isNaN(dur) || dur <= 0) {
+                isValid = false;
+                if (durInp) durInp.classList.add('is-invalid', 'border-danger');
+            } else if (durInp) durInp.classList.remove('is-invalid', 'border-danger');
+            
+            if (!descInp || !desc) {
+                isValid = false;
+                if (descInp) descInp.classList.add('is-invalid', 'border-danger');
+            } else if (descInp) descInp.classList.remove('is-invalid', 'border-danger');
+        });
+
+        if (!isValid) {
+            if (event) event.preventDefault();
+            showRetWarningModal(
+                'Missing Required Fields',
+                'Incomplete Research Option',
+                'Every checked research option must have a valid Target Description and Deadline Duration (positive number and unit).'
+            );
+            return false;
+        }
+        return true;
     }
     </script>
 
@@ -662,7 +834,7 @@ function openAssignmentEditor(empId) {
         <div class="card-body">
             <p class="text-muted small mb-4">Map the registered Research targets to specific academic ranks to generate
                 the faculty Research selection menus. (Extension is distributed to all faculty, not rank-based.)</p>
-            <form action="{{ url_for('ret_chair.ret_chair_save_rule') }}" method="POST">
+            <form action="{{ url_for('ret_chair.ret_chair_save_rule') }}" method="POST" onsubmit="return validateResearchRuleForm(this, event)">
                 <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
 
                 <div class="row mb-4">
@@ -2379,4 +2551,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 </style>
+
+<!-- Global RET Validation Warning Modal (z-index 2000 to always appear in front of all open modals) -->
+<div class="modal fade" id="retWarningModal" tabindex="-1" aria-hidden="true" style="z-index: 2000 !important;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px; z-index: 2005 !important;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-warning text-dark border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold" id="retWarningModalTitle"><i class="ti ti-alert-triangle me-2"></i>Incomplete Fields</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <i class="ti ti-alert-circle text-warning display-4 d-block mb-3"></i>
+                <h6 class="fw-bold text-dark mb-2" id="retWarningModalHeadline">Missing Required Information</h6>
+                <p class="text-secondary small mb-0" id="retWarningModalMessage">Every distributed extension target must have a valid Target Description and Deadline Duration (positive number and unit).</p>
+            </div>
+            <div class="modal-footer border-0 p-3 justify-content-center bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-warning fw-bold px-4" data-bs-dismiss="modal">OK, I'll Complete It</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

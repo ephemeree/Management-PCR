@@ -465,15 +465,34 @@ def submit_designated_ipcr_route():
     selected_ids = request.form.getlist('selected_indicators[]')
     selected_targets = []
     for ind_id in selected_ids:
-        qty_val = request.form.get(f'target_qty_{ind_id}', '0')
-        desc_val = request.form.get(f'target_desc_{ind_id}', '')
+        if str(ind_id).startswith('tl_'):
+            try:
+                clean_id = int(str(ind_id).split('_')[1])
+            except (IndexError, ValueError):
+                continue
+        else:
+            try:
+                clean_id = int(ind_id)
+            except ValueError:
+                continue
+
+        qty_val = request.form.get(f'target_qty_{ind_id}', request.form.get(f'target_qty_{clean_id}', '0'))
+        desc_val = request.form.get(f'target_desc_{ind_id}', request.form.get(f'target_desc_{clean_id}', ''))
         # Structured duration drives Timeliness; the text label is derived from it.
         dur_value, dur_unit, dead_label = parse_duration_fields(
             request.form, f'target_dur_value_{ind_id}', f'target_dur_unit_{ind_id}')
+        if not dur_value:
+            dur_value, dur_unit, dead_label = parse_duration_fields(
+                request.form, f'target_dur_value_{clean_id}', f'target_dur_unit_{clean_id}')
+        if not dur_value:
+            dur_value = 1
+            dur_unit = 'semesters'
+            dead_label = '1 Semester'
+
         selected_targets.append({
-            'indicator_id': int(ind_id),
-            'proposed_quantity': int(qty_val) if qty_val.isdigit() else 1,
-            'target_description': desc_val.strip(),
+            'indicator_id': clean_id,
+            'proposed_quantity': int(qty_val) if str(qty_val).isdigit() and int(qty_val) > 0 else 1,
+            'target_description': (desc_val or '').strip(),
             'target_deadline': dead_label,
             'target_duration_value': dur_value,
             'target_duration_unit': dur_unit

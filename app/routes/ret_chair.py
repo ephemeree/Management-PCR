@@ -81,6 +81,13 @@ def save_extension_distribution():
         desc = (request.form.get(f'ext_description_{ind_id}', '') or '').strip() or None
         dur_value, dur_unit, _ = parse_duration_fields(
             request.form, f'ext_dur_value_{ind_id}', f'ext_dur_unit_{ind_id}')
+        if qty > 0:
+            if not dur_value or dur_value <= 0:
+                flash("Every distributed extension target must have a valid deadline duration (number > 0 and unit).", "danger")
+                return redirect(url_for('ret_chair.ret_chair_dashboard'))
+            if not desc:
+                flash("Every distributed extension target must have an IPCR target description.", "danger")
+                return redirect(url_for('ret_chair.ret_chair_dashboard'))
         distributions.append((int(ind_id), qty, desc, dur_value, dur_unit))
 
     conn = get_db_connection()
@@ -202,6 +209,13 @@ def save_assignments():
         except (ValueError, TypeError):
             dur_val = None
 
+        if not dur_val or dur_val <= 0:
+            flash("Every assigned research target must have a valid deadline duration (number > 0 and unit).", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+        if not desc_val:
+            flash("Every assigned research target must have an IPCR target description.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
         assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val))
 
     conn = get_db_connection()
@@ -322,6 +336,12 @@ def ret_chair_save_rule():
         desc = (request.form.get(f'research_description_{r_id}', '') or '').strip() or None
         dur_value, dur_unit, _ = parse_duration_fields(
             request.form, f'research_dur_value_{r_id}', f'research_dur_unit_{r_id}')
+        if not dur_value or dur_value <= 0:
+            flash("Every mapped research option must have a valid deadline duration (number > 0 and unit).", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+        if not desc:
+            flash("Every mapped research option must have an IPCR target description.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
         research_indicators.append((int(r_id), qty, desc, dur_value, dur_unit))
 
     try:

@@ -306,9 +306,15 @@ def get_locked_faculty_ipcrs(cursor, specialization, term_id):
             CONCAT(ep.first_name, ' ', ep.last_name) AS faculty_name,
             ep.academic_rank,
             ep.specialization,
-            (SELECT COUNT(*) FROM tbl_committed_targets ct 
-             JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
-             WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s AND ct.assigned_quantity > 0) AS target_count,
+            COALESCE(
+                NULLIF((SELECT COUNT(*) FROM tbl_committed_targets ct 
+                        JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
+                        WHERE ct.emp_id = ep.emp_id AND mi2.term_id = %s AND ct.assigned_quantity > 0), 0),
+                (SELECT COUNT(*) FROM tbl_draft_targets dt 
+                 JOIN tbl_master_indicators mi3 ON dt.indicator_id = mi3.indicator_id 
+                 WHERE dt.emp_id = ep.emp_id AND mi3.term_id = %s AND dt.proposed_quantity > 0),
+                0
+            ) AS target_count,
             CASE
                 WHEN (SELECT COUNT(*) FROM tbl_committed_targets ct 
                       JOIN tbl_master_indicators mi2 ON ct.indicator_id = mi2.indicator_id 
@@ -330,7 +336,7 @@ def get_locked_faculty_ipcrs(cursor, specialization, term_id):
                  cr.review_id, cr.overall_remarks, cr.reviewed_at
         ORDER BY ep.last_name, ep.first_name
     """
-    cursor.execute(query, (term_id, term_id, term_id, specialization))
+    cursor.execute(query, (term_id, term_id, term_id, term_id, specialization))
     columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
@@ -632,16 +638,13 @@ def get_program_chair_evidence_faculty(cursor, specialization, term_id):
         JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
-        WHERE (ep.specialization = %s 
-               OR (ep.designation IS NOT NULL AND ep.designation <> ''
-                    AND ep.designation NOT IN ('Regular Faculty', 'Admin')) 
-               OR sa.system_role IN ('RET_CHAIR', 'PROGRAM_CHAIR', 'DESIGNATED_FACULTY', 'DEAN'))
+        WHERE (ep.specialization = %s OR ep.assigned_program = %s)
           AND mi.term_id = %s
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.designation, sa.system_role
         HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name
     """
-    rows = timed_query(cursor, query, (specialization, term_id), label="get_program_chair_evidence_faculty")
+    rows = timed_query(cursor, query, (specialization, specialization, term_id), label="get_program_chair_evidence_faculty")
     for r in rows:
         enrich_faculty_verification_status(cursor, r, term_id)
     return rows

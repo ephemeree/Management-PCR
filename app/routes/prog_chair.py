@@ -92,6 +92,7 @@ def prog_chair_dashboard():
             for draft in pending_drafts:
                 draft['ipcr_status'] = get_overall_ipcr_status(cursor, draft['emp_id'], term_id)
             pending_drafts_count = get_pending_drafts_count(cursor, specialization, term_id)
+            locked_drafts = get_locked_faculty_ipcrs(cursor, specialization, term_id)
             evidence_faculty_list = get_program_chair_evidence_faculty(cursor, specialization, term_id)
             pending_evidence_faculty_list = [f for f in evidence_faculty_list if not f.get('is_both_approved')]
             approved_evidence_faculty_list = [f for f in evidence_faculty_list if f.get('is_both_approved')]
@@ -267,19 +268,27 @@ def assign_chair_target():
         allocations = []
         for idx, (ind_id, qty) in enumerate(zip(indicator_ids, assigned_quantities)):
             try:
+                q_int = int(qty)
                 c_desc = custom_descriptions[idx].strip() if idx < len(custom_descriptions) and custom_descriptions[idx] else None
-                # Structured duration drives Timeliness; the text label is derived from it
-                # so existing deadline displays keep working.
                 raw_value = target_duration_values[idx] if idx < len(target_duration_values) else None
                 raw_unit = target_duration_units[idx] if idx < len(target_duration_units) else None
                 dur_value, dur_unit, t_dead = parse_duration_fields(
                     {'v': raw_value, 'u': raw_unit}, 'v', 'u')
-                allocations.append((int(ind_id), int(qty), c_desc, t_dead, dur_value, dur_unit))
+                
+                if q_int > 0:
+                    if not dur_value or dur_value <= 0:
+                        flash("Every allocated target must have a valid deadline duration (number > 0 and unit).", "danger")
+                        return redirect(url_for('prog_chair.prog_chair_dashboard'))
+                    if not c_desc:
+                        flash("Every allocated target must have an IPCR target description.", "danger")
+                        return redirect(url_for('prog_chair.prog_chair_dashboard'))
+                        
+                allocations.append((int(ind_id), q_int, c_desc, t_dead, dur_value, dur_unit))
             except ValueError:
                 continue
 
-        if not allocations:
-            flash("No valid allocations to save.", "warning")
+        if not allocations or not any(a[1] > 0 for a in allocations):
+            flash("Please allocate a quantity greater than 0 to at least one target before saving.", "warning")
             return redirect(url_for('prog_chair.prog_chair_dashboard'))
 
         success, msg = save_chair_allocations_batch(

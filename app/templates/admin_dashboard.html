@@ -1052,7 +1052,7 @@
                 </div>
             </form>
 
-            <form action="{{ url_for('admin.admin_save_signatories') }}" method="POST">
+            <form id="adminSignatoriesForm" action="{{ url_for('admin.admin_save_signatories') }}" method="POST" onsubmit="return validateSignatories(this, event)">
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle mb-3">
                         <thead class="table-light">
@@ -1088,6 +1088,7 @@
                                            name="sig_{{ sig.signatory_id }}_name"
                                            value="{{ sig.full_name or '' }}"
                                            placeholder="e.g. JUAN D. CRUZ, Ed.D."
+                                           oninput="this.classList.remove('is-invalid')"
                                            {% if sig.source != 'FIXED' %}disabled{% endif %}>
                                 </td>
                                 <td>
@@ -1107,6 +1108,28 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Signatory Name Required Warning Modal -->
+    <div class="modal fade" id="signatoryWarningModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning bg-opacity-10 border-0">
+                    <h5 class="modal-title fw-bold text-warning-emphasis d-flex align-items-center gap-2">
+                        <i class="ti ti-alert-triangle fs-4 text-warning"></i> Signatory Name Required
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="mb-2">The following signatory block(s) are set to <strong>"A named person"</strong> but are missing a name:</p>
+                    <ul id="signatoryWarningList" class="text-danger mb-3 ps-3"></ul>
+                    <p class="small text-muted mb-0">Please enter the signatory's full name (e.g. <em>RHODORA HUGO, Ph.D.</em>) or select a derived role (such as <em>Their Program Chair</em> or <em>The Dean</em>) before saving.</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-primary fw-semibold px-4" data-bs-dismiss="modal">OK, I'll provide a name</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1147,12 +1170,44 @@
     </div>
 
     <script>
+    function validateSignatories(form, event) {
+        const missing = [];
+        form.querySelectorAll('.sig-source').forEach(sel => {
+            if (sel.value === 'FIXED') {
+                const sid = sel.dataset.sid;
+                const input = document.getElementById('sigName_' + sid);
+                if (!input || !input.value.trim()) {
+                    if (input) input.classList.add('is-invalid');
+                    const row = sel.closest('tr');
+                    const blockLabel = row ? row.querySelector('td:first-child').innerText.trim() : ('Block #' + sid);
+                    missing.push(blockLabel);
+                } else {
+                    if (input) input.classList.remove('is-invalid');
+                }
+            }
+        });
+
+        if (missing.length > 0) {
+            if (event) event.preventDefault();
+            const listEl = document.getElementById('signatoryWarningList');
+            if (listEl) {
+                listEl.innerHTML = missing.map(m => `<li><strong>${m}</strong></li>`).join('');
+            }
+            new bootstrap.Modal(document.getElementById('signatoryWarningModal')).show();
+            return false;
+        }
+        return true;
+    }
+
     function toggleSigName(sel) {
         // Only a named person needs a name typed in; derived blocks follow the roster.
         const input = document.getElementById('sigName_' + sel.dataset.sid);
         if (!input) return;
         input.disabled = (sel.value !== 'FIXED');
-        if (input.disabled) input.value = '';
+        if (input.disabled) {
+            input.value = '';
+            input.classList.remove('is-invalid');
+        }
     }
     function newDepartment() {
         document.getElementById('deptId').value = '';

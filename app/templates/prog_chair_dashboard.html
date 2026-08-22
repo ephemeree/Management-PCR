@@ -846,63 +846,92 @@
             });
         }
 
-        // Confirmation Modal Save Action
-        const btnConfirmSaveTargets = document.getElementById('btnConfirmSaveTargets');
-        if (btnConfirmSaveTargets) {
-            btnConfirmSaveTargets.addEventListener('click', function () {
-                const form = document.getElementById('targetAllocationForm');
-                if (form) {
-                    form.submit();
-                }
-            });
-        }
-
         const btnInitiateSaveTargets = document.getElementById('btnInitiateSaveTargets');
         if (btnInitiateSaveTargets) {
             btnInitiateSaveTargets.addEventListener('click', function () {
                 let isValid = true;
+                let totalAssigned = 0;
                 const form = document.getElementById('targetAllocationForm');
                 
                 if (!form) return;
                 
-                const assignedInputs = form.querySelectorAll('input[name^="assigned_quantity_"]');
-                const deadlineInputs = form.querySelectorAll('input[name^="target_deadline_value_"]');
-                const deadlineSelects = form.querySelectorAll('select[name^="target_deadline_unit_"]');
-                const descriptionInputs = form.querySelectorAll('textarea[name^="custom_description_"]');
-                
-                function checkValid(list) {
-                    list.forEach(el => {
-                        if (!el.value || el.value.trim() === '') {
-                            isValid = false;
-                            el.classList.add('border-danger');
+                const rows = form.querySelectorAll('tbody tr');
+                rows.forEach(tr => {
+                    const qtyInput = tr.querySelector('.assigned-qty-input');
+                    const durInput = tr.querySelector('input[name="target_duration_values"]');
+                    const descInput = tr.querySelector('textarea[name="custom_descriptions"]');
+                    
+                    if (qtyInput) {
+                        const qty = parseInt(qtyInput.value, 10) || 0;
+                        if (qty > 0) {
+                            totalAssigned += qty;
+                            const durVal = durInput ? parseInt(durInput.value, 10) : 0;
+                            const descVal = descInput ? descInput.value.trim() : '';
+                            
+                            if (!durInput || isNaN(durVal) || durVal <= 0) {
+                                isValid = false;
+                                if (durInput) durInput.classList.add('is-invalid', 'border-danger');
+                            } else {
+                                if (durInput) durInput.classList.remove('is-invalid', 'border-danger');
+                            }
+                            
+                            if (!descInput || !descVal) {
+                                isValid = false;
+                                if (descInput) descInput.classList.add('is-invalid', 'border-danger');
+                            } else {
+                                if (descInput) descInput.classList.remove('is-invalid', 'border-danger');
+                            }
                         } else {
-                            el.classList.remove('border-danger');
+                            if (durInput) durInput.classList.remove('is-invalid', 'border-danger');
+                            if (descInput) descInput.classList.remove('is-invalid', 'border-danger');
                         }
-                    });
-                }
-                
-                checkValid(assignedInputs);
-                checkValid(deadlineInputs);
-                checkValid(deadlineSelects);
-                checkValid(descriptionInputs);
-
-                if (!isValid) {
-                    if (window.showCustomAlert) {
-                        showCustomAlert('Missing Fields', 'Please fill out all Assigned Quantities, Deadlines, and Target Descriptions before saving.', 'warning');
-                    } else {
-                        alert('Please fill out all Assigned Quantities, Deadlines, and Target Descriptions before saving.');
                     }
+                });
+
+                if (totalAssigned === 0) {
+                    showCustomConfirm({
+                        title: "No Targets Allocated",
+                        mainText: "Please assign a quantity greater than 0 to at least one target before saving.",
+                        subText: "Enter the number of outputs assigned per faculty member.",
+                        confirmText: "OK",
+                        confirmClass: "btn-warning",
+                        iconClass: "ti-alert-triangle",
+                        onConfirm: () => {}
+                    });
                     return;
                 }
-                
-                const modal = new bootstrap.Modal(document.getElementById('confirmSaveTargetsModal'));
-                modal.show();
+
+                if (!isValid) {
+                    showCustomConfirm({
+                        title: "Missing Required Fields",
+                        mainText: "Every allocated target must have a valid <strong>Deadline Duration</strong> (positive number) and <strong>Target Description</strong>.",
+                        subText: "Please fill in the missing fields highlighted in red before proceeding.",
+                        confirmText: "OK, I'll fix it",
+                        confirmClass: "btn-danger",
+                        iconClass: "ti-alert-circle",
+                        onConfirm: () => {
+                            const firstErr = form.querySelector('.border-danger, .is-invalid');
+                            if (firstErr) firstErr.focus();
+                        }
+                    });
+                    return;
+                }
+
+                showCustomConfirm({
+                    title: "Finalize & Save Target Allocations?",
+                    mainText: "Are you sure you want to save baseline target allocations for your department?",
+                    subText: "This action distributes targets across your faculty. Once saved and finalized, allocations cannot be modified for this term.",
+                    confirmText: "Yes, Save & Finalize",
+                    confirmClass: "btn-primary",
+                    iconClass: "ti-device-floppy",
+                    onConfirm: () => document.getElementById('targetAllocationForm').submit()
+                });
             });
             
             // Remove error border on input
             document.addEventListener('input', function(e) {
-                if (e.target.classList.contains('border-danger')) {
-                    e.target.classList.remove('border-danger');
+                if (e.target.classList.contains('border-danger') || e.target.classList.contains('is-invalid')) {
+                    e.target.classList.remove('border-danger', 'is-invalid');
                 }
             });
         }

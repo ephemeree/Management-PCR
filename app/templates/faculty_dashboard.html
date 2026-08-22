@@ -1029,6 +1029,7 @@
         const effRow = document.getElementById('efficiencyRow');
         const effSelect = document.getElementById('evidenceEfficiency');
         const effErr = document.getElementById('efficiencyErrorMsg');
+        const msg = document.getElementById('accomplishmentSaveMsg');
         
         if (effRow && effRow.style.display !== 'none' && !effRaw) {
             if (effSelect) effSelect.classList.add('is-invalid');
@@ -1042,7 +1043,6 @@
         if (effSelect) effSelect.classList.remove('is-invalid');
         if (effErr) effErr.style.display = 'none';
 
-        const msg = document.getElementById('accomplishmentSaveMsg');
         if (msg) {
             msg.className = 'small me-2 text-muted';
             msg.textContent = 'Saving...';
@@ -1070,17 +1070,20 @@
                 msg.textContent = data.message || (data.success ? 'Saved.' : 'Failed to save.');
             }
             if (data.success) {
+                window.evidenceModalHasChanges = true;
                 // Keep the in-page map in sync so reopening shows the saved values.
                 const meta = TARGET_META[String(targetId)];
                 if (meta) {
                     meta.actualDurationValue = durationRaw === '' ? null : parseInt(durationRaw, 10);
                     meta.completionStatus = status;
                     meta.efficiencyRating = effRaw === '' ? null : parseInt(effRaw, 10);
+                    meta.printRemarks = document.getElementById('evidenceRemarks').value;
                 }
                 if (closeModalOnSuccess) {
                     const modalEl = document.getElementById('evidenceGatheringModal');
                     const modalInstance = bootstrap.Modal.getInstance(modalEl);
                     if (modalInstance) modalInstance.hide();
+                    window.location.reload();
                 }
             }
         })

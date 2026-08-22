@@ -1,7 +1,5 @@
 {% extends 'base.html' %}
 
-{% block flash_messages %}{% endblock %}
-
 {% block role_display %}Designated Faculty{% endblock %}
 
 {% block sidebar_items %}
@@ -978,23 +976,30 @@
             form.addEventListener('submit', function (e) {
                 const checkedBoxes = form.querySelectorAll('.strategic-checkbox:checked');
                 const customDescriptions = form.querySelectorAll('input[name="custom_descriptions[]"]');
+                const selectedIndicators = form.querySelectorAll('input[name="selected_indicators[]"]');
 
-                if (checkedBoxes.length === 0 && customDescriptions.length === 0) {
-                    alert('Please select at least one standard target or add a custom target before submitting.');
+                if (checkedBoxes.length === 0 && customDescriptions.length === 0 && selectedIndicators.length === 0) {
+                    showDesignatedWarningModal(
+                        'Target Selection Required',
+                        'No Targets Selected',
+                        'Please select at least one standard target or add a custom target before submitting.'
+                    );
                     e.preventDefault();
                     return;
                 }
 
                 let valid = true;
                 let firstInvalidInput = null;
+                let errorHeadline = '';
                 let errorMsg = '';
 
-                // Validate ONLY selected standard targets (unselected targets are ignored)
+                // Validate ONLY selected standard targets in Table 2
                 checkedBoxes.forEach(cb => {
                     const row = cb.closest('tr');
+                    if (!row) return;
                     
                     // 1. Validate Target Quantity
-                    const qtyInput = row.querySelector(`input[name="target_qty_${cb.value}"]`);
+                    const qtyInput = row.querySelector('input[name^="target_qty_"]');
                     if (qtyInput) {
                         const qty = parseInt(qtyInput.value) || 0;
                         if (qty <= 0) {
@@ -1002,6 +1007,7 @@
                             valid = false;
                             if (!firstInvalidInput) {
                                 firstInvalidInput = qtyInput;
+                                errorHeadline = 'Invalid Target Quantity';
                                 errorMsg = 'All selected targets must have a quantity greater than 0.';
                             }
                         } else {
@@ -1010,7 +1016,7 @@
                     }
 
                     // 2. Validate Deadline / Target Duration Value
-                    const durInput = row.querySelector(`input[name="target_dur_value_${cb.value}"]`);
+                    const durInput = row.querySelector('input[name^="target_dur_value_"]');
                     if (durInput) {
                         const durVal = parseInt(durInput.value) || 0;
                         if (!durInput.value.trim() || durVal <= 0) {
@@ -1018,6 +1024,7 @@
                             valid = false;
                             if (!firstInvalidInput) {
                                 firstInvalidInput = durInput;
+                                errorHeadline = 'Missing Target Deadline';
                                 errorMsg = 'All selected targets must have a deadline (target duration) filled up.';
                             }
                         } else {
@@ -1030,14 +1037,19 @@
                 const uncheckedBoxes = form.querySelectorAll('.strategic-checkbox:not(:checked)');
                 uncheckedBoxes.forEach(cb => {
                     const row = cb.closest('tr');
-                    const qtyInput = row.querySelector(`input[name="target_qty_${cb.value}"]`);
-                    const durInput = row.querySelector(`input[name="target_dur_value_${cb.value}"]`);
+                    if (!row) return;
+                    const qtyInput = row.querySelector('input[name^="target_qty_"]');
+                    const durInput = row.querySelector('input[name^="target_dur_value_"]');
                     if (qtyInput) qtyInput.classList.remove('is-invalid');
                     if (durInput) durInput.classList.remove('is-invalid');
                 });
 
                 if (!valid) {
-                    alert(errorMsg || 'Please ensure all selected targets have their quantity and deadline filled up.');
+                    showDesignatedWarningModal(
+                        'Missing Required Information',
+                        errorHeadline || 'Incomplete Targets',
+                        errorMsg || 'Please ensure all selected targets have their quantity and deadline filled up.'
+                    );
                     if (firstInvalidInput) {
                         firstInvalidInput.focus();
                     }
@@ -1184,6 +1196,7 @@
         const effRow = document.getElementById('efficiencyRow');
         const effSelect = document.getElementById('evidenceEfficiency');
         const effErr = document.getElementById('efficiencyErrorMsg');
+        const msg = document.getElementById('accomplishmentSaveMsg');
         
         if (effRow && effRow.style.display !== 'none' && !effRaw) {
             if (effSelect) effSelect.classList.add('is-invalid');
@@ -1197,7 +1210,6 @@
         if (effSelect) effSelect.classList.remove('is-invalid');
         if (effErr) effErr.style.display = 'none';
 
-        const msg = document.getElementById('accomplishmentSaveMsg');
         if (msg) {
             msg.className = 'small me-2 text-muted';
             msg.textContent = 'Saving...';
@@ -1225,11 +1237,13 @@
                 msg.textContent = data.message || (data.success ? 'Saved.' : 'Failed to save.');
             }
             if (data.success) {
+                window.evidenceModalHasChanges = true;
                 const meta = TARGET_META[String(targetId)];
                 if (meta) {
                     meta.actualDurationValue = durationRaw === '' ? null : parseInt(durationRaw, 10);
                     meta.completionStatus = status;
                     meta.efficiencyRating = effRaw === '' ? null : parseInt(effRaw, 10);
+                    meta.printRemarks = document.getElementById('evidenceRemarks').value;
                 }
                 if (closeModalOnSuccess) {
                     const modalEl = document.getElementById('evidenceGatheringModal');
@@ -1713,4 +1727,50 @@
         </div>
     </div>
 </div>
+
+<!-- Global Designated Validation Warning Modal (z-index 2000 to always appear in front of all open modals) -->
+<div class="modal fade" id="designatedWarningModal" tabindex="-1" aria-hidden="true" style="z-index: 2000 !important;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px; z-index: 2005 !important;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-warning text-dark border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold" id="designatedWarningModalTitle"><i class="ti ti-alert-triangle me-2"></i>Incomplete Targets</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <i class="ti ti-alert-circle text-warning display-4 d-block mb-3"></i>
+                <h6 class="fw-bold text-dark mb-2" id="designatedWarningModalHeadline">Target Selection Required</h6>
+                <p class="text-secondary small mb-0" id="designatedWarningModalMessage">Please select at least one standard target or add a custom target before submitting.</p>
+            </div>
+            <div class="modal-footer border-0 p-3 justify-content-center bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-warning fw-bold px-4" data-bs-dismiss="modal">OK, Got It</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showDesignatedWarningModal(title, headline, message) {
+    const titleEl = document.getElementById('designatedWarningModalTitle');
+    const headEl = document.getElementById('designatedWarningModalHeadline');
+    const msgEl = document.getElementById('designatedWarningModalMessage');
+    if (titleEl) titleEl.innerHTML = `<i class="ti ti-alert-triangle me-2"></i>${title || 'Incomplete Targets'}`;
+    if (headEl) headEl.textContent = headline || 'Target Selection Required';
+    if (msgEl) msgEl.textContent = message || 'Please select at least one standard target or add a custom target before submitting.';
+    const modalEl = document.getElementById('designatedWarningModal');
+    if (modalEl) {
+        if (modalEl.parentNode !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+        modalEl.addEventListener('shown.bs.modal', function onShown() {
+            modalEl.removeEventListener('shown.bs.modal', onShown);
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            if (backdrops.length > 1) {
+                backdrops[backdrops.length - 1].style.zIndex = '1990';
+            }
+        });
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+</script>
 {% endblock %}

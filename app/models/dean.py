@@ -601,6 +601,28 @@ def get_dean_evidence_faculty(cursor, term_id):
     from app.models.connection import timed_query
     from app.models.faculty import enrich_faculty_verification_status
 
+    # Normalize any designated or regular faculty targets that were prematurely set to 'Submitted to Dean' before Program Chair approval
+    cursor.execute("""
+        UPDATE tbl_committed_targets ct
+        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+        JOIN tbl_employee_profiles ep ON ct.emp_id = ep.emp_id
+        LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
+        SET ct.status = 'Submitted'
+        WHERE mi.term_id = %s
+          AND ct.status = 'Submitted to Dean'
+          AND COALESCE(sa.system_role, '') NOT IN ('PROGRAM_CHAIR', 'RET_CHAIR', 'DEAN')
+          AND (
+              EXISTS (
+                  SELECT 1 FROM tbl_evidence_repo er 
+                  WHERE er.target_id = ct.target_id AND er.verification_status != 'Approved'
+              )
+              OR NOT EXISTS (
+                  SELECT 1 FROM tbl_evidence_repo er2 
+                  WHERE er2.target_id = ct.target_id
+              )
+          )
+    """, (term_id,))
+
     query = """
         SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program, ep.designation, sa.system_role,
                COUNT(DISTINCT ct.target_id) as total_targets,
@@ -615,9 +637,7 @@ def get_dean_evidence_faculty(cursor, term_id):
         HAVING (
             MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
             OR (
-                (sa.system_role IN ('RET_CHAIR', 'PROGRAM_CHAIR', 'DESIGNATED_FACULTY', 'DEAN') 
-                 OR (ep.designation IS NOT NULL AND ep.designation <> ''
-                    AND ep.designation NOT IN ('Regular Faculty', 'Admin')))
+                sa.system_role IN ('PROGRAM_CHAIR', 'RET_CHAIR', 'DEAN')
                 AND MAX(CASE WHEN ct.status IN ('Submitted', 'Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
             )
         )

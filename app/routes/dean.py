@@ -474,6 +474,13 @@ def save_designated_assignments():
         except (ValueError, TypeError):
             dur_val = None
 
+        if not dur_val or dur_val <= 0:
+            flash("Every assigned College-Wide target must have a valid deadline duration (number > 0 and unit).", "danger")
+            return redirect(url_for('dean.dean_dashboard'))
+        if not desc_val:
+            flash("Every assigned College-Wide target must have an IPCR target description.", "danger")
+            return redirect(url_for('dean.dean_dashboard'))
+
         assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val))
 
     conn = get_db_connection()
