@@ -127,7 +127,9 @@ def get_designated_draft_submissions(cursor, term_id):
         JOIN tbl_system_access sa ON dt.emp_id = sa.emp_id
         LEFT JOIN tbl_ipcr_dean_review dr ON dr.emp_id = dt.emp_id AND dr.term_id = %s
         WHERE mi.term_id = %s
-          AND sa.system_role = 'DESIGNATED_FACULTY'
+          AND (sa.system_role IN ('PROGRAM_CHAIR', 'RET_CHAIR', 'DESIGNATED_FACULTY', 'DEAN')
+               OR (ep.designation IS NOT NULL AND ep.designation <> ''
+                    AND ep.designation NOT IN ('Regular Faculty', 'Admin')))
           AND mi.is_custom IN (0, 1)
         GROUP BY dt.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.assigned_program, ep.designation, dr.overall_status
         ORDER BY ep.last_name ASC
@@ -148,17 +150,21 @@ def get_or_create_dean_review(conn, cursor, emp_id, term_id, dean_id):
     existing = cursor.fetchone()
     if existing:
         review_id = existing[0]
-        # Sync: add any new draft targets that aren't in review items yet
+        # Sync: add any new draft targets that aren't in review items yet.
+        # Scoped to the review's own term — an employee's drafts from earlier terms are
+        # still on file and would otherwise be pulled into this review.
         cursor.execute("""
             INSERT IGNORE INTO tbl_ipcr_dean_review_items
                 (review_id, draft_id, indicator_id, original_quantity, reviewed_quantity)
             SELECT %s, dt.draft_id, dt.indicator_id, dt.proposed_quantity, dt.proposed_quantity
             FROM tbl_draft_targets dt
+            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
             WHERE dt.emp_id = %s
+              AND mi.term_id = %s
               AND dt.draft_id NOT IN (
                   SELECT COALESCE(draft_id, 0) FROM tbl_ipcr_dean_review_items WHERE review_id = %s
               )
-        """, (review_id, emp_id, review_id))
+        """, (review_id, emp_id, term_id, review_id))
         conn.commit()
         return review_id
 
@@ -169,14 +175,16 @@ def get_or_create_dean_review(conn, cursor, emp_id, term_id, dean_id):
     """, (emp_id, term_id, dean_id))
     review_id = cursor.lastrowid
 
-    # Pre-populate review items from draft targets
+    # Pre-populate review items from this term's draft targets only.
     cursor.execute("""
         INSERT INTO tbl_ipcr_dean_review_items
             (review_id, draft_id, indicator_id, original_quantity, reviewed_quantity)
         SELECT %s, dt.draft_id, dt.indicator_id, dt.proposed_quantity, dt.proposed_quantity
         FROM tbl_draft_targets dt
+        JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
         WHERE dt.emp_id = %s
-    """, (review_id, emp_id))
+          AND mi.term_id = %s
+    """, (review_id, emp_id, term_id))
     conn.commit()
     return review_id
 
@@ -198,6 +206,7 @@ def get_dean_review_items(cursor, review_id):
             mi.is_custom,
             COALESCE(dt.target_description, da.custom_description, mi.indicator_description) as target_description,
             COALESCE(dt.target_deadline, da.target_deadline, '1 Semester') as target_deadline,
+            dt.is_admin_function,
             CASE WHEN da.allocation_id IS NOT NULL THEN 1 ELSE 0 END as is_cascaded
         FROM tbl_ipcr_dean_review_items dri
         JOIN tbl_ipcr_dean_review dr ON dri.review_id = dr.review_id
@@ -212,25 +221,57 @@ def get_dean_review_items(cursor, review_id):
     for item in items:
         if item.get('category_name') == 'Custom Target Items':
             item['category_name'] = 'Support Functions'
+        is_admin_function = bool(item.get('is_admin_function'))
         is_tl = 'Teaching Load' in (item.get('indicator_description') or '')
-        is_cascaded = bool(item.get('is_cascaded'))
-        item['is_core'] = is_tl or is_cascaded
+        # da.allocation_id matches on emp_id + indicator_id alone, so a chair's Departmental
+        # Oversight item (is_admin_function=1) for an indicator they also personally hold —
+        # e.g. Instruction 1, both a personal Core Function share and the WST-wide oversight
+        # quota — would otherwise be flagged as cascaded/Core too, same as the real personal
+        # row. Only the non-oversight row can be Core Function.
+        is_cascaded = bool(item.get('is_cascaded')) and not is_admin_function
+        item['is_core'] = (not is_admin_function) and (is_tl or is_cascaded)
         item['is_cascaded'] = is_cascaded
+        item['is_admin_function'] = is_admin_function
     return items
 
 
 
-def get_available_master_indicators(cursor, term_id):
-    """Get selectable indicators relevant to designated faculty: Instructions, Support, and Custom."""
+def get_available_master_indicators(cursor, term_id, emp_id=None):
+    """Get selectable indicators relevant to the reviewee: Research and Extension for RET Chair; Instructions and Support for others."""
     from app.models.connection import timed_query
-    query = """
-        SELECT mi.indicator_id, mi.indicator_description, tc.category_name, mi.efficiency_type, mi.is_custom
-        FROM tbl_master_indicators mi
-        LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-        WHERE mi.term_id = %s
-          AND (mi.is_custom = 1 OR (tc.review_lane = 'CHAIR' AND tc.is_core = 1))
-        ORDER BY tc.category_name, mi.indicator_id
-    """
+    
+    is_ret = False
+    if emp_id:
+        cursor.execute("""
+            SELECT ep.designation, sa.system_role
+            FROM tbl_employee_profiles ep
+            LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
+            WHERE ep.emp_id = %s
+        """, (emp_id,))
+        row = cursor.fetchone()
+        if row:
+            desig, srole = (row[0] or '').strip(), (row[1] or '').strip()
+            if desig == 'RET Chair' or srole == 'RET_CHAIR':
+                is_ret = True
+
+    if is_ret:
+        query = """
+            SELECT mi.indicator_id, mi.indicator_description, tc.category_name, mi.efficiency_type, mi.is_custom
+            FROM tbl_master_indicators mi
+            LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE mi.term_id = %s
+              AND (tc.review_lane = 'RET' OR (mi.is_custom = 1 AND (tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%')))
+            ORDER BY tc.category_name, mi.indicator_id
+        """
+    else:
+        query = """
+            SELECT mi.indicator_id, mi.indicator_description, tc.category_name, mi.efficiency_type, mi.is_custom
+            FROM tbl_master_indicators mi
+            LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE mi.term_id = %s
+              AND (mi.is_custom = 1 OR (tc.review_lane = 'CHAIR' AND tc.is_core = 1))
+            ORDER BY tc.category_name, mi.indicator_id
+        """
     return timed_query(cursor, query, (term_id,), label="get_available_master_indicators")
 
 
@@ -240,8 +281,33 @@ def save_dean_review_items(cursor, conn, review_id, items):
     Items: [{'item_id': int, 'reviewed_quantity': int, 'item_remarks': str}, ...]
     For new items (is_new=True, no item_id), creates draft target + review item.
     Also syncs changes back to tbl_draft_targets so faculty see the update.
+    Removes any items that were deleted from the review.
     """
     try:
+        # Collect existing item_ids that are retained
+        retained_item_ids = [item['item_id'] for item in items if item.get('item_id')]
+
+        # Delete removed items from tbl_draft_targets and tbl_ipcr_dean_review_items
+        if retained_item_ids:
+            placeholders = ','.join(['%s'] * len(retained_item_ids))
+            cursor.execute(f"""
+                DELETE dt FROM tbl_draft_targets dt
+                JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
+                WHERE dri.review_id = %s AND dri.item_id NOT IN ({placeholders})
+            """, [review_id] + retained_item_ids)
+
+            cursor.execute(f"""
+                DELETE FROM tbl_ipcr_dean_review_items
+                WHERE review_id = %s AND item_id NOT IN ({placeholders})
+            """, [review_id] + retained_item_ids)
+        elif not items:
+            cursor.execute("""
+                DELETE dt FROM tbl_draft_targets dt
+                JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
+                WHERE dri.review_id = %s
+            """, (review_id,))
+            cursor.execute("DELETE FROM tbl_ipcr_dean_review_items WHERE review_id = %s", (review_id,))
+
         for item in items:
             reviewed_qty = item.get('reviewed_quantity', 0)
             item_remarks = item.get('item_remarks', '')
@@ -260,11 +326,16 @@ def save_dean_review_items(cursor, conn, review_id, items):
                 if not r:
                     continue
                 emp_id, term_id = r
-                # Insert draft target
+                # Insert draft target. Duration defaults to 1 semester since the Dean's
+                # quick-add here doesn't collect one — without it the target has no deadline
+                # at all, which Timeliness scoring needs.
+                from app.models.scoring import format_duration
+                dur_value, dur_unit = 1, 'semesters'
                 cursor.execute("""
-                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status)
-                    VALUES (%s, %s, %s, 'Pending Review')
-                """, (emp_id, indicator_id, reviewed_qty))
+                    INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
+                                                   target_duration_value, target_duration_unit, target_deadline)
+                    VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s)
+                """, (emp_id, indicator_id, reviewed_qty, dur_value, dur_unit, format_duration(dur_value, dur_unit)))
                 new_draft_id = cursor.lastrowid
                 # Insert review item linked to new draft
                 cursor.execute("""
@@ -310,7 +381,7 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
             WHERE review_id = %s
         """, (action, overall_remarks, review_id))
 
-        # Sync decision to tbl_draft_targets
+        # Update draft review status and sync proposed quantity to reviewed quantity
         cursor.execute("""
             UPDATE tbl_draft_targets dt
             JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
@@ -319,41 +390,6 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
                 dt.proposed_quantity = dri.reviewed_quantity
             WHERE dr.review_id = %s
         """, (action, review_id))
-
-        # Process 6: If approved, commit to tbl_committed_targets
-        if action == 'Approved':
-            # Get emp_id and term_id
-            cursor.execute("SELECT emp_id, term_id FROM tbl_ipcr_dean_review WHERE review_id = %s", (review_id,))
-            review_info = cursor.fetchone()
-            if review_info:
-                emp_id, term_id = review_info[0], review_info[1]
-                
-                # Fetch approved items with descriptions and deadlines
-                cursor.execute("""
-                    SELECT dt.indicator_id, COALESCE(dri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline,
-                           dt.target_duration_value, dt.target_duration_unit
-                    FROM tbl_draft_targets dt
-                    JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
-                    WHERE dri.review_id = %s
-                """, (review_id,))
-                approved_items = cursor.fetchall()
-                
-                # Delete existing committed targets
-                cursor.execute("""
-                    DELETE FROM tbl_committed_targets 
-                    WHERE emp_id = %s AND indicator_id IN (
-                        SELECT indicator_id FROM tbl_master_indicators WHERE term_id = %s
-                    )
-                """, (emp_id, term_id))
-                
-                # Insert into tbl_committed_targets with target_description and target_deadline
-                for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit in approved_items:
-                    cursor.execute("""
-                        INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, actual_quantity, target_description, target_deadline,
-                                                           target_duration_value, target_duration_unit)
-                        VALUES (%s, %s, %s, 'Approved', 0, %s, %s, %s, %s)
-                    """, (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit))
-
 
         conn.commit()
         return True, f"Draft IPCR {action.lower()} successfully."
@@ -367,16 +403,26 @@ def submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks
 # ──────────────────────────────────────────────
 
 def get_designated_faculty_list(cursor):
-    """Get all active designated faculty members via system_access role."""
+    """
+    Every active designated faculty member.
+
+    Keyed on designation, not system_role: a Program Chair, RET Chair or Dean is a designated
+    faculty member with an IPCR of their own, but logs in under their own role. Filtering by
+    system_role hid them from the Dean's assignment panel entirely.
+    """
     from app.models.connection import timed_query
-    query = """
+    from app.models.criteria import DESIGNATION_REGULAR, NON_FACULTY_DESIGNATIONS
+    excluded = [DESIGNATION_REGULAR] + sorted(NON_FACULTY_DESIGNATIONS)
+    placeholders = ','.join(['%s'] * len(excluded))
+    query = f"""
         SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.assigned_program, ep.specialization, ep.designation
         FROM tbl_employee_profiles ep
-        JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
-        WHERE sa.system_role = 'DESIGNATED_FACULTY' AND ep.leave_status = 'Active'
+        WHERE ep.leave_status = 'Active'
+          AND ep.designation IS NOT NULL AND ep.designation <> ''
+          AND ep.designation NOT IN ({placeholders})
         ORDER BY ep.last_name ASC, ep.first_name ASC
     """
-    return timed_query(cursor, query, label="get_designated_faculty_list")
+    return timed_query(cursor, query, tuple(excluded), label="get_designated_faculty_list")
 
 
 def get_college_wide_cascaded_quotas(cursor, term_id):
@@ -403,7 +449,9 @@ def get_designated_faculty_assignments(cursor, term_id, emp_id):
     from app.models.connection import timed_query
     query = """
         SELECT da.allocation_id, da.indicator_id, da.assigned_quantity,
-               mi.indicator_description, tc.category_name
+               da.custom_description, da.target_deadline,
+               da.target_duration_value, da.target_duration_unit,
+               mi.indicator_description, tc.category_name, tc.slug
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
@@ -416,7 +464,7 @@ def get_designated_faculty_assignments(cursor, term_id, emp_id):
 def get_designated_faculty_assignments_batch(cursor, term_id, emp_ids):
     """
     Get target assignments for MULTIPLE designated faculty members in ONE query.
-    Returns a dict: {emp_id: {indicator_id: assigned_quantity, ...}, ...}
+    Returns a dict: {emp_id: {indicator_id: assignment_dict, ...}, ...}
     """
     if not emp_ids:
         return {}
@@ -424,9 +472,13 @@ def get_designated_faculty_assignments_batch(cursor, term_id, emp_ids):
     from app.models.connection import timed_query
     placeholders = ','.join(['%s'] * len(emp_ids))
     query = f"""
-        SELECT da.emp_id, da.indicator_id, da.assigned_quantity
+        SELECT da.emp_id, da.indicator_id, da.assigned_quantity,
+               da.custom_description, da.target_deadline,
+               da.target_duration_value, da.target_duration_unit,
+               tc.slug
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+        LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s AND da.emp_id IN ({placeholders})
     """
     rows = timed_query(cursor, query, [term_id] + emp_ids, label="get_designated_faculty_assignments_batch")
@@ -436,12 +488,71 @@ def get_designated_faculty_assignments_batch(cursor, term_id, emp_ids):
         emp_id = row['emp_id']
         if emp_id not in result:
             result[emp_id] = {}
-        result[emp_id][row['indicator_id']] = row['assigned_quantity']
+        result[emp_id][row['indicator_id']] = row
     return result
 
 
+def save_designated_faculty_assignments(conn, cursor, term_id, emp_id, assignments, assigned_by=None):
+    """
+    Replaces the Dean's College-Wide assignments for one designated faculty member / chair.
+    Preserves any Program Chair instruction allocations in tbl_draft_allocation.
+
+    `assignments` is a list of tuples:
+    (indicator_id, assigned_quantity, custom_description, target_duration_value, target_duration_unit)
+    """
+    from app.models.scoring import format_duration
+    try:
+        # Get allowed College-Wide indicator IDs for this term
+        cursor.execute("""
+            SELECT cq.indicator_id
+            FROM tbl_cascaded_quotas cq
+            WHERE cq.term_id = %s AND cq.assigned_to_role = 'College-Wide' AND cq.total_target_value > 0
+        """, (term_id,))
+        allowed_cw_ids = {r[0] for r in cursor.fetchall()}
+
+        if allowed_cw_ids:
+            cw_placeholders = ','.join(['%s'] * len(allowed_cw_ids))
+            cursor.execute(f"""
+                DELETE FROM tbl_draft_allocation
+                WHERE emp_id = %s AND indicator_id IN ({cw_placeholders})
+            """, [emp_id] + list(allowed_cw_ids))
+
+        saved = 0
+        skipped = 0
+        for item in assignments:
+            if len(item) == 5:
+                indicator_id, qty, desc, dur_val, dur_unit = item
+            else:
+                indicator_id, qty = item[0], item[1]
+                desc, dur_val, dur_unit = None, None, None
+
+            if indicator_id not in allowed_cw_ids:
+                skipped += 1
+                continue
+
+            qty = qty if qty and int(qty) > 0 else 1
+            deadline = format_duration(dur_val, dur_unit)
+
+            cursor.execute("""
+                INSERT INTO tbl_draft_allocation (emp_id, indicator_id, assigned_quantity,
+                                                  custom_description, target_deadline,
+                                                  target_duration_value, target_duration_unit)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (emp_id, indicator_id, int(qty), desc, deadline, dur_val, dur_unit))
+            saved += 1
+
+        conn.commit()
+        msg = f"Saved {saved} College-Wide target assignment(s)."
+        if skipped:
+            msg += f" {skipped} skipped (not in College-Wide quota pool)."
+        return True, msg
+    except Exception as e:
+        conn.rollback()
+        return False, f"Error saving assignments: {str(e)}"
+
+
 def save_designated_faculty_assignment(cursor, conn, term_id, emp_id, indicator_id, quantity):
-    """Save or update a target assignment for a designated faculty member in tbl_draft_allocation."""
+    """Save or update a single target assignment for a designated faculty member in tbl_draft_allocation."""
     try:
         # Check if an assignment already exists
         cursor.execute(
@@ -482,8 +593,8 @@ def get_college_wide_allocations_tracker(cursor, term_id):
             dt.review_status
         FROM tbl_draft_targets dt
         JOIN tbl_employee_profiles ep ON dt.emp_id = ep.emp_id
-        JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
-        WHERE sa.system_role = 'DESIGNATED_FACULTY'
+        WHERE ep.designation IS NOT NULL AND ep.designation <> ''
+          AND ep.designation NOT IN ('Regular Faculty', 'Admin')
           AND ep.leave_status = 'Active'
           AND dt.indicator_id IN (
               SELECT indicator_id 
@@ -493,3 +604,125 @@ def get_college_wide_allocations_tracker(cursor, term_id):
         ORDER BY ep.last_name, ep.first_name
     """
     return timed_query(cursor, query, (term_id,), label="get_college_wide_allocations_tracker")
+
+
+def get_dean_evidence_faculty(cursor, term_id):
+    """
+    Returns faculty members submitted to the Dean for final evidence verification,
+    categorized into pending_evidence_faculty_list and approved_evidence_faculty_list.
+    """
+    from app.models.connection import timed_query
+    from app.models.faculty import enrich_faculty_verification_status
+
+    query = """
+        SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program, ep.designation, sa.system_role,
+               COUNT(DISTINCT ct.target_id) as total_targets,
+               SUM(CASE WHEN ct.actual_quantity >= ct.assigned_quantity AND ct.assigned_quantity > 0 THEN 1 ELSE 0 END) as met_targets,
+               MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) as is_dean_context
+        FROM tbl_employee_profiles ep
+        JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
+        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+        LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
+        WHERE mi.term_id = %s
+        GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.assigned_program, ep.designation, sa.system_role
+        -- A plain Designated Faculty member's evidence must clear Program Chair review first
+        -- (get_program_chair_evidence_faculty lists them there) and only reaches 'Submitted to
+        -- Dean' once the Program Chair submits the package — same status transition Regular
+        -- Faculty goes through. A Program Chair/RET Chair/Dean's own evidence has no one else
+        -- to review it, so submit_designated_evidences sends theirs straight to 'Submitted to
+        -- Dean' too. Either way, 'Submitted to Dean'/'Dean Approved' is the correct, sole gate
+        -- for landing here — a prior broader OR-branch let anyone with a non-Regular-Faculty
+        -- designation in at the earlier 'Submitted' status, before Program Chair sign-off.
+        HAVING MAX(CASE WHEN ct.status IN ('Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
+        ORDER BY ep.last_name, ep.first_name
+    """
+    rows = timed_query(cursor, query, (term_id,), label="get_dean_evidence_faculty")
+    
+    pending_list = []
+    approved_list = []
+
+    for r in rows:
+        enrich_faculty_verification_status(cursor, r, term_id)
+        # Check if all committed targets for this faculty member are marked 'Dean Approved'
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM tbl_committed_targets ct
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            WHERE ct.emp_id = %s AND mi.term_id = %s AND ct.status != 'Dean Approved'
+        """, (r['emp_id'], term_id))
+        non_approved_count = cursor.fetchone()[0]
+        
+        is_dean_approved = (non_approved_count == 0)
+        r['is_dean_approved'] = is_dean_approved
+
+        if is_dean_approved:
+            approved_list.append(r)
+        else:
+            pending_list.append(r)
+
+    return pending_list, approved_list
+
+
+def get_dean_faculty_evidence_details(cursor, emp_id, term_id):
+    """
+    Fetches ALL committed targets and uploaded evidence files for a faculty member for the Dean.
+    """
+    from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
+    targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+    for t in targets:
+        ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+        t['evidence_list'] = ev_list
+    return targets
+
+
+def set_dean_evidence_verification(conn, cursor, evidence_id, status, comment=None):
+    """
+    Approve or return an evidence file as Dean.
+    Returning sets verification_status = 'Returned', records comment, and re-opens target for faculty.
+    Approving all files updates target status to 'Dean Approved'.
+    """
+    from app.models.faculty import set_evidence_verification
+    success, msg = set_evidence_verification(conn, cursor, evidence_id, status, comment)
+    if not success:
+        return False, msg
+
+    try:
+        cursor.execute("""
+            SELECT ct.emp_id, mi.term_id
+            FROM tbl_evidence_repo er
+            JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            WHERE er.evidence_id = %s
+        """, (evidence_id,))
+        row = cursor.fetchone()
+        if row:
+            emp_id, term_id = row
+            if status == 'Approved':
+                cursor.execute("""
+                    SELECT er.verification_status
+                    FROM tbl_committed_targets ct
+                    JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+                    JOIN tbl_evidence_repo er ON er.target_id = ct.target_id
+                    WHERE ct.emp_id = %s AND mi.term_id = %s
+                """, (emp_id, term_id))
+                all_evs = cursor.fetchall()
+                if all_evs and all(ev_st == 'Approved' for (ev_st,) in all_evs):
+                    cursor.execute("""
+                        UPDATE tbl_committed_targets ct
+                        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+                        SET ct.status = 'Dean Approved'
+                        WHERE ct.emp_id = %s AND mi.term_id = %s
+                    """, (emp_id, term_id))
+                    conn.commit()
+            elif status == 'Returned':
+                cursor.execute("""
+                    UPDATE tbl_committed_targets ct
+                    JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+                    SET ct.status = 'Returned'
+                    WHERE ct.emp_id = %s AND mi.term_id = %s
+                """, (emp_id, term_id))
+                conn.commit()
+        return True, msg
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)

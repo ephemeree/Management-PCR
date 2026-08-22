@@ -43,6 +43,8 @@ def ret_chair_dashboard():
                 draft['ipcr_status'] = get_overall_ipcr_status(cursor, draft['emp_id'], term_id)
             pending_ret_count = sum(1 for d in pending_ret_drafts if d['ipcr_status'] in ('waiting_for_ret_chair_review', 'pending_ret_review'))
             evidence_faculty_list = get_ret_chair_evidence_faculty(cursor, term_id)
+            pending_evidence_faculty_list = [f for f in evidence_faculty_list if not f.get('is_both_approved')]
+            approved_evidence_faculty_list = [f for f in evidence_faculty_list if f.get('is_both_approved')]
 
         return render_template('ret_chair_dashboard.html',
                                active_term=active_term,
@@ -55,7 +57,10 @@ def ret_chair_dashboard():
                                extension_distribution=extension_distribution,
                                extension_locked=extension_locked,
                                pending_ret_count=pending_ret_count,
-                               evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [])
+                               evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [],
+                               pending_evidence_faculty_list=pending_evidence_faculty_list if 'pending_evidence_faculty_list' in locals() else [],
+                               approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else [],
+                               has_own_ipcr=True)
     finally:
         cursor.close()
         conn.close()
@@ -124,18 +129,34 @@ def assignment_editor(emp_id):
         menu = get_faculty_ret_menu(cursor, academic_rank, term_id) if academic_rank else \
             {'research_indicators': [], 'extension_indicators': []}
 
-        assigned = {a['indicator_id']: a['target_quantity']
-                    for a in get_ret_faculty_assignments(cursor, term_id, emp_id)}
+        assigned_map = {
+            a['indicator_id']: a
+            for a in get_ret_faculty_assignments(cursor, term_id, emp_id)
+        }
 
         def shape(items):
+            from app.models.scoring import format_duration
             out = []
             for ind in items:
+                ind_id = ind['indicator_id']
+                asg = assigned_map.get(ind_id)
+
+                qty = asg['target_quantity'] if (asg and asg.get('target_quantity') is not None) else (ind.get('target_quantity') or 1)
+                desc = asg['target_description'] if (asg and asg.get('target_description')) else (ind.get('target_description') or '')
+                dur_val = asg['target_duration_value'] if (asg and asg.get('target_duration_value') is not None) else (ind.get('target_duration_value') or '')
+                dur_unit = asg['target_duration_unit'] if (asg and asg.get('target_duration_unit')) else (ind.get('target_duration_unit') or 'months')
+                deadline = format_duration(dur_val, dur_unit)
+
                 out.append({
-                    'indicator_id': ind['indicator_id'],
+                    'indicator_id': ind_id,
                     'indicator_description': ind['indicator_description'],
                     'default_quantity': ind.get('target_quantity') or 1,
-                    'assigned_quantity': assigned.get(ind['indicator_id']),
-                    'is_assigned': ind['indicator_id'] in assigned,
+                    'assigned_quantity': qty,
+                    'target_description': desc,
+                    'target_duration_value': dur_val,
+                    'target_duration_unit': dur_unit,
+                    'target_deadline': deadline,
+                    'is_assigned': ind_id in assigned_map,
                 })
             return out
 
@@ -167,11 +188,21 @@ def save_assignments():
     assignments = []
     for ind_id in indicator_ids:
         qty_val = request.form.get(f'assign_quantity_{ind_id}', 1)
+        desc_val = request.form.get(f'assign_description_{ind_id}', '').strip() or None
+        dur_val_raw = request.form.get(f'assign_dur_value_{ind_id}', '').strip()
+        dur_unit_val = request.form.get(f'assign_dur_unit_{ind_id}', 'months').strip() or 'months'
+
         try:
             qty = int(qty_val)
         except (ValueError, TypeError):
             qty = 1
-        assignments.append((int(ind_id), qty))
+
+        try:
+            dur_val = int(dur_val_raw) if dur_val_raw else None
+        except (ValueError, TypeError):
+            dur_val = None
+
+        assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val))
 
     conn = get_db_connection()
     cursor = conn.cursor()

@@ -5,32 +5,42 @@
 {% block sidebar_items %}
 <div class="nav-label">Dashboard</div>
 <button class="nav-item active" data-section="nav-overview" onclick="showSection('nav-overview')">
-    <i class="bi bi-grid-1x2-fill"></i>
+    <i class="ti ti-layout-dashboard"></i>
     <span class="nav-text">Overview</span>
 </button>
 
 <div class="nav-label">Phases</div>
 <button class="nav-item" data-section="nav-phase1" onclick="showSection('nav-phase1')">
-    <i class="bi bi-diagram-3-fill"></i>
+    <i class="ti ti-sitemap"></i>
     <span class="nav-text">Target Allocation</span>
 </button>
 <button class="nav-item" data-section="nav-phase2" onclick="showSection('nav-phase2')" id="nav-commitments-btn">
-    <i class="bi bi-person-check-fill"></i>
+    <i class="ti ti-user-check"></i>
     <span class="nav-text">Commitments</span>
     {% if pending_drafts_count > 0 %}
-    <span class="badge bg-danger ms-auto rounded-pill" id="pendingBadge">{{ pending_drafts_count }}</span>
+    <span class="badge bg-danger ms-auto" id="pendingBadge">{{ pending_drafts_count }}</span>
     {% endif %}
 </button>
 <button class="nav-item" data-section="nav-phase3" onclick="showSection('nav-phase3')">
-    <i class="bi bi-calculator"></i>
+    <i class="ti ti-calculator"></i>
     <span class="nav-text">Grading Engine</span>
 </button>
 
 <div class="nav-label">Verification</div>
 <button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
-    <i class="bi bi-file-earmark-check-fill"></i>
+    <i class="ti ti-file-check"></i>
     <span class="nav-text">Evidence Verification</span>
+    {% if pending_evidence_faculty_list|length > 0 %}
+    <span class="badge bg-danger ms-auto">{{ pending_evidence_faculty_list|length }}</span>
+    {% endif %}
 </button>
+{% if has_own_ipcr %}
+<div class="nav-label">My Performance</div>
+<a class="nav-item text-decoration-none" href="{{ url_for('designated.designated_dashboard') }}">
+    <i class="ti ti-file-text"></i>
+    <span class="nav-text">My IPCR</span>
+</a>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -40,9 +50,9 @@
     /* Custom styling for disabled decision buttons to easily distinguish them */
     #btnApprove:disabled,
     #btnReject:disabled {
-        background-color: #e9ecef !important;
-        border-color: #dee2e6 !important;
-        color: #adb5bd !important;
+        background-color: var(--c-surface-alt) !important;
+        border-color: var(--c-border) !important;
+        color: var(--c-text-muted) !important;
         opacity: 1 !important;
         cursor: not-allowed !important;
     }
@@ -119,13 +129,13 @@
         <div class="d-flex align-items-center gap-2">
             {% if not targets_saved %}
             <button type="button" class="btn btn-outline-primary shadow-sm fw-bold" id="btnAutoDivideAll" title="Auto divide all department quotas by number of faculty (rounded up)">
-                <i class="bi bi-calculator me-1"></i>Auto Divide All Targets
+                <i class="ti ti-calculator me-1"></i>Auto Divide All Targets
             </button>
             {% else %}
-            <span class="badge bg-secondary fs-6 px-3 py-2"><i class="bi bi-lock-fill me-1"></i> Targets Finalized</span>
+            <span class="badge bg-secondary fs-6 px-3 py-2"><i class="ti ti-lock me-1"></i> Targets Finalized</span>
             {% endif %}
-            <span class="badge bg-primary me-2"><i class="bi bi-funnel"></i> Instructions &amp; Support Functions</span>
-            <span class="badge bg-info text-dark"><i class="bi bi-info-circle me-1"></i> Distribute the Dean's
+            <span class="badge bg-primary me-2"><i class="ti ti-filter"></i> Instructions &amp; Support Functions</span>
+            <span class="badge bg-info text-dark"><i class="ti ti-info-circle me-1"></i> Distribute the Dean's
                 Quota</span>
         </div>
     </div>
@@ -133,7 +143,7 @@
     {% if active_term %}
     {% if targets_saved %}
     <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center" style="border-radius: 10px;">
-        <i class="bi bi-shield-lock-fill fs-4 me-3 text-info"></i>
+        <i class="ti ti-shield-lock fs-4 me-3 text-info"></i>
         <div>
             <h6 class="fw-bold mb-0">Baseline Target Allocations Finalized</h6>
             <small>Target allocations for <strong>{{ specialization }}</strong> have been saved and finalized for this term. Inputs cannot be modified.</small>
@@ -147,12 +157,12 @@
         <!-- Instructions Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
-                style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
-                <h5 class="fw-bold text-primary mb-0"><i class="bi bi-star-fill me-2"></i>Strategic Priorities</h5>
+                style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-accent) !important;">
+                <h5 class="fw-bold text-primary mb-0"><i class="ti ti-star-filled me-2"></i>Strategic Priorities</h5>
                 <div class="d-flex align-items-center gap-2">
                     {% if not targets_saved %}
                     <button type="button" class="btn btn-sm btn-outline-primary shadow-sm fw-semibold btn-auto-divide-card" data-card="instructions" title="Auto divide Strategic Priorities quotas by faculty count">
-                        <i class="bi bi-calculator me-1"></i>Auto Divide Section
+                        <i class="ti ti-calculator me-1"></i>Auto Divide Section
                     </button>
                     {% endif %}
                     <span class="badge bg-success fs-6 fw-semibold px-3 py-2">
@@ -232,12 +242,12 @@
         <!-- Support Functions Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
-                style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
-                <h5 class="fw-bold text-warning mb-0"><i class="bi bi-tools me-2"></i>Support Functions</h5>
+                style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-warning) !important;">
+                <h5 class="fw-bold text-warning mb-0"><i class="ti ti-tools me-2"></i>Support Functions</h5>
                 <div class="d-flex align-items-center gap-2">
                     {% if not targets_saved %}
                     <button type="button" class="btn btn-sm btn-outline-warning text-dark shadow-sm fw-semibold btn-auto-divide-card" data-card="support" title="Auto divide Support Functions quotas by regular faculty count">
-                        <i class="bi bi-calculator me-1"></i>Auto Divide Section
+                        <i class="ti ti-calculator me-1"></i>Auto Divide Section
                     </button>
                     {% endif %}
                     <span class="badge bg-success fs-6 fw-semibold px-3 py-2" title="Support targets are assigned exclusively to Regular Faculty">
@@ -317,19 +327,19 @@
         <!-- Single Save Button at the bottom -->
         <div class="d-flex justify-content-end mb-4 px-2">
             {% if not targets_saved %}
-            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold rounded-pill" data-bs-toggle="modal" data-bs-target="#confirmSaveTargetsModal">
-                <i class="bi bi-save me-2"></i>Save Targets
+            <button type="button" class="btn btn-primary btn-lg px-5 shadow fw-bold" id="btnInitiateSaveTargets">
+                <i class="ti ti-device-floppy me-2"></i>Save Targets
             </button>
             {% else %}
-            <button type="button" class="btn btn-secondary btn-lg px-5 shadow fw-bold rounded-pill" disabled>
-                <i class="bi bi-lock-fill me-2"></i>Targets Finalized &amp; Saved
+            <button type="button" class="btn btn-secondary btn-lg px-5 shadow fw-bold" disabled>
+                <i class="ti ti-lock me-2"></i>Targets Finalized &amp; Saved
             </button>
             {% endif %}
         </div>
     </form>
     {% else %}
     <div class="alert alert-warning border-0 shadow-sm" style="border-radius: 10px;">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i> There is no active term set. You cannot manage targets
+        <i class="ti ti-alert-triangle me-2"></i> There is no active term set. You cannot manage targets
         right now.
     </div>
     {% endif %}
@@ -346,11 +356,11 @@
                 approving or returning.</p>
         </div>
         <span class="badge bg-primary fs-6 px-3 py-2">
-            <i class="bi bi-funnel me-1"></i>{{ specialization }}
+            <i class="ti ti-filter me-1"></i>{{ specialization }}
         </span>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #FFC107 !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
         <div class="card-body p-0">
             {% if pending_drafts %}
             <div class="table-responsive">
@@ -375,39 +385,39 @@
                             </td>
                             <td class="text-center">
                                 {% if draft.review_status == 'Locked' %}
-                                <span class="badge bg-dark px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Approved &amp;
+                                <span class="badge bg-dark px-3 py-2"><i class="ti ti-lock me-1"></i>Approved &amp;
                                     Locked</span>
                                 {% elif draft.review_status == 'Approved' %}
                                 <span class="badge bg-success px-3 py-2"><i
-                                        class="bi bi-check-circle-fill me-1"></i>Approved by Both</span>
+                                        class="ti ti-circle-check me-1"></i>Approved by Both</span>
                                 {% elif draft.review_status in ('Rejected', 'Returned') %}
                                 <span class="badge px-3 py-2"
-                                    style="background-color: #fff5f5 !important; border: 1px solid #fee2e2; color: #dc3545 !important;">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Returned
+                                    style="background-color: rgba(176,69,61,0.08) !important; border: 1px solid rgba(176,69,61,0.2); color: var(--c-danger) !important;">
+                                    <i class="ti ti-arrow-back-up me-1"></i>Returned
                                 </span>
                                 {% elif draft.ipcr_status == 'waiting_for_ret_chair_review' %}
                                 <span class="badge px-3 py-2"
-                                    style="background-color: #fffbeb !important; border: 1px solid #ffc107; color: #b45309 !important;"><i
-                                        class="bi bi-hourglass-split me-1"></i>Waiting for RET Review &amp;
+                                    style="background-color: rgba(184,132,46,0.1) !important; border: 1px solid rgba(184,132,46,0.3); color: var(--c-warning) !important;"><i
+                                        class="ti ti-hourglass me-1"></i>Waiting for RET Review &amp;
                                     Approval</span>
                                 {% elif draft.ipcr_status == 'pending_ret_review' %}
                                 <span class="badge px-3 py-2"
-                                    style="background-color: #fff3cd !important; border: 1px solid #ffc107; color: #b45309 !important;"><i
-                                        class="bi bi-hourglass-split me-1"></i>Waiting for RET Review &amp;
+                                    style="background-color: rgba(184,132,46,0.1) !important; border: 1px solid rgba(184,132,46,0.3); color: var(--c-warning) !important;"><i
+                                        class="ti ti-hourglass me-1"></i>Waiting for RET Review &amp;
                                     Approval</span>
                                 {% elif draft.ipcr_status == 'waiting_for_program_chair_review' %}
                                 <span class="badge bg-info text-dark px-3 py-2"><i
-                                        class="bi bi-clock-history me-1"></i>Waiting for Approval</span>
+                                        class="ti ti-history me-1"></i>Waiting for Approval</span>
                                 {% elif draft.review_status == 'Pending Review' %}
                                 <span class="badge px-3 py-2"
-                                    style="background-color: #fffbeb !important; border: 1px solid #ffc107; color: #b45309 !important;"><i
-                                        class="bi bi-hourglass-split me-1"></i>Waiting for RET Review &amp;
+                                    style="background-color: rgba(184,132,46,0.1) !important; border: 1px solid rgba(184,132,46,0.3); color: var(--c-warning) !important;"><i
+                                        class="ti ti-hourglass me-1"></i>Waiting for RET Review &amp;
                                     Approval</span>
                                 {% elif draft.review_status == 'Waiting for Approval' %}
                                 <span class="badge bg-info text-dark px-3 py-2"><i
-                                        class="bi bi-clock-history me-1"></i>Waiting for Approval</span>
+                                        class="ti ti-history me-1"></i>Waiting for Approval</span>
                                 {% else %}
-                                <span class="badge bg-secondary px-3 py-2"><i class="bi bi-dash-circle me-1"></i>{{
+                                <span class="badge bg-secondary px-3 py-2"><i class="ti ti-circle-minus me-1"></i>{{
                                     draft.review_status }}</span>
                                 {% endif %}
                             </td>
@@ -415,7 +425,7 @@
                                 {% if draft.review_status in ('Rejected', 'Returned') %}
                                 <button class="btn btn-sm btn-outline-secondary" disabled
                                     title="Awaiting faculty resubmission.">
-                                    <i class="bi bi-hourglass-split me-1"></i>Awaiting Resubmission
+                                    <i class="ti ti-hourglass me-1"></i>Awaiting Resubmission
                                 </button>
                                 {% elif draft.ipcr_status in ('waiting_for_program_chair_review',
                                 'approved_by_program_chair', 'completed') or draft.review_status in ('Approved',
@@ -424,14 +434,14 @@
                                     data-emp-id="{{ draft.emp_id }}" data-bs-toggle="modal"
                                     data-bs-target="#reviewIpcrModal" {% if draft.review_status in ('Approved', 'Locked'
                                     ) %}title="View IPCR" {% endif %}>
-                                    <i class="bi bi-eye-fill me-1"></i>
+                                    <i class="ti ti-eye me-1"></i>
                                     {% if draft.review_status in ('Approved', 'Locked') %}View{% else %}Review{% endif
                                     %}
                                 </button>
                                 {% else %}
                                 <button class="btn btn-sm btn-outline-secondary" disabled
                                     title="RET Chair review is pending.">
-                                    <i class="bi bi-clock-history me-1"></i>Review
+                                    <i class="ti ti-history me-1"></i>Review
                                 </button>
                                 {% endif %}
                             </td>
@@ -442,7 +452,7 @@
             </div>
             {% else %}
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary opacity-50"></i>
+                <i class="ti ti-inbox fs-1 d-block mb-3 text-secondary opacity-50"></i>
                 <h5 class="fw-semibold">No Draft IPCRs Submitted</h5>
                 <p class="small">Faculty members under <strong>{{ specialization }}</strong> have not submitted their
                     Draft IPCRs yet.</p>
@@ -459,7 +469,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #198754 !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
         <div class="card-body p-0">
             {% if locked_drafts %}
             <div class="table-responsive">
@@ -488,18 +498,18 @@
                             </td>
                             <td class="text-center">
                                 {% if draft.review_status == 'Locked' %}
-                                <span class="badge bg-dark px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Approved &amp;
+                                <span class="badge bg-dark px-3 py-2"><i class="ti ti-lock me-1"></i>Approved &amp;
                                     Locked</span>
                                 {% else %}
                                 <span class="badge bg-success px-3 py-2"><i
-                                        class="bi bi-check-circle-fill me-1"></i>Approved by Both</span>
+                                        class="ti ti-circle-check me-1"></i>Approved by Both</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
                                 <button class="btn btn-sm btn-outline-success open-view-locked-modal" type="button"
                                     data-emp-id="{{ draft.emp_id }}" data-bs-toggle="modal"
                                     data-bs-target="#viewLockedIpcrModal" title="View Final Targets">
-                                    <i class="bi bi-eye-fill me-1"></i>
+                                    <i class="ti ti-eye me-1"></i>
                                     View Final Targets
                                 </button>
                             </td>
@@ -510,7 +520,7 @@
             </div>
             {% else %}
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-lock fs-1 d-block mb-3 text-secondary opacity-50"></i>
+                <i class="ti ti-lock fs-1 d-block mb-3 text-secondary opacity-50"></i>
                 <h5 class="fw-semibold">No Locked IPCRs Yet</h5>
                 <p class="small">No faculty members under <strong>{{ specialization }}</strong> have locked their
                     approved IPCRs yet.</p>
@@ -530,7 +540,7 @@
             5).</p>
     </div>
 
-    <div class="card shadow-sm border-0" style="border-top: 4px solid #2DD46B !important;">
+    <div class="card shadow-sm border-0" style="border-top: 3px solid var(--c-success) !important;">
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover align-middle shadow-sm border">
@@ -562,15 +572,15 @@
 <!-- IPCR REVIEW MODAL                           -->
 <!-- ═══════════════════════════════════════════ -->
 <div class="modal fade" id="reviewIpcrModal" tabindex="-1" aria-labelledby="reviewIpcrModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
 
             <!-- Modal Header -->
             <div class="modal-header border-0 py-3"
-                style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+                style="background: var(--c-accent);">
                 <div>
                     <h5 class="modal-title text-white fw-bold mb-0" id="reviewIpcrModalLabel">
-                        <i class="bi bi-file-earmark-person-fill me-2"></i>
+                        <i class="ti ti-file-text me-2"></i>
                         <span id="modalFacultyName">Loading...</span>
                     </h5>
                     <small class="text-white opacity-75" id="modalFacultyRank"></small>
@@ -595,7 +605,7 @@
                 <!-- Section 1: Target Items -->
                 <div class="px-4 pt-4 pb-2">
                     <h6 class="fw-bold text-secondary text-uppercase mb-3">
-                        <i class="bi bi-list-check me-2"></i>Proposed Targets
+                        <i class="ti ti-list-check me-2"></i>Proposed Targets
                         <small class="text-muted fw-normal ms-2 text-capitalize" id="modalSubTitle">(You may adjust
                             quantities and add remarks per item)</small>
                     </h6>
@@ -624,7 +634,7 @@
             <!-- Modal Footer (Remarks & Decisions - Fixed at bottom) -->
             <div class="modal-footer border-top bg-light px-4 py-3 d-block" id="modalFooter" style="display:none;">
                 <h6 class="fw-bold text-secondary text-uppercase mb-2">
-                    <i class="bi bi-stamp me-2"></i>Decision
+                    <i class="ti ti-stamp me-2"></i>Decision
                 </h6>
 
                 <input type="hidden" id="modalReviewId">
@@ -646,7 +656,7 @@
                     <div>
                         <button type="button" class="btn btn-outline-danger" id="btnReject"
                             onclick="submitDecision('reject')">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i>Return to Faculty
+                            <i class="ti ti-arrow-back-up me-1"></i>Return to Faculty
                         </button>
                     </div>
                     <div class="d-flex gap-2">
@@ -655,7 +665,7 @@
                         </button>
                         <button type="button" class="btn btn-success" id="btnApprove"
                             onclick="submitDecision('approve')">
-                            <i class="bi bi-check-circle-fill me-1"></i>Approve IPCR
+                            <i class="ti ti-circle-check me-1"></i>Approve IPCR
                         </button>
                     </div>
                 </div>
@@ -668,15 +678,15 @@
 <!-- VIEW LOCKED IPCR MODAL -->
 <div class="modal fade" id="viewLockedIpcrModal" tabindex="-1" aria-labelledby="viewLockedIpcrModalLabel"
     aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
 
             <!-- Modal Header -->
             <div class="modal-header border-0 py-3"
-                style="background: linear-gradient(135deg, #198754 0%, #157347 100%);">
+                style="background: var(--c-success);">
                 <div>
                     <h5 class="modal-title text-white fw-bold mb-0" id="viewLockedIpcrModalLabel">
-                        <i class="bi bi-file-earmark-lock-fill me-2"></i>
+                        <i class="ti ti-file-lock me-2"></i>
                         <span id="viewLockedFacultyName">Loading...</span>
                     </h5>
                     <small class="text-white opacity-75" id="viewLockedFacultyRank"></small>
@@ -701,7 +711,7 @@
                 <!-- Section 1: Target Items -->
                 <div class="px-4 pt-4 pb-2">
                     <h6 class="fw-bold text-secondary text-uppercase mb-3">
-                        <i class="bi bi-list-check me-2"></i>Committed Final Targets
+                        <i class="ti ti-list-check me-2"></i>Committed Final Targets
                         <small class="text-muted fw-normal ms-2 text-capitalize">(Locked - View Only)</small>
                     </h6>
                 </div>
@@ -727,7 +737,7 @@
             <!-- Modal Footer -->
             <div class="modal-footer border-top bg-light px-4 py-3 d-flex justify-content-end">
                 <button type="button" class="btn btn-secondary px-4 fw-semibold" data-bs-dismiss="modal">
-                    <i class="bi bi-x-lg me-1"></i>Close
+                    <i class="ti ti-x me-1"></i>Close
                 </button>
             </div>
 
@@ -739,16 +749,16 @@
 <div class="modal fade" id="confirmSaveTargetsModal" tabindex="-1" aria-labelledby="confirmSaveTargetsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
-            <div class="modal-header border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+            <div class="modal-header border-0 py-3" style="background: var(--c-accent);">
                 <h5 class="modal-title text-white fw-bold" id="confirmSaveTargetsModalLabel">
-                    <i class="bi bi-shield-lock-fill me-2"></i>Finalize Target Allocation
+                    <i class="ti ti-shield-lock me-2"></i>Finalize Target Allocation
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 text-center">
                 <div class="mb-3">
                     <span class="badge bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
-                        <i class="bi bi-exclamation-triangle-fill fs-1 text-warning"></i>
+                        <i class="ti ti-alert-triangle fs-1 text-warning"></i>
                     </span>
                 </div>
                 <h5 class="fw-bold mb-2">Are you sure you want to save target allocations?</h5>
@@ -758,8 +768,8 @@
             </div>
             <div class="modal-footer border-0 bg-light justify-content-center gap-2 py-3">
                 <button type="button" class="btn btn-secondary px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary px-4 fw-bold shadow rounded-pill" id="btnConfirmSaveTargets">
-                    <i class="bi bi-check-circle-fill me-1"></i>Yes, Save &amp; Finalize
+                <button type="button" class="btn btn-primary px-4 fw-bold shadow" id="btnConfirmSaveTargets">
+                    <i class="ti ti-circle-check me-1"></i>Yes, Save &amp; Finalize
                 </button>
             </div>
         </div>
@@ -847,6 +857,56 @@
             });
         }
 
+        const btnInitiateSaveTargets = document.getElementById('btnInitiateSaveTargets');
+        if (btnInitiateSaveTargets) {
+            btnInitiateSaveTargets.addEventListener('click', function () {
+                let isValid = true;
+                const form = document.getElementById('targetAllocationForm');
+                
+                if (!form) return;
+                
+                const assignedInputs = form.querySelectorAll('input[name^="assigned_quantity_"]');
+                const deadlineInputs = form.querySelectorAll('input[name^="target_deadline_value_"]');
+                const deadlineSelects = form.querySelectorAll('select[name^="target_deadline_unit_"]');
+                const descriptionInputs = form.querySelectorAll('textarea[name^="custom_description_"]');
+                
+                function checkValid(list) {
+                    list.forEach(el => {
+                        if (!el.value || el.value.trim() === '') {
+                            isValid = false;
+                            el.classList.add('border-danger');
+                        } else {
+                            el.classList.remove('border-danger');
+                        }
+                    });
+                }
+                
+                checkValid(assignedInputs);
+                checkValid(deadlineInputs);
+                checkValid(deadlineSelects);
+                checkValid(descriptionInputs);
+
+                if (!isValid) {
+                    if (window.showCustomAlert) {
+                        showCustomAlert('Missing Fields', 'Please fill out all Assigned Quantities, Deadlines, and Target Descriptions before saving.', 'warning');
+                    } else {
+                        alert('Please fill out all Assigned Quantities, Deadlines, and Target Descriptions before saving.');
+                    }
+                    return;
+                }
+                
+                const modal = new bootstrap.Modal(document.getElementById('confirmSaveTargetsModal'));
+                modal.show();
+            });
+            
+            // Remove error border on input
+            document.addEventListener('input', function(e) {
+                if (e.target.classList.contains('border-danger')) {
+                    e.target.classList.remove('border-danger');
+                }
+            });
+        }
+
         function getHeaderCategoryName(catName) {
             if (!catName) return '';
             if (catName.includes('Instruction') || catName.includes('Strategic')) {
@@ -930,7 +990,7 @@
             // Status Badge
             const statusBadge = document.getElementById('viewLockedStatusBadge');
             statusBadge.className = 'badge fs-6 px-3 py-2 bg-dark';
-            statusBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i>Approved & Locked';
+            statusBadge.innerHTML = '<i class="ti ti-lock me-1"></i>Approved & Locked';
 
             // Build items table
             const tbody = document.getElementById('viewLockedItemsBody');
@@ -965,7 +1025,7 @@
                         const headerTr = document.createElement('tr');
                         headerTr.className = 'table-secondary';
                         headerTr.innerHTML = `
-                        <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
+                        <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: var(--c-surface-alt);">
                             ${headerCat}
                         </td>
                     `;
@@ -977,7 +1037,7 @@
                     <td><span class="badge bg-light text-dark border small">${badgeCat}</span></td>
                     <td class="small fw-semibold">
                         ${item.indicator_description}
-                        ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size: 0.7rem;"><i class="bi bi-clock me-1"></i>Deadline: ${item.target_deadline}</span>` : ''}
+                        ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size: 0.7rem;"><i class="ti ti-clock me-1"></i>Deadline: ${item.target_deadline}</span>` : ''}
                     </td>
                     <td class="text-center text-muted">${item.original_quantity}</td>
                     <td class="text-center fw-bold text-success">${item.reviewed_quantity}</td>
@@ -1003,16 +1063,16 @@
             // Status badge
             const badge = document.getElementById('modalStatusBadge');
             const statusMap = {
-                'Locked': ['bg-dark text-white', 'lock-fill', 'Approved & Locked'],
-                'Approved': ['bg-success', 'check-circle-fill', 'Approved by Both'],
-                'Rejected': ['bg-danger', 'x-circle-fill', 'Returned'],
-                'Pending': ['bg-warning text-dark', 'hourglass-split', 'Waiting for RET Review & Approval'],
-                'Waiting for Approval': ['bg-info text-dark', 'clock-history', 'Waiting for Approval'],
-                'Not Started': ['bg-warning text-dark', 'hourglass-split', 'Waiting for RET Review & Approval'],
+                'Locked': ['bg-dark text-white', 'lock', 'Approved & Locked'],
+                'Approved': ['bg-success', 'circle-check', 'Approved by Both'],
+                'Rejected': ['bg-danger', 'circle-x', 'Returned'],
+                'Pending': ['bg-warning text-dark', 'hourglass', 'Waiting for RET Review & Approval'],
+                'Waiting for Approval': ['bg-info text-dark', 'history', 'Waiting for Approval'],
+                'Not Started': ['bg-warning text-dark', 'hourglass', 'Waiting for RET Review & Approval'],
             };
             const s = statusMap[data.overall_status] || statusMap['Not Started'];
             badge.className = `badge fs-6 px-3 py-2 ${s[0]}`;
-            badge.innerHTML = `<i class="bi bi-${s[1]} me-1"></i>${s[2]}`;
+            badge.innerHTML = `<i class="ti ti-${s[1]} me-1"></i>${s[2]}`;
 
             window.isWaiting = (data.overall_status === 'Waiting for Approval');
             const decided = (data.overall_status === 'Approved' || data.overall_status === 'Locked');
@@ -1023,10 +1083,10 @@
                 subtitle.textContent = window.isWaiting ? '(Resubmitted for Approval)' : '(You may adjust quantities and add remarks per item)';
             }
 
-            // Reject button is always visible unless decided or already rejected
+            // Reject button is hidden when decided/approved or disabled when already rejected
             const btnReject = document.getElementById('btnReject');
             if (btnReject) {
-                btnReject.style.display = '';
+                btnReject.style.display = decided ? 'none' : '';
                 btnReject.disabled = decided || data.overall_status === 'Rejected';
             }
 
@@ -1077,7 +1137,7 @@
                         const headerTr = document.createElement('tr');
                         headerTr.className = 'table-secondary';
                         headerTr.innerHTML = `
-                        <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
+                        <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: var(--c-surface-alt);">
                             ${headerCat}
                         </td>
                     `;
@@ -1090,9 +1150,9 @@
                     let retTag = '';
                     if (isRet) {
                         if (item.draft_status === 'Approved') {
-                            retTag = `<div class="mt-1"><span class="badge bg-success bg-opacity-10 text-success border border-success" style="font-size:0.75rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved by RET Chair</span></div>`;
+                            retTag = `<div class="mt-1"><span class="badge bg-success bg-opacity-10 text-success border border-success" style="font-size:0.75rem;"><i class="ti ti-circle-check me-1"></i>Approved by RET Chair</span></div>`;
                         } else {
-                            retTag = `<div class="mt-1"><span class="badge bg-warning bg-opacity-10 text-warning border border-warning" style="font-size:0.75rem;"><i class="bi bi-hourglass-split me-1"></i>Awaiting RET Chair Approval</span></div>`;
+                            retTag = `<div class="mt-1"><span class="badge bg-warning bg-opacity-10 text-warning border border-warning" style="font-size:0.75rem;"><i class="ti ti-hourglass me-1"></i>Awaiting RET Chair Approval</span></div>`;
                         }
                     }
 
@@ -1101,7 +1161,7 @@
                     <td>
                         <div class="small fw-semibold">
                             ${item.indicator_description}
-                            ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;"><i class="bi bi-clock me-1"></i>Deadline: ${item.target_deadline}</span>` : ''}
+                            ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;"><i class="ti ti-clock me-1"></i>Deadline: ${item.target_deadline}</span>` : ''}
                         </div>
                         ${retTag}
                     </td>
@@ -1115,16 +1175,16 @@
                                data-original="${item.original_quantity}"
                                data-initial-val="${item.reviewed_quantity}"
                                ${isInputDisabled ? 'disabled' : ''}>
-                        ${qtyChanged ? `<small class="qty-edited-tag text-warning d-block mt-1"><i class="bi bi-pencil-fill"></i> Edited</small>` : '<small class="qty-edited-tag" style="display:none"></small>'}
+                        ${qtyChanged ? `<small class="qty-edited-tag text-warning d-block mt-1"><i class="ti ti-pencil"></i> Edited</small>` : '<small class="qty-edited-tag" style="display:none"></small>'}
                     </td>
                     <td>
-                        <textarea class="form-control form-control-sm item-remarks-input"
+                        ${isRet ? '<span class="text-muted fst-italic small">N/A for Program Chair</span>' : `<textarea class="form-control form-control-sm item-remarks-input"
                                   id="remarks-${item.item_id}"
                                   rows="2"
                                   placeholder="Optional note on this change..."
                                   data-item-id="${item.item_id}"
                                   data-initial-remarks="${(item.item_remarks || '').trim()}"
-                                  ${isInputDisabled ? 'disabled' : ''}>${item.item_remarks || ''}</textarea>
+                                  ${isInputDisabled ? 'disabled' : ''}>${item.item_remarks || ''}</textarea>`}
                     </td>
                 `;
                     tbody.appendChild(tr);
@@ -1145,7 +1205,7 @@
                             retAlert = document.createElement('div');
                             retAlert.id = 'retChairAlertMessage';
                             retAlert.className = 'alert alert-warning py-2 px-3 small border-0 shadow-sm mt-3 mb-0 w-100';
-                            retAlert.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Awaiting RET Chair Approval:</strong> You cannot approve this draft IPCR until all Research and Extension selections are verified and approved by the RET Chair.';
+                            retAlert.innerHTML = '<i class="ti ti-alert-triangle me-2"></i><strong>Awaiting RET Chair Approval:</strong> You cannot approve this draft IPCR until all Research and Extension selections are verified and approved by the RET Chair.';
                             btnApprove.parentElement.parentElement.insertBefore(retAlert, btnApprove.parentElement);
                         } else {
                             retAlert.style.display = '';
@@ -1211,7 +1271,7 @@
                     if (!isNaN(currentQty) && currentQty !== originalQty) {
                         tag.style.display = '';
                         tag.className = 'qty-edited-tag text-warning d-block mt-1';
-                        tag.innerHTML = '<i class="bi bi-pencil-fill"></i> Edited';
+                        tag.innerHTML = '<i class="ti ti-pencil"></i> Edited';
                     } else {
                         tag.style.display = 'none';
                     }
@@ -1286,7 +1346,7 @@
                                 if (qty !== original) {
                                     tag.style.display = '';
                                     tag.className = 'qty-edited-tag text-warning d-block mt-1';
-                                    tag.innerHTML = '<i class="bi bi-pencil-fill"></i> Edited';
+                                    tag.innerHTML = '<i class="ti ti-pencil"></i> Edited';
                                 } else {
                                     tag.style.display = 'none';
                                 }
@@ -1354,7 +1414,7 @@
 
             const icon = document.getElementById('confirmModalIcon');
             if (iconClass) {
-                icon.className = `bi ${iconClass}`;
+                icon.className = `ti ${iconClass}`;
                 icon.style.display = '';
             } else {
                 icon.style.display = 'none';
@@ -1392,7 +1452,7 @@
                     subText: "They will be notified and can proceed to lock and commit their final targets.",
                     confirmText: "Yes, Approve",
                     confirmClass: "btn-success",
-                    iconClass: "bi-check-circle-fill",
+                    iconClass: "ti-circle-check",
                     onConfirm: () => proceedDecision('approve', remarks)
                 });
             } else {
@@ -1415,14 +1475,14 @@
                 <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle"
                     style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
                 <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain"
-                    style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
+                    style="font-size: 0.95rem; line-height: 1.5; color: var(--c-text-sub) !important;">Main message</p>
                 <p class="text-muted small px-3 mb-0" id="confirmModalTextSub"
                     style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
             </div>
             <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
                 <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
                     id="confirmModalCancelBtn"
-                    style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                    style="border-radius: 10px; background-color: var(--bs-secondary); font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
                 <button type="button"
                     class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
                     id="confirmModalConfirmBtn"
@@ -1445,13 +1505,13 @@
             <p>Review and verify accomplishment evidence submitted by faculty members under {{ specialization }}.</p>
         </div>
         <span class="badge bg-primary px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-person-check-fill me-2"></i>{{ evidence_faculty_list|length }} Faculty Listed
+            <i class="ti ti-user-check me-2"></i>{{ evidence_faculty_list|length }} Faculty Listed
         </span>
     </div>
 
-    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-journal-check me-2 text-primary"></i>Faculty Evidence Submissions</h5>
+            <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-clipboard-check me-2 text-primary"></i>Faculty Evidence Submissions</h5>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -1467,8 +1527,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if evidence_faculty_list %}
-                            {% for fac in evidence_faculty_list %}
+                        {% if pending_evidence_faculty_list %}
+                            {% for fac in pending_evidence_faculty_list %}
                             <tr>
                                 <td class="ps-4 py-3">
                                     <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
@@ -1478,16 +1538,18 @@
                                 <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
                                 <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
                                 <td class="text-center">
-                                    {% if fac.evidence_status == 'Submitted' %}
-                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Evidences Submitted</span>
+                                    {% if fac.verification_status_code == 'WAITING_CHAIR' %}
+                                        <span class="badge bg-warning text-dark px-3 py-2"><i class="ti ti-hourglass me-1"></i>Waiting for Program Chair Approval</span>
+                                    {% elif fac.verification_status_code == 'WAITING_RET' %}
+                                        <span class="badge bg-info text-dark px-3 py-2"><i class="ti ti-hourglass me-1"></i>Waiting for RET Chair Approval</span>
                                     {% else %}
-                                        <span class="badge bg-secondary px-3 py-2 rounded-pill"><i class="bi bi-pencil-square me-1"></i>In Progress</span>
+                                        <span class="badge bg-secondary px-3 py-2"><i class="ti ti-hourglass me-1"></i>Evidences Submitted</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-center pe-4">
-                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
                                         onclick="openFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
-                                        <i class="bi bi-eye-fill me-1"></i>View Evidences
+                                        <i class="ti ti-eye me-1"></i>View Evidences
                                     </button>
                                 </td>
                             </tr>
@@ -1495,7 +1557,141 @@
                         {% else %}
                             <tr>
                                 <td colspan="6" class="text-center py-4 text-muted">
-                                    No faculty evidence submissions found for this academic term.
+                                    No pending faculty evidence submissions found for this academic term.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved Designated Faculty & Chairs Evidences Table -->
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid var(--c-success) !important; border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-success"><i class="ti ti-circle-check me-2 text-success"></i>Approved Designated Faculty &amp; Chairs Evidences</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Committed Targets</th>
+                            <th class="text-center">Targets Met</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if approved_designated_evidence_list %}
+                            {% for fac in approved_designated_evidence_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                    <small class="text-muted">{{ fac.designation or 'Designated Faculty' }}{% if fac.specialization %} ({{ fac.specialization }}){% elif fac.assigned_program %} ({{ fac.assigned_program }}){% endif %}</small>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success px-3 py-2"><i class="ti ti-checks me-1"></i>Approved</span>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <div class="d-inline-flex gap-2 align-items-center justify-content-center">
+                                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
+                                            onclick="openFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                            <i class="ti ti-eye me-1"></i>View Evidences
+                                        </button>
+                                        {% if fac.is_submitted_to_dean %}
+                                        <button type="button" class="btn btn-secondary btn-sm px-3 py-2 fw-bold opacity-75" disabled title="Already submitted to Dean for final verification">
+                                            <i class="ti ti-circle-check me-1"></i>Submitted to Dean
+                                        </button>
+                                        {% else %}
+                                        <button type="button" class="btn btn-success btn-sm px-3 py-2 fw-bold shadow-sm"
+                                            onclick="submitFacultyEvidenceToDean({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                            <i class="ti ti-send me-1"></i>Submit to Dean
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No approved evidence submissions from Designated Faculty or Chairs yet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved Regular Faculty Evidences Table -->
+    <div class="card border-0 shadow-sm" style="border-top: 3px solid var(--c-accent) !important; border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-primary"><i class="ti ti-circle-check me-2 text-primary"></i>Approved Regular Faculty Evidences</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Committed Targets</th>
+                            <th class="text-center">Targets Met</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if approved_regular_evidence_list %}
+                            {% for fac in approved_regular_evidence_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                    <small class="text-muted">{{ fac.specialization or 'Regular Faculty' }}</small>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    {% if fac.is_both_approved %}
+                                    <span class="badge bg-success px-3 py-2"><i class="ti ti-checks me-1"></i>Approved by Both</span>
+                                    {% else %}
+                                    <span class="badge bg-info text-dark px-3 py-2"><i class="ti ti-circle-check me-1"></i>Approved by Chair (Waiting for RET)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center pe-4">
+                                    <div class="d-inline-flex gap-2 align-items-center justify-content-center">
+                                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
+                                            onclick="openFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                            <i class="ti ti-eye me-1"></i>View Evidences
+                                        </button>
+                                        {% if fac.is_submitted_to_dean %}
+                                        <button type="button" class="btn btn-secondary btn-sm px-3 py-2 fw-bold opacity-75" disabled title="Already submitted to Dean for final verification">
+                                            <i class="ti ti-circle-check me-1"></i>Submitted to Dean
+                                        </button>
+                                        {% else %}
+                                        <button type="button" class="btn btn-success btn-sm px-3 py-2 fw-bold shadow-sm"
+                                            onclick="submitFacultyEvidenceToDean({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                            <i class="ti ti-send me-1"></i>Submit to Dean
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No approved evidence submissions from Regular Faculty yet.
                                 </td>
                             </tr>
                         {% endif %}
@@ -1508,10 +1704,10 @@
 
 <!-- Faculty Evidence Verification Modal -->
 <div class="modal fade" id="facultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-            <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
-                <h5 class="modal-title fw-bold" id="evidenceModalTitle"><i class="bi bi-file-earmark-check-fill me-2"></i>Faculty Evidence Verification</h5>
+            <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
+                <h5 class="modal-title fw-bold" id="evidenceModalTitle"><i class="ti ti-file-check me-2"></i>Faculty Evidence Verification</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -1520,7 +1716,7 @@
                         <h6 class="fw-bold mb-0 text-dark" id="evidenceModalFacultyName">-</h6>
                         <small class="text-muted" id="evidenceModalFacultyRank">-</small>
                     </div>
-                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold">
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 fw-bold">
                         Program Chair Verification View
                     </span>
                 </div>
@@ -1544,7 +1740,7 @@
                 </div>
             </div>
             <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -1579,7 +1775,21 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                 return;
             }
 
-            function getCategoryHeaderInfo(rawCat) {
+            // A designated faculty/chair's IPCR ("My IPCR") only ever shows two tables —
+            // Core Functions, then Strategic Priorities & Support Functions — driven by
+            // is_core (from is_admin_function), not category_name: the same category
+            // (Instruction) can land in either depending on whether it's their personal
+            // teaching share or their departmental oversight quota. Grouping by category_name
+            // here instead produced a different table breakdown than what the faculty member
+            // themselves sees, and could put an oversight item under the wrong heading.
+            // Regular Faculty has no such split, so they keep the category-based grouping.
+            function getCategoryHeaderInfo(t) {
+                if (data.is_designated) {
+                    return t.is_core
+                        ? { key: 'CORE', title: '1. CORE FUNCTIONS' }
+                        : { key: 'STRATEGIC_SUPPORT', title: '2. STRATEGIC PRIORITIES & SUPPORT FUNCTIONS' };
+                }
+                const rawCat = t.category_name;
                 if (!rawCat) return { key: 'OTHERS', title: 'OTHER TARGETS' };
                 const lower = rawCat.toLowerCase();
                 if (lower.includes('instruction')) return { key: 'STRATEGIC', title: 'STRATEGIC PRIORITIES' };
@@ -1589,11 +1799,11 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                 return { key: rawCat.toUpperCase(), title: rawCat.toUpperCase() };
             }
 
-            const order = ['STRATEGIC', 'RESEARCH', 'EXTENSION', 'SUPPORT'];
+            const order = ['CORE', 'STRATEGIC_SUPPORT', 'STRATEGIC', 'RESEARCH', 'EXTENSION', 'SUPPORT'];
             const groups = {};
 
             data.targets.forEach(t => {
-                const info = getCategoryHeaderInfo(t.category_name);
+                const info = getCategoryHeaderInfo(t);
                 if (!groups[info.key]) {
                     groups[info.key] = { title: info.title, items: [] };
                 }
@@ -1613,8 +1823,8 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-light fw-bold';
                 headerTr.innerHTML = `
-                    <td colspan="6" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: #f1f3f5; border-top: 2px solid #dee2e6;">
-                        <i class="bi bi-folder-fill me-2 text-primary"></i>${group.title}
+                    <td colspan="6" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: var(--c-surface-alt); border-top: 2px solid var(--c-border);">
+                        <i class="ti ti-folder me-2 text-primary"></i>${group.title}
                     </td>
                 `;
                 tbody.appendChild(headerTr);
@@ -1627,19 +1837,19 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
 
                     let evHtml = '';
                     if (t.is_ret) {
-                        evHtml = '<span class="badge bg-light text-secondary border px-3 py-2"><i class="bi bi-shield-lock-fill me-1"></i>Managed by RET Sector</span>';
+                        evHtml = '<span class="badge bg-light text-secondary border px-3 py-2"><i class="ti ti-shield-lock me-1"></i>Managed by RET Sector</span>';
                     } else if (t.evidence_list && t.evidence_list.length > 0) {
-                        evHtml = `<button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold shadow-xs"
+                        evHtml = `<button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold shadow-xs"
                             onclick="openEvidenceViewerFor(${t.target_id})">
-                            <i class="bi bi-folder2-open me-1"></i>View Uploaded Evidence (${t.evidence_list.length})
+                            <i class="ti ti-folder-open me-1"></i>View Uploaded Evidence (${t.evidence_list.length})
                         </button>`;
                     } else {
                         evHtml = '<span class="badge bg-light text-muted border">No evidence uploaded</span>';
                     }
 
                     const qtyMetBadge = (t.actual_quantity >= t.assigned_quantity && t.assigned_quantity > 0)
-                        ? `<span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>${t.actual_quantity}</span>`
-                        : `<span class="badge bg-secondary px-3 py-2 rounded-pill">${t.actual_quantity || 0}</span>`;
+                        ? `<span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>${t.actual_quantity}</span>`
+                        : `<span class="badge bg-secondary px-3 py-2">${t.actual_quantity || 0}</span>`;
 
                     // What the faculty reported (for validating against the evidence) plus the
                     // ratings derived from it. Read-only — the faculty owns these inputs.
@@ -1651,7 +1861,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                         reportedHtml = '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Not yet begun</span>';
                     } else if (t.actual_duration_value != null) {
                         const tgt = t.target_duration_value != null ? ` <span class="text-muted">of ${t.target_duration_value} ${unit}</span>` : '';
-                        reportedHtml = `<span class="small"><i class="bi bi-stopwatch me-1 text-primary"></i>Completed in <strong>${t.actual_duration_value} ${unit}</strong>${tgt}</span>`;
+                        reportedHtml = `<span class="small"><i class="ti ti-stopwatch me-1 text-primary"></i>Completed in <strong>${t.actual_duration_value} ${unit}</strong>${tgt}</span>`;
                     } else {
                         reportedHtml = '<span class="badge bg-light text-muted border">Time to complete not reported</span>';
                     }
@@ -1660,8 +1870,8 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                     if (t.efficiency_type === 'Client Satisfaction') {
                         const CS = { 5: 'Excellent', 4: 'Very Satisfactory', 3: 'Satisfactory', 2: 'Unsatisfactory', 1: 'Poor' };
                         effHtml = t.efficiency_rating_E
-                            ? `<div class="small mt-1"><i class="bi bi-star-fill me-1 text-warning"></i>Client Satisfaction: <strong>${CS[t.efficiency_rating_E] || t.efficiency_rating_E}</strong></div>`
-                            : '<div class="small mt-1 text-muted"><i class="bi bi-star me-1"></i>Client Satisfaction not rated</div>';
+                            ? `<div class="small mt-1"><i class="ti ti-star-filled me-1 text-warning"></i>Client Satisfaction: <strong>${CS[t.efficiency_rating_E] || t.efficiency_rating_E}</strong></div>`
+                            : '<div class="small mt-1 text-muted"><i class="ti ti-star me-1"></i>Client Satisfaction not rated</div>';
                     }
 
                     const r = t.rating || {};
@@ -1687,7 +1897,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                         if (returned > 0) {
                             verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
                         } else if (approved === evs.length) {
-                            verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>';
+                            verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="ti ti-circle-check me-1"></i>Approved</span>';
                         } else {
                             verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
                         }
@@ -1702,7 +1912,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                         <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                         <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
                         <td class="py-3">${reportedHtml}${effHtml}${ratingHtml}</td>
-                        <td class="text-center">${verifyHtml}</td>
+                        <td class="text-center" id="target-verify-status-${t.target_id}">${verifyHtml}</td>
                         <td class="ps-3 py-3">${evHtml}</td>
                     `;
                     tbody.appendChild(tr);
@@ -1746,22 +1956,22 @@ function openEvidenceViewer(evidenceList) {
             } else {
                 // Other file types — link to download
                 previewHtml = `<div class="evidence-portrait-container text-center py-4">
-                        <i class="bi bi-file-earmark-arrow-down-fill fs-1 text-light mb-2 d-block"></i>
+                        <i class="ti ti-file-download fs-1 text-light mb-2 d-block"></i>
                         <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-outline-light">
-                            <i class="bi bi-download me-1"></i>View / Download File
+                            <i class="ti ti-download me-1"></i>View / Download File
                         </a>
                     </div>`;
             }
 
             const statusBadge = ev.verification_status === 'Approved'
-                ? '<span class="badge bg-success rounded-pill">Approved</span>'
+                ? '<span class="badge bg-success">Approved</span>'
                 : ev.verification_status === 'Returned'
-                ? '<span class="badge bg-danger rounded-pill">Returned</span>'
-                : '<span class="badge bg-warning text-dark rounded-pill">Pending</span>';
+                ? '<span class="badge bg-danger">Returned</span>'
+                : '<span class="badge bg-warning text-dark">Pending</span>';
 
             const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
             const commentHtml = ev.supervisor_comment
-                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="bi bi-chat-left-text me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
                 : '';
 
             html += `
@@ -1772,19 +1982,19 @@ function openEvidenceViewer(evidenceList) {
                             <span class="ms-2" id="evidence-status-${ev.evidence_id}">${statusBadge}</span>
                         </div>
                         <div class="small text-muted flex-shrink-0">
-                            <span><i class="bi bi-check-circle me-1"></i>Qty: ${ev.actual_qty_Q}</span>
-                            ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="bi bi-people-fill me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
+                            <span><i class="ti ti-circle-check me-1"></i>Qty: ${ev.actual_qty_Q}</span>
+                            ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
                         </div>
                     </div>
                     ${commentHtml}
-                    <div class="d-flex justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none;"' : ''}>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                    <div class="${isDecided ? 'd-none' : 'd-flex'} justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none !important;"' : ''}>
+                        <button type="button" class="btn btn-sm btn-outline-danger px-3"
                                 onclick="returnEvidence(${ev.evidence_id})">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i>Return
+                            <i class="ti ti-arrow-back-up me-1"></i>Return
                         </button>
-                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3"
+                        <button type="button" class="btn btn-sm btn-success px-3"
                                 onclick="verifyEvidence(${ev.evidence_id}, 'Approved')">
-                            <i class="bi bi-check-circle-fill me-1"></i>Approve
+                            <i class="ti ti-circle-check me-1"></i>Approve
                         </button>
                     </div>
                     ${previewHtml}
@@ -1796,15 +2006,56 @@ function openEvidenceViewer(evidenceList) {
     new bootstrap.Modal(document.getElementById('evidenceViewerModal')).show();
 }
 
-// Returning requires a reason, which is shown back to the faculty member.
+let pendingReturnEvidenceId = null;
+
 function returnEvidence(evidenceId) {
-    const reason = prompt('Reason for returning this evidence (required):');
-    if (reason === null) return;                 // cancelled
-    if (!reason.trim()) {
-        alert('A reason is required when returning evidence.');
+    for (const tid in EVIDENCE_BY_TARGET) {
+        const list = EVIDENCE_BY_TARGET[tid] || [];
+        const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+        if (item && item.verification_status === 'Approved') {
+            alert('Approved evidence cannot be returned.');
+            return;
+        }
+    }
+    pendingReturnEvidenceId = evidenceId;
+    document.getElementById('returnEvidenceReasonInput').value = '';
+    document.getElementById('returnEvidenceReasonError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('returnEvidenceReasonModal')).show();
+}
+
+function confirmReturnEvidence() {
+    const reason = document.getElementById('returnEvidenceReasonInput').value.trim();
+    if (!reason) {
+        document.getElementById('returnEvidenceReasonError').style.display = '';
         return;
     }
-    verifyEvidence(evidenceId, 'Returned', reason.trim());
+    const modalEl = document.getElementById('returnEvidenceReasonModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    if (pendingReturnEvidenceId) {
+        verifyEvidence(pendingReturnEvidenceId, 'Returned', reason);
+    }
+}
+
+let evidenceVerificationChanged = false;
+
+function updateTargetStatusBadge(targetId) {
+    const evs = EVIDENCE_BY_TARGET[targetId] || [];
+    if (evs.length === 0) return;
+    const returned = evs.filter(e => e.verification_status === 'Returned').length;
+    const approved = evs.filter(e => e.verification_status === 'Approved').length;
+    let verifyHtml = '';
+    if (returned > 0) {
+        verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
+    } else if (approved === evs.length) {
+        verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="ti ti-circle-check me-1"></i>Approved</span>';
+    } else {
+        verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
+    }
+    const targetStatusEl = document.getElementById('target-verify-status-' + targetId);
+    if (targetStatusEl) {
+        targetStatusEl.innerHTML = verifyHtml;
+    }
 }
 
 function verifyEvidence(evidenceId, status, comment) {
@@ -1816,17 +2067,76 @@ function verifyEvidence(evidenceId, status, comment) {
     .then(r => r.json())
     .then(data => {
         if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+        evidenceVerificationChanged = true;
         const badge = document.getElementById('evidence-status-' + evidenceId);
         const actions = document.getElementById('evidence-actions-' + evidenceId);
         if (badge) {
             badge.innerHTML = status === 'Approved'
-                ? '<span class="badge bg-success rounded-pill">Approved</span>'
-                : '<span class="badge bg-danger rounded-pill">Returned</span>';
+                ? '<span class="badge bg-success">Approved</span>'
+                : '<span class="badge bg-danger">Returned</span>';
         }
-        if (actions) actions.style.display = 'none';
+        if (actions) {
+            actions.classList.remove('d-flex');
+            actions.classList.add('d-none');
+            actions.style.setProperty('display', 'none', 'important');
+        }
+
+        // Real-time update of memory and main modal target row badge
+        let targetIdFound = null;
+        for (const tid in EVIDENCE_BY_TARGET) {
+            const list = EVIDENCE_BY_TARGET[tid];
+            const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+            if (item) {
+                item.verification_status = status;
+                if (comment) item.supervisor_comment = comment;
+                targetIdFound = tid;
+                break;
+            }
+        }
+        if (targetIdFound) {
+            updateTargetStatusBadge(targetIdFound);
+        }
     })
     .catch(err => alert('Error: ' + err));
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const el = document.getElementById('facultyEvidenceVerificationModal');
+    if (el) {
+        el.addEventListener('hidden.bs.modal', function() {
+            if (evidenceVerificationChanged) {
+                window.location.reload();
+            }
+        });
+    }
+});
+
+window.submitFacultyEvidenceToDean = function(empId, facultyName) {
+        showCustomConfirm({
+            title: "Submit Evidence to Dean?",
+            mainText: `Are you sure you want to submit <strong>${facultyName}</strong>'s approved evidence package to the Dean for final verification?`,
+            subText: "This will forward all verified evidence items to the Dean.",
+            confirmText: "Submit to Dean",
+            confirmClass: "btn-success",
+            iconClass: "ti-send",
+            onConfirm: () => {
+                fetch('/prog_chair/submit_to_dean', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ emp_id: empId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(err => alert('Error submitting to Dean: ' + err));
+            }
+        });
+    };
 </script>
 
 <!-- Evidence Viewer Modal (Left-Side Portrait Panel) -->
@@ -1834,13 +2144,34 @@ function verifyEvidence(evidenceId, status, comment) {
     <!-- Full-width so PDF/image evidence is actually readable while verifying. -->
     <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
-                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-file-earmark-pdf-fill me-2"></i>Uploaded Evidence</h5>
+            <div class="modal-header text-white border-0 py-3" style="background: var(--c-accent);">
+                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="evidenceViewerBody"></div>
             <div class="modal-footer border-0 p-3 bg-light">
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Return Evidence Reason Modal -->
+<div class="modal fade" id="returnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence to Faculty</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-start">
+                <label for="returnEvidenceReasonInput" class="form-label fw-bold small">Reason for Returning (Required)</label>
+                <textarea class="form-control" id="returnEvidenceReasonInput" rows="3" placeholder="Explain why this evidence is being returned so the faculty member can fix it..."></textarea>
+                <div id="returnEvidenceReasonError" class="text-danger small mt-2" style="display:none;">A reason is required before returning evidence.</div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger fw-bold px-4" onclick="confirmReturnEvidence()">Submit Return</button>
             </div>
         </div>
     </div>
@@ -1886,7 +2217,7 @@ function verifyEvidence(evidenceId, status, comment) {
     #evidenceViewerModal .modal-body {
         flex: 1;
         overflow-y: auto;
-        background: #f8f9fa;
+        background: var(--c-surface-alt);
     }
 
     #evidenceViewerModal .modal-header {
@@ -1905,7 +2236,7 @@ function verifyEvidence(evidenceId, status, comment) {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #1a1a2e;
+        background: var(--c-text);
         border-radius: 8px;
         padding: 8px;
         min-height: 40vh;

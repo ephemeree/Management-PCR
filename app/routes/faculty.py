@@ -32,6 +32,7 @@ def faculty_dashboard():
         extension_targets = []
         evidence_readiness = None
         ipcr_score = None
+        has_final_ipcr = False
 
         if active_term:
             term_id = active_term['term_id']
@@ -83,6 +84,7 @@ def faculty_dashboard():
                 has_submitted = True
                 from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target, check_faculty_evidence_readiness
                 assigned_targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+                has_final_ipcr = any(t.get('status') == 'Dean Approved' for t in assigned_targets)
                 # Fetch evidence for each target
                 for target in assigned_targets:
                     target['evidence_list'] = get_evidence_by_target(cursor, target['target_id'], emp_id, target['indicator_id'])
@@ -106,7 +108,8 @@ def faculty_dashboard():
                                ret_review=ret_review,
                                ipcr_status=ipcr_status,
                                evidence_readiness=evidence_readiness,
-                               ipcr_score=ipcr_score)
+                               ipcr_score=ipcr_score,
+                               has_final_ipcr=has_final_ipcr)
     finally:
         cursor.close()
         conn.close()
@@ -138,6 +141,7 @@ def faculty_save_accomplishment():
             _int_or_none(data.get('actual_duration_value')),
             (data.get('completion_status') or '').strip() or None,
             _int_or_none(data.get('efficiency_rating_E')),
+            data.get('print_remarks'),
         )
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
@@ -214,7 +218,7 @@ def faculty_submit_ipcr():
         selected_ret_targets = [{'indicator_id': int(x), 'proposed_quantity': 1} for x in selected_indicators]
 
         # Call submit pipeline (handles writing both chair allocations and RET selections to tbl_draft_targets)
-        success, msg = submit_faculty_ipcr(conn, cursor, emp_id, selected_ret_targets)
+        success, msg = submit_faculty_ipcr(conn, cursor, emp_id, int(term_id), selected_ret_targets)
 
         if success:
             flash(msg, "success")
@@ -295,8 +299,12 @@ def faculty_upload_evidence():
     target_id = request.form.get('target_id')
     quantity = request.form.get('quantity', '1')
     co_authors_raw = request.form.getlist('co_authors[]')
+    is_ajax = (request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+               'application/json' in request.headers.get('Accept', ''))
     
     if not target_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid target ID.'}), 400
         flash("Invalid target ID.", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
         
@@ -307,6 +315,8 @@ def faculty_upload_evidence():
 
     file = request.files.get('file')
     if not file or file.filename == '':
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Please select a file to upload.'}), 400
         flash("Please select a file to upload.", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
@@ -315,6 +325,8 @@ def faculty_upload_evidence():
     filename = file.filename
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
     if ext not in allowed_extensions:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Unsupported file format. Allowed format: .pdf'}), 400
         flash("Unsupported file format. Allowed format: .pdf", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
@@ -345,9 +357,13 @@ def faculty_upload_evidence():
             add_co_authors_to_evidence(cursor, evidence_id, co_author_ids)
             
         conn.commit()
+        if is_ajax:
+            return jsonify({'success': True, 'message': 'Evidence uploaded successfully!'})
         flash("Evidence uploaded successfully!", "success")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': f"Error uploading evidence: {str(e)}"}), 500
         flash(f"Error uploading evidence: {str(e)}", "danger")
     finally:
         cursor.close()
@@ -360,7 +376,10 @@ def faculty_upload_evidence():
 @role_required('FACULTY')
 def faculty_delete_evidence():
     evidence_id = request.form.get('evidence_id')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
     if not evidence_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid evidence ID.'}), 400
         flash("Invalid evidence ID.", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
@@ -368,14 +387,20 @@ def faculty_delete_evidence():
     cursor = conn.cursor()
     try:
         from app.models.faculty import delete_evidence_item
-        success = delete_evidence_item(cursor, int(evidence_id))
+        success = delete_evidence_item(cursor, int(evidence_id), session.get('user_id'))
         if success:
             conn.commit()
+            if is_ajax:
+                return jsonify({'success': True, 'message': 'Evidence removed successfully.'})
             flash("Evidence removed successfully.", "success")
         else:
+            if is_ajax:
+                return jsonify({'success': False, 'message': 'Evidence item not found.'}), 44
             flash("Evidence item not found.", "danger")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': str(e)}), 500
         flash(f"Error deleting evidence: {str(e)}", "danger")
     finally:
         cursor.close()
@@ -466,7 +491,10 @@ def faculty_claim_evidence():
 def faculty_unclaim_evidence():
     co_author_id = request.form.get('co_author_id')
     target_id = request.form.get('target_id')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
     if not co_author_id or not target_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid claim payload.'}), 400
         flash("Invalid claim payload.", "danger")
         return redirect(url_for('faculty.faculty_dashboard'))
 
@@ -476,12 +504,44 @@ def faculty_unclaim_evidence():
         from app.models.faculty import unclaim_co_authored_evidence
         unclaim_co_authored_evidence(cursor, int(co_author_id), int(target_id))
         conn.commit()
+        if is_ajax:
+            return jsonify({'success': True, 'message': 'Co-authored evidence unlinked successfully.'})
         flash("Co-authored evidence unlinked successfully.", "success")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': str(e)}), 500
         flash(f"Error unlinking co-authored evidence: {str(e)}", "danger")
     finally:
         cursor.close()
         conn.close()
 
     return redirect(url_for('faculty.faculty_dashboard'))
+
+@faculty_bp.route('/print_ipcr')
+@role_required('FACULTY')
+def faculty_print_ipcr():
+    """Printable IPCR for the logged-in faculty member's active term."""
+    return _render_ipcr_print(session.get('user_id'), url_for('faculty.faculty_dashboard'))
+
+
+def _render_ipcr_print(emp_id, back_url):
+    from app.models.ipcr_form import build_ipcr_form
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            flash('No active academic term.', 'warning')
+            return redirect(back_url)
+
+        form = build_ipcr_form(cursor, emp_id, active_term['term_id'])
+        if not form or not form['has_targets']:
+            flash('No committed IPCR to print yet — lock your IPCR first.', 'warning')
+            return redirect(back_url)
+
+        return render_template('ipcr_print.html', form=form, back_url=back_url)
+    finally:
+        cursor.close()
+        conn.close()

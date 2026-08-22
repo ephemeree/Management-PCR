@@ -11,7 +11,8 @@ Both are now data, so the system scales to new programs and to a change in the
 mandated teaching load without a code edit.
 """
 
-from app.models.criteria import DESIGNATION_TYPES, GENERAL_BAND, RANK_BANDS, rank_band
+from app.models.criteria import (DESIGNATION_TYPES, GENERAL_BAND, RANK_BANDS, rank_band,
+                                 resolve_designation_type)
 
 # Cascade targets that are not departments. The Dean assigns quotas to these
 # alongside the real programs.
@@ -152,7 +153,9 @@ def resolve_teaching_load(cursor, term_id, designation_type, academic_rank=None)
     Falls back to the previously hardcoded values when a term has no configuration,
     so the mandatory teaching-load target is never missing.
     """
-    designation_type = designation_type if designation_type in DESIGNATION_TYPES else 'Regular Faculty'
+    # Callers may pass a job title ('Program Chair') rather than a weight table, so resolve
+    # it the same way the scoring roll-up does.
+    designation_type = resolve_designation_type(designation_type) or 'Regular Faculty'
 
     cursor.execute("""
         SELECT hours, duration_value, duration_unit FROM tbl_teaching_load_config
@@ -213,3 +216,188 @@ def save_teaching_load(conn, cursor, term_id, designation_type, mode, rows):
     except Exception as e:
         conn.rollback()
         return False, str(e)
+
+
+# ─────────────────────────────────────────────
+# Printed IPCR — institution text and signatories
+# ─────────────────────────────────────────────
+
+SIGNATORY_BLOCKS = ['REVIEWED_BY', 'APPROVED_BY', 'ASSESSED_BY', 'FINAL_RATING_BY']
+SIGNATORY_BLOCK_LABELS = {
+    'REVIEWED_BY': 'Reviewed by',
+    'APPROVED_BY': 'Approved by',
+    'ASSESSED_BY': 'Assessed by',
+    'FINAL_RATING_BY': 'Final Rating by',
+}
+# How a block's name is obtained. Two of the four are positions in the org chart, so they
+# follow whoever currently holds the role rather than being retyped each term.
+SIGNATORY_SOURCES = ['FIXED', 'PROGRAM_CHAIR', 'DEAN']
+
+
+def get_institution_settings(cursor):
+    """All institution settings as a plain dict."""
+    cursor.execute("SELECT setting_key, setting_value FROM tbl_institution_settings")
+    return {row[0]: row[1] for row in cursor.fetchall()}
+
+
+def save_institution_setting(conn, cursor, key, value):
+    """Upsert one institution setting."""
+    try:
+        cursor.execute("""
+            INSERT INTO tbl_institution_settings (setting_key, setting_value)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        """, (key, (value or '').strip() or None))
+        conn.commit()
+        return True, "Saved."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
+# The signature blocks a printed IPCR always has. The set is fixed by the form itself —
+# there is no such thing as an extra block — so rather than offering an "add" button the
+# panel guarantees these exist. Without them the printed form has no signature lines and
+# nothing in the UI could recreate them.
+DEFAULT_SIGNATORIES = [
+    ('REVIEWED_BY',     'Regular Faculty',    'PROGRAM_CHAIR', 'Immediate Supervisor'),
+    ('REVIEWED_BY',     'Designated Faculty', 'DEAN',          'Immediate Supervisor'),
+    ('ASSESSED_BY',     None,                 'DEAN',          'Supervisor'),
+    ('APPROVED_BY',     None,                 'FIXED',         'Head of Office'),
+    ('FINAL_RATING_BY', None,                 'FIXED',         'Head of Office'),
+]
+
+
+def ensure_default_signatories(conn, cursor):
+    """
+    Create any missing signature block. Idempotent — an existing block is left exactly as
+    the Admin configured it, names included.
+    """
+    created = 0
+    for block_key, designation_type, source, title in DEFAULT_SIGNATORIES:
+        if designation_type is None:
+            cursor.execute("""
+                SELECT signatory_id FROM tbl_ipcr_signatories
+                WHERE block_key = %s AND designation_type IS NULL
+            """, (block_key,))
+        else:
+            cursor.execute("""
+                SELECT signatory_id FROM tbl_ipcr_signatories
+                WHERE block_key = %s AND designation_type = %s
+            """, (block_key, designation_type))
+        if cursor.fetchone():
+            continue
+        cursor.execute("""
+            INSERT INTO tbl_ipcr_signatories
+                (block_key, designation_type, source, full_name, position_title)
+            VALUES (%s, %s, %s, NULL, %s)
+        """, (block_key, designation_type, source, title))
+        created += 1
+    if created:
+        conn.commit()
+    return created
+
+
+def get_signatories(cursor, conn=None):
+    """
+    Signatory configuration rows for the Admin panel.
+
+    Passing conn lets the panel self-heal a missing set — the blocks are otherwise only
+    creatable by re-running the migration.
+    """
+    if conn is not None:
+        ensure_default_signatories(conn, cursor)
+    cursor.execute("""
+        SELECT signatory_id, block_key, designation_type, source, full_name, position_title
+        FROM tbl_ipcr_signatories
+        ORDER BY FIELD(block_key, 'REVIEWED_BY', 'APPROVED_BY', 'ASSESSED_BY', 'FINAL_RATING_BY'),
+                 designation_type
+    """)
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def save_signatory(conn, cursor, signatory_id, source, full_name, position_title):
+    """Update one signatory block. A FIXED block needs a name; derived blocks do not."""
+    source = source if source in SIGNATORY_SOURCES else 'FIXED'
+    name = (full_name or '').strip() or None
+    if source == 'FIXED' and not name:
+        return False, "A fixed signatory needs a name."
+    try:
+        cursor.execute("""
+            UPDATE tbl_ipcr_signatories
+            SET source = %s, full_name = %s, position_title = %s
+            WHERE signatory_id = %s
+        """, (source, name if source == 'FIXED' else None,
+              (position_title or '').strip() or None, signatory_id))
+        conn.commit()
+        return True, "Signatory saved."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
+def _employee_label(cursor, emp_id=None, designation=None, specialization=None):
+    """Name + academic rank of a person identified by id, or by designation (+ department)."""
+    if emp_id:
+        cursor.execute("""
+            SELECT first_name, last_name, academic_rank FROM tbl_employee_profiles
+            WHERE emp_id = %s
+        """, (emp_id,))
+    elif designation and specialization:
+        cursor.execute("""
+            SELECT first_name, last_name, academic_rank FROM tbl_employee_profiles
+            WHERE designation = %s AND specialization = %s AND leave_status = 'Active'
+            LIMIT 1
+        """, (designation, specialization))
+    elif designation:
+        cursor.execute("""
+            SELECT first_name, last_name, academic_rank FROM tbl_employee_profiles
+            WHERE designation = %s AND leave_status = 'Active'
+            LIMIT 1
+        """, (designation,))
+    else:
+        return None, None
+
+    row = cursor.fetchone()
+    if not row:
+        return None, None
+    return f"{row[0]} {row[1]}".strip().upper(), row[2]
+
+
+def resolve_signatories(cursor, emp_id, designation_type, specialization=None):
+    """
+    The four signature blocks for one ratee's printed IPCR.
+
+    Derived blocks follow the org chart — a regular faculty's reviewer is their own Program
+    Chair, a designated faculty's is the Dean — so they stay correct when a chair changes.
+    A block with no resolvable name renders blank, exactly as the paper form is issued.
+    """
+    rows = get_signatories(cursor)
+    resolved = {}
+    for block in SIGNATORY_BLOCKS:
+        # A row scoped to this designation type wins over the shared (NULL) row.
+        match = next((r for r in rows
+                      if r['block_key'] == block and r['designation_type'] == designation_type), None)
+        if not match:
+            match = next((r for r in rows
+                          if r['block_key'] == block and r['designation_type'] is None), None)
+        if not match:
+            resolved[block] = {'name': None, 'title': None}
+            continue
+
+        source = match['source']
+        if source == 'PROGRAM_CHAIR':
+            name, _ = _employee_label(cursor, designation='Program Chair',
+                                      specialization=specialization)
+        elif source == 'DEAN':
+            name, _ = _employee_label(cursor, designation='Dean')
+        else:
+            name = (match['full_name'] or '').strip().upper() or None
+
+        resolved[block] = {
+            'name': name,
+            'title': match['position_title'],
+            'label': SIGNATORY_BLOCK_LABELS[block],
+        }
+    return resolved

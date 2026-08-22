@@ -41,9 +41,10 @@ def authenticate():
         cursor.execute("SELECT account_status FROM tbl_system_access WHERE emp_id = %s", (emp_id,))
         acc_status_row = cursor.fetchone()
 
-        cursor.execute("SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        cursor.execute("SELECT specialization, designation FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
         spec_rows = cursor.fetchall()
         specialization = spec_rows[0][0] if spec_rows else ''
+        designation = spec_rows[0][1] if spec_rows else ''
     finally:
         cursor.close()
         conn.close()
@@ -67,6 +68,9 @@ def authenticate():
     session['user_id'] = emp_id
     session['role'] = role
     session['specialization'] = specialization
+    # Job title, kept separate from role: it decides whether this person has an IPCR of
+    # their own (Program Chair / RET Chair / Dean all do) and which weight table rates it.
+    session['designation'] = designation
 
     if role == "ADMIN":
         return redirect(url_for('admin.admin_dashboard'))

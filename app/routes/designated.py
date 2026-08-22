@@ -1,13 +1,16 @@
 from flask import Blueprint, render_template, session, request, jsonify, redirect, url_for, flash
 from app.models import *
-from app.decorators import role_required
-from app.models.designated import get_designated_selectable_indicators, submit_designated_ipcr
+from app.decorators import role_required, designated_ipcr_required
+from app.models.designated import (
+    get_designated_selectable_indicators, submit_designated_ipcr,
+    lock_and_commit_designated_ipcr
+)
 
 designated_bp = Blueprint('designated', __name__, url_prefix='/designated')
 
 
 @designated_bp.route('/')
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -65,17 +68,12 @@ def designated_dashboard():
         if dr_result:
             dean_review = dr_result[0]
 
-        # Determine editability: allowed if not submitted, or if returned/rejected by Dean
-        if not has_submitted:
-            can_edit = True
-        else:
-            if dean_review and dean_review['overall_status'] == 'Rejected':
-                can_edit = True
-            else:
-                can_edit = False
+        # Determine editability: allowed ONLY if not yet submitted. Once submitted (or returned), it is view-only.
+        can_edit = not has_submitted
 
         evidence_readiness = None
         ipcr_score = None
+        has_final_ipcr = False
         if is_committed:
             can_edit = False
             has_submitted = True
@@ -91,41 +89,56 @@ def designated_dashboard():
             """, (emp_id, term_id))
             alloc_ids = {r[0] for r in cursor.fetchall()}
 
+            # is_admin_function (a committed/draft row's own flag) means "not this person's
+            # personal Core Function work" broadly — it's also 1 for a freely-picked Strategic
+            # Priorities/Support item, not just a chair's departmental oversight quota. The
+            # "Departmental Oversight" badge needs the narrower set: only indicators actually
+            # cascaded to this chair's role.
+            from app.models.designated import get_oversight_targets
+            oversight_ids = {r['indicator_id'] for r in get_oversight_targets(cursor, emp_id, term_id)}
+
             dpcr_targets = get_designated_committed_targets(cursor, emp_id, term_id)
             for t in dpcr_targets:
                 t['is_selected'] = True
                 t['total_target_value'] = t['assigned_quantity']
                 if t.get('category_name') == 'Custom Target Items':
                     t['category_name'] = 'Support Functions'
-                if 'Teaching Load' in (t.get('indicator_description') or '') or t['indicator_id'] in alloc_ids:
+                # A chair's oversight row (is_admin_function) can share an indicator_id with
+                # their own personal Core Function allocation of that same indicator — only
+                # the personal row belongs in Core Functions; the oversight row stays a
+                # Strategic Priorities/Support Function target regardless of alloc_ids.
+                if not t.get('is_admin_function') and (
+                        'Teaching Load' in (t.get('indicator_description') or '') or t['indicator_id'] in alloc_ids):
                     t['is_core'] = True
                     t['is_locked'] = True
+                t['is_oversight_cascade'] = bool(t.get('is_admin_function')) and t['indicator_id'] in oversight_ids
                 t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             evidence_readiness = check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets)
+            has_final_ipcr = any(t.get('status') == 'Dean Approved' for t in dpcr_targets) if dpcr_targets else False
             # Live IPCR summary — uses the Designated Faculty weight table.
             from app.models.scoring import compute_ipcr_score
             ipcr_score = compute_ipcr_score(cursor, emp_id, term_id)
 
         elif can_edit:
             # Load standard selectable indicators and exclude 21 hours regular teaching load targets
-            raw_standard_targets = get_designated_selectable_indicators(cursor, term_id)
+            raw_standard_targets = get_designated_selectable_indicators(cursor, term_id, emp_id=emp_id)
             standard_targets = [
                 t for t in raw_standard_targets 
                 if '21 hours' not in t['indicator_description'] and '21 hrs' not in t['indicator_description']
             ]
             
-            # Fetch cascaded instruction allocations from Program Chair
+            # Fetch cascaded allocations (Program Chair instruction + Dean College-Wide)
             cursor.execute("""
                 SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
-                       da.target_duration_value, da.target_duration_unit
+                       da.target_duration_value, da.target_duration_unit, tc.slug
                 FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
+                WHERE da.emp_id = %s AND mi.term_id = %s
             """, (emp_id, term_id))
             alloc_rows = cursor.fetchall()
             alloc_map = {r[0]: {'assigned_quantity': r[1], 'custom_description': r[2], 'target_deadline': r[3],
-                                'target_duration_value': r[4], 'target_duration_unit': r[5]} for r in alloc_rows}
+                                'target_duration_value': r[4], 'target_duration_unit': r[5], 'slug': r[6]} for r in alloc_rows}
 
             draft_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
@@ -139,11 +152,11 @@ def designated_dashboard():
                 WHERE dt.emp_id = %s AND mi.term_id = %s
                 ORDER BY tc.category_name, mi.indicator_id
             """, (emp_id, term_id), label="designated_load_drafts")
-            
+
             for d in draft_targets:
                 if d['category_name'] == 'Custom Target Items':
                     d['category_name'] = 'Support Functions'
-            
+
             draft_map = {d['indicator_id']: d for d in draft_targets}
 
             # Configured teaching load, used as the fallback when a draft row has none.
@@ -155,10 +168,12 @@ def designated_dashboard():
             tl_default_deadline = format_duration(_tl_dv, _tl_du)
 
             dpcr_targets = []
+            seen_indicator_ids = set()
             for t in standard_targets:
                 ind_id = t['indicator_id']
+                seen_indicator_ids.add(ind_id)
                 is_tl = 'Teaching Load' in t['indicator_description']
-                
+
                 if is_tl:
                     t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else tl_default_hours
                     t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or tl_default_desc
@@ -169,15 +184,15 @@ def designated_dashboard():
                     t['is_core'] = True
                     t['is_locked'] = True
                 elif ind_id in alloc_map and (alloc_map[ind_id].get('assigned_quantity') or 0) > 0:
-                    # Cascaded Instruction Target from Program Chair -> Core Functions & Locked
+                    is_instruction = alloc_map[ind_id].get('slug') == 'instruction'
                     t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else alloc_map[ind_id]['assigned_quantity']
                     t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or alloc_map[ind_id]['custom_description'] or t['indicator_description']
                     t['target_deadline'] = (draft_map[ind_id]['target_deadline'] if ind_id in draft_map else None) or alloc_map[ind_id]['target_deadline'] or ''
                     t['status'] = draft_map[ind_id]['status'] if ind_id in draft_map else 'Draft'
                     t['is_selected'] = True
                     t['is_cascaded'] = True
-                    t['is_core'] = True
-                    t['is_locked'] = True
+                    t['is_core'] = is_instruction
+                    t['is_locked'] = is_instruction
                 elif ind_id in draft_map:
                     t['total_target_value'] = draft_map[ind_id]['total_target_value']
                     t['target_description'] = draft_map[ind_id]['target_description'] or t['indicator_description']
@@ -206,6 +221,13 @@ def designated_dashboard():
                 t['target_duration_unit'] = _src.get('target_duration_unit') or _alloc.get('target_duration_unit')
                 dpcr_targets.append(t)
                 
+            # A chair answers for their department's (or RET's) whole cascaded quota as an
+            # administrative function. These are appended even when the same indicator is
+            # already listed above as their personal allocated work — the two rate under
+            # different IPCR categories, which is what is_admin_function distinguishes.
+            from app.models.designated import get_oversight_targets
+            dpcr_targets.extend(get_oversight_targets(cursor, emp_id, term_id))
+
             # Add custom targets from drafts
             for d in draft_targets:
                 if d['is_custom']:
@@ -272,10 +294,15 @@ def designated_dashboard():
             """, (emp_id, term_id))
             alloc_ids = {r[0] for r in cursor.fetchall()}
 
+            # See the is_committed branch above for why this is narrower than is_admin_function.
+            from app.models.designated import get_oversight_targets
+            oversight_ids = {r['indicator_id'] for r in get_oversight_targets(cursor, emp_id, term_id)}
+
             # If they cannot edit, we just load their submitted drafts
             dpcr_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
                        dt.target_description, dt.target_deadline, dt.target_duration_value, dt.target_duration_unit,
+                       dt.is_admin_function,
                        mi.indicator_description, tc.category_name, mi.is_custom,
                        dri.item_remarks as dean_remarks, dri.original_quantity, dri.reviewed_quantity
                 FROM tbl_draft_targets dt
@@ -289,9 +316,14 @@ def designated_dashboard():
                 t['is_selected'] = True
                 if t['category_name'] == 'Custom Target Items':
                     t['category_name'] = 'Support Functions'
-                if 'Teaching Load' in t['indicator_description'] or t['indicator_id'] in alloc_ids:
+                # See the is_committed branch above: an oversight row can share an
+                # indicator_id with the chair's own personal Core Function allocation, so
+                # alloc_ids membership alone isn't enough to call it Core.
+                if not t.get('is_admin_function') and (
+                        'Teaching Load' in t['indicator_description'] or t['indicator_id'] in alloc_ids):
                     t['is_core'] = True
                     t['is_locked'] = True
+                t['is_oversight_cascade'] = bool(t.get('is_admin_function')) and t['indicator_id'] in oversight_ids
 
     cursor.close()
     conn.close()
@@ -305,13 +337,80 @@ def designated_dashboard():
                            dpcr_targets=dpcr_targets,
                            has_submitted=has_submitted,
                            can_edit=can_edit,
+                           is_committed=is_committed,
+                           is_locked=is_committed,
                            dean_review=dean_review,
                            evidence_readiness=evidence_readiness,
-                           ipcr_score=ipcr_score)
+                           ipcr_score=ipcr_score,
+                           has_final_ipcr=has_final_ipcr)
+
+
+@designated_bp.route('/lock_ipcr', methods=['POST'])
+@designated_ipcr_required
+def designated_lock_ipcr():
+    """Lock the approved draft IPCR and commit it to tbl_committed_targets."""
+    emp_id = session.get('user_id')
+    term_id = request.form.get('term_id')
+
+    if not term_id:
+        flash("No active academic term found.", "danger")
+        return redirect(url_for('designated.designated_dashboard'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        success, msg = lock_and_commit_designated_ipcr(conn, cursor, emp_id, int(term_id))
+        flash(msg, "success" if success else "danger")
+    except Exception as e:
+        flash(f"Error locking IPCR: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('designated.designated_dashboard'))
+
+
+@designated_bp.route('/resubmit_ipcr', methods=['POST'])
+@designated_ipcr_required
+def designated_resubmit_ipcr():
+    """Re-submit returned draft IPCR to Dean for approval."""
+    emp_id = session.get('user_id')
+    term_id = request.form.get('term_id')
+
+    if not term_id:
+        flash("No active academic term found.", "danger")
+        return redirect(url_for('designated.designated_dashboard'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE tbl_draft_targets dt
+            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+            SET dt.review_status = 'Pending Review'
+            WHERE dt.emp_id = %s AND mi.term_id = %s
+        """, (emp_id, int(term_id)))
+
+        cursor.execute("""
+            UPDATE tbl_ipcr_dean_review
+            SET overall_status = 'Pending Review'
+            WHERE emp_id = %s AND term_id = %s
+        """, (emp_id, int(term_id)))
+
+        conn.commit()
+        flash("IPCR has been re-submitted for Dean's approval.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error re-submitting IPCR: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('designated.designated_dashboard'))
 
 
 @designated_bp.route('/save_accomplishment', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_save_accomplishment():
     """AJAX — save Timeliness (and client-satisfaction Efficiency) inputs for one target."""
     emp_id = session.get('user_id')
@@ -335,6 +434,7 @@ def designated_save_accomplishment():
             _int_or_none(data.get('actual_duration_value')),
             (data.get('completion_status') or '').strip() or None,
             _int_or_none(data.get('efficiency_rating_E')),
+            data.get('print_remarks'),
         )
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
@@ -345,7 +445,7 @@ def designated_save_accomplishment():
 
 
 @designated_bp.route('/submit_evidence', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_submit_evidence():
     emp_id = session.get('user_id')
     conn = get_db_connection()
@@ -376,7 +476,7 @@ def designated_submit_evidence():
 
 
 @designated_bp.route('/submit', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def submit_designated_ipcr_route():
     emp_id = session.get('user_id')
     term_id = request.form.get('term_id')
@@ -385,8 +485,21 @@ def submit_designated_ipcr_route():
         flash("No active academic term found.", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
-    # Parse baseline target checkboxes
-    selected_ids = request.form.getlist('selected_indicators[]')
+    # Departmental Oversight rows (get_oversight_targets) render an `admin_indicator_ids[]`
+    # marker in the template. Their indicator_id can be the *same* as a personal Core
+    # Function row above (e.g. the chair's own Instruction share) — Table 1 always submits
+    # that personal row's own selected_indicators[]/target_qty_<id>, so the same id can
+    # legitimately appear twice in the form. Quantity/category for the oversight instance is
+    # never trusted from the form regardless — see submit_designated_ipcr.
+    admin_ids = {int(x) for x in request.form.getlist('admin_indicator_ids[]') if x}
+
+    # Parse baseline target checkboxes. dict.fromkeys dedupes while keeping order: an id
+    # shared between a personal Core row (Table 1's hidden field) and an oversight row
+    # (Table 2's checkbox) must produce exactly one entry here, built from the single
+    # target_qty_<id>/target_desc_<id>/target_dur_value_<id> fields Table 1 rendered for it —
+    # Table 2 no longer renders those for oversight rows, so there's no second, conflicting
+    # source to accidentally merge in.
+    selected_ids = list(dict.fromkeys(request.form.getlist('selected_indicators[]')))
     selected_targets = []
     for ind_id in selected_ids:
         qty_val = request.form.get(f'target_qty_{ind_id}', '0')
@@ -402,7 +515,19 @@ def submit_designated_ipcr_route():
             'target_duration_value': dur_value,
             'target_duration_unit': dur_unit
         })
-        
+
+    # Departmental Oversight deadlines — the chair's own input, kept in the `_adm`-suffixed
+    # fields (see the template) so they never collide with a same-indicator Core Function row.
+    oversight_durations = {}
+    for ind_id in admin_ids:
+        dur_value, dur_unit, dead_label = parse_duration_fields(
+            request.form, f'target_dur_value_{ind_id}_adm', f'target_dur_unit_{ind_id}_adm')
+        oversight_durations[ind_id] = {
+            'target_duration_value': dur_value,
+            'target_duration_unit': dur_unit,
+            'target_deadline': dead_label,
+        }
+
     # Parse custom targets added on the frontend
     custom_descriptions = request.form.getlist('custom_descriptions[]')
     custom_quantities = request.form.getlist('custom_quantities[]')
@@ -425,11 +550,42 @@ def submit_designated_ipcr_route():
                 'target_duration_unit': dur_unit
             })
 
+    # Validate that every selected target has a positive quantity and a specified deadline.
+    # Departmental Oversight ids are skipped here regardless of whether they also have a
+    # personal Core Function counterpart: a pure-oversight id has no target_qty_<id>/
+    # target_dur_value_<id> fields at all (Table 2 doesn't render them for admin rows), so
+    # they'd always fail this check; a dual id's Core Function fields are already guaranteed
+    # valid by construction (Table 1 only shows an id here when its allocation is > 0). The
+    # oversight deadline itself is validated separately below, from oversight_durations.
+    for t in selected_targets:
+        if t['indicator_id'] in admin_ids:
+            continue
+        if t.get('proposed_quantity', 0) <= 0:
+            flash("All selected targets must have a quantity greater than 0.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+        if not t.get('target_duration_value') or int(t['target_duration_value']) <= 0:
+            flash("All selected targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+
+    for ct in custom_targets:
+        if ct.get('proposed_quantity', 0) <= 0:
+            flash("All custom targets must have a quantity greater than 0.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+        if not ct.get('target_duration_value') or int(ct['target_duration_value']) <= 0:
+            flash("All custom targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+
+    for ov in oversight_durations.values():
+        if not ov.get('target_duration_value') or int(ov['target_duration_value']) <= 0:
+            flash("All Departmental Oversight targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('designated.designated_dashboard'))
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        success, msg = submit_designated_ipcr(conn, cursor, emp_id, int(term_id), selected_targets, custom_targets)
+        success, msg = submit_designated_ipcr(conn, cursor, emp_id, int(term_id), selected_targets, custom_targets,
+                                               oversight_durations=oversight_durations)
         if success:
             flash(msg, "success")
         else:
@@ -453,7 +609,7 @@ import os
 from werkzeug.utils import secure_filename
 
 @designated_bp.route('/target_evidence/<int:target_id>/<int:indicator_id>')
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_target_evidence(target_id, indicator_id):
     emp_id = session.get('user_id')
     conn = get_db_connection()
@@ -470,13 +626,17 @@ def designated_target_evidence(target_id, indicator_id):
 
 
 @designated_bp.route('/upload_evidence', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_upload_evidence():
     emp_id = session.get('user_id')
     target_id = request.form.get('target_id')
     quantity = request.form.get('quantity', '1')
+    is_ajax = (request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+               'application/json' in request.headers.get('Accept', ''))
     
     if not target_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid target ID.'}), 400
         flash("Invalid target ID.", "danger")
         return redirect(url_for('designated.designated_dashboard'))
         
@@ -487,6 +647,8 @@ def designated_upload_evidence():
 
     file = request.files.get('file')
     if not file or file.filename == '':
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Please select a file to upload.'}), 400
         flash("Please select a file to upload.", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
@@ -495,6 +657,8 @@ def designated_upload_evidence():
     filename = file.filename
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
     if ext not in allowed_extensions:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Unsupported file format. Allowed format: .pdf'}), 400
         flash("Unsupported file format. Allowed format: .pdf", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
@@ -515,9 +679,13 @@ def designated_upload_evidence():
         from app.models.faculty import upload_evidence_item
         upload_evidence_item(cursor, int(target_id), relative_path, qty_val)
         conn.commit()
+        if is_ajax:
+            return jsonify({'success': True, 'message': 'Evidence uploaded successfully!'})
         flash("Evidence uploaded successfully!", "success")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': f"Error uploading evidence: {str(e)}"}), 500
         flash(f"Error uploading evidence: {str(e)}", "danger")
     finally:
         cursor.close()
@@ -527,10 +695,13 @@ def designated_upload_evidence():
 
 
 @designated_bp.route('/delete_evidence', methods=['POST'])
-@role_required('DESIGNATED_FACULTY')
+@designated_ipcr_required
 def designated_delete_evidence():
     evidence_id = request.form.get('evidence_id')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
     if not evidence_id:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Invalid evidence ID.'}), 400
         flash("Invalid evidence ID.", "danger")
         return redirect(url_for('designated.designated_dashboard'))
 
@@ -538,17 +709,34 @@ def designated_delete_evidence():
     cursor = conn.cursor()
     try:
         from app.models.faculty import delete_evidence_item
-        success = delete_evidence_item(cursor, int(evidence_id))
+        success = delete_evidence_item(cursor, int(evidence_id), session.get('user_id'))
         if success:
             conn.commit()
+            if is_ajax:
+                return jsonify({'success': True, 'message': 'Evidence removed successfully.'})
             flash("Evidence removed successfully.", "success")
         else:
+            if is_ajax:
+                return jsonify({'success': False, 'message': 'Evidence item not found.'}), 404
             flash("Evidence item not found.", "danger")
     except Exception as e:
         conn.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'message': f"Error deleting evidence: {str(e)}"}), 500
         flash(f"Error deleting evidence: {str(e)}", "danger")
     finally:
         cursor.close()
         conn.close()
 
     return redirect(url_for('designated.designated_dashboard'))
+
+@designated_bp.route('/print_ipcr')
+@designated_ipcr_required
+def designated_print_ipcr():
+    """
+    Printable IPCR for any designated faculty member — including Program Chairs, the RET
+    Chair and the Dean, who reach it from their own dashboards.
+    """
+    from app.routes.faculty import _render_ipcr_print
+    return _render_ipcr_print(session.get('user_id'),
+                              url_for('designated.designated_dashboard'))

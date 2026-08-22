@@ -29,6 +29,9 @@ def admin_dashboard():
             for dt in DESIGNATION_TYPES
         }
         departments = get_departments(cursor, active_only=False)
+        institution = get_institution_settings(cursor)
+        # conn lets the panel recreate the standard blocks if the table was emptied.
+        signatories = get_signatories(cursor, conn)
         teaching_load = {
             dt: (get_teaching_load_grid(cursor, active_term['term_id'], dt) if active_term else {})
             for dt in DESIGNATION_TYPES
@@ -44,7 +47,11 @@ def admin_dashboard():
                                indicators=indicators, criteria=criteria,
                                ipcr_categories=ipcr_categories, category_types=category_types,
                                weights_grid=weights_grid, weights_mode=weights_mode,
-                               departments=departments, teaching_load=teaching_load,
+                               departments=departments, institution=institution,
+                               signatories=signatories,
+                               signatory_labels=SIGNATORY_BLOCK_LABELS,
+                               signatory_sources=SIGNATORY_SOURCES,
+                               teaching_load=teaching_load,
                                teaching_load_mode=teaching_load_mode,
                                rank_bands=RANK_BANDS, general_band=GENERAL_BAND,
                                designation_types=DESIGNATION_TYPES, audit_logs=audit_logs,
@@ -126,13 +133,16 @@ def admin_open_term():
     academic_year = request.form.get('academic_year')
     semester = request.form.get('semester')
     deadline_date = request.form.get('deadline_date')
+    period_start = request.form.get('period_start')
+    period_end = request.form.get('period_end')
 
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        open_new_term(conn, cursor, academic_year, semester, deadline_date)
+        open_new_term(conn, cursor, academic_year, semester, deadline_date,
+                      period_start, period_end)
         log_audit_action(conn, cursor, session.get('user_id'), 'Term Opened',
                          f"New term opened: {academic_year} {semester} (Deadline: {deadline_date})",
                          request.remote_addr)
@@ -445,7 +455,7 @@ def admin_save_category():
             cursor.close()
         if conn:
             conn.close()
-    return redirect(url_for('admin.admin_dashboard') + '#nav-categories')
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
 
 
 @admin_bp.route('/categories/toggle_active', methods=['POST'])
@@ -467,7 +477,67 @@ def admin_toggle_category():
             cursor.close()
         if conn:
             conn.close()
-    return redirect(url_for('admin.admin_dashboard') + '#nav-categories')
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+
+
+@admin_bp.route('/institution/save', methods=['POST'])
+@role_required('ADMIN')
+def admin_save_institution():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        ok = True
+        for key in ('college_full_name', 'college_code'):
+            if key in request.form:
+                success, msg = save_institution_setting(conn, cursor, key, request.form.get(key))
+                ok = ok and success
+        flash("Institution details saved." if ok else "Some settings could not be saved.",
+              "success" if ok else "danger")
+    except Exception as e:
+        flash(f"Error saving institution details: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
+
+
+@admin_bp.route('/signatories/save', methods=['POST'])
+@role_required('ADMIN')
+def admin_save_signatories():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        saved, failed = 0, []
+        for sig in get_signatories(cursor):
+            sid = sig['signatory_id']
+            success, msg = save_signatory(
+                conn, cursor, sid,
+                request.form.get(f'sig_{sid}_source'),
+                request.form.get(f'sig_{sid}_name'),
+                request.form.get(f'sig_{sid}_title'),
+            )
+            if success:
+                saved += 1
+            else:
+                failed.append(msg)
+        if failed:
+            flash("; ".join(dict.fromkeys(failed)), "danger")
+        else:
+            flash(f"Signatories saved ({saved} blocks).", "success")
+    except Exception as e:
+        flash(f"Error saving signatories: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
 
 
 @admin_bp.route('/departments/save', methods=['POST'])

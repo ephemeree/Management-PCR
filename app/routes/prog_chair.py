@@ -94,8 +94,18 @@ def prog_chair_dashboard():
             for draft in pending_drafts:
                 draft['ipcr_status'] = get_overall_ipcr_status(cursor, draft['emp_id'], term_id)
             pending_drafts_count = get_pending_drafts_count(cursor, specialization, term_id)
-            locked_drafts = get_locked_faculty_ipcrs(cursor, specialization, term_id)
             evidence_faculty_list = get_program_chair_evidence_faculty(cursor, specialization, term_id)
+            pending_evidence_faculty_list = [f for f in evidence_faculty_list if not f.get('is_both_approved')]
+            approved_evidence_faculty_list = [f for f in evidence_faculty_list if f.get('is_both_approved')]
+            
+            def _is_designated_or_chair_or_dean(f):
+                role = (f.get('system_role') or '').strip()
+                desig = (f.get('designation') or '').strip()
+                return (role in ('DESIGNATED_FACULTY', 'PROGRAM_CHAIR', 'RET_CHAIR', 'DEAN')
+                        or desig in ('Designated Faculty', 'Program Chair', 'RET Chair', 'Dean'))
+
+            approved_designated_evidence_list = [f for f in approved_evidence_faculty_list if _is_designated_or_chair_or_dean(f)]
+            approved_regular_evidence_list = [f for f in approved_evidence_faculty_list if not _is_designated_or_chair_or_dean(f)]
 
         return render_template(
             'prog_chair_dashboard.html',
@@ -109,13 +119,46 @@ def prog_chair_dashboard():
             pending_drafts=pending_drafts,
             pending_drafts_count=pending_drafts_count,
             locked_drafts=locked_drafts,
-            evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else []
+            evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [],
+            pending_evidence_faculty_list=pending_evidence_faculty_list if 'pending_evidence_faculty_list' in locals() else [],
+            approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else [],
+            approved_designated_evidence_list=approved_designated_evidence_list if 'approved_designated_evidence_list' in locals() else [],
+            approved_regular_evidence_list=approved_regular_evidence_list if 'approved_regular_evidence_list' in locals() else [],
+            has_own_ipcr=True
         )
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
+
+
+@prog_chair_bp.route('/submit_to_dean', methods=['POST'])
+@role_required('PROGRAM_CHAIR')
+def prog_chair_submit_to_dean():
+    data = request.get_json(silent=True) or request.form
+    emp_id = data.get('emp_id')
+    if not emp_id:
+        return jsonify({'success': False, 'message': 'Missing faculty emp_id.'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.models import get_all_terms
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active academic term found.'}), 400
+
+        term_id = active_term['term_id']
+        from app.models.prog_chair import submit_evidence_package_to_dean
+        success, msg = submit_evidence_package_to_dean(conn, cursor, int(emp_id), term_id)
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @prog_chair_bp.route('/verify_evidence', methods=['POST'])
@@ -155,19 +198,28 @@ def prog_chair_faculty_evidence_details(emp_id):
 
         term_id = active_term['term_id']
 
-        cursor.execute("SELECT first_name, last_name, academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        cursor.execute("SELECT first_name, last_name, academic_rank, designation FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
         fac_row = cursor.fetchone()
         if not fac_row:
             return jsonify({'success': False, 'message': 'Faculty member not found'}), 404
         faculty_name = f"{fac_row[0]} {fac_row[1]}"
 
+        from app.models.criteria import is_designated
         from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
         targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+        designated = is_designated(fac_row[3])
 
         for t in targets:
             cat_name = t.get('category_name', '')
             is_ret = ('Research' in cat_name) or ('Extension' in cat_name)
             t['is_ret'] = is_ret
+            # A designated faculty/chair's Core Functions vs Strategic Priorities & Support
+            # Functions split is driven by is_admin_function, not category — the same
+            # indicator (e.g. Instruction) can be either depending on whether this is their
+            # personal teaching share or their departmental oversight quota. See "My IPCR"
+            # (designated_dashboard.html) for the same rule.
+            if designated:
+                t['is_core'] = not bool(t.get('is_admin_function'))
 
             # Program Chair can ONLY view evidence files for Instructions & Support, NOT Research & Extension
             if not is_ret:
@@ -180,6 +232,7 @@ def prog_chair_faculty_evidence_details(emp_id):
             'success': True,
             'faculty_name': faculty_name,
             'academic_rank': fac_row[2] or '',
+            'is_designated': designated,
             'targets': targets
         })
     except Exception as e:

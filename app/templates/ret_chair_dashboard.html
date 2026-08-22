@@ -7,32 +7,45 @@
 {% block sidebar_items %}
 <div class="nav-label">Dashboard</div>
 <button class="nav-item active" data-section="nav-overview" onclick="showSection('nav-overview')">
-    <i class="bi bi-grid-1x2-fill"></i>
+    <i class="ti ti-layout-dashboard"></i>
     <span class="nav-text">Overview</span>
 </button>
 
 <div class="nav-label">Phases</div>
 <button class="nav-item" data-section="nav-phase1" onclick="showSection('nav-phase1')">
-    <i class="bi bi-journal-arrow-down"></i>
+    <i class="ti ti-download"></i>
     <span class="nav-text">Cascaded Targets</span>
 </button>
 <button class="nav-item" data-section="nav-target-assignment" onclick="showSection('nav-target-assignment')">
-    <i class="bi bi-clipboard2-check-fill"></i>
+    <i class="ti ti-clipboard-check"></i>
     <span class="nav-text">Target Assignment</span>
 </button>
 <button class="nav-item" data-section="nav-phase2" onclick="showSection('nav-phase2')">
-    <i class="bi bi-list-check"></i>
+    <i class="ti ti-list-check"></i>
     <span class="nav-text">Menu Config</span>
 </button>
 <button class="nav-item" data-section="nav-phase4" onclick="showSection('nav-phase4')">
-    <i class="bi bi-person-check-fill"></i>
+    <i class="ti ti-user-check"></i>
     <span class="nav-text">Commitments</span>
+    {% if pending_ret_count > 0 %}
+    <span class="badge bg-danger ms-auto">{{ pending_ret_count }}</span>
+    {% endif %}
 </button>
 <div class="nav-label">Verification</div>
 <button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
-    <i class="bi bi-file-earmark-check-fill"></i>
+    <i class="ti ti-file-check"></i>
     <span class="nav-text">Evidence Verification</span>
+    {% if pending_evidence_faculty_list|length > 0 %}
+    <span class="badge bg-danger ms-auto">{{ pending_evidence_faculty_list|length }}</span>
+    {% endif %}
 </button>
+{% if has_own_ipcr %}
+<div class="nav-label">My Performance</div>
+<a class="nav-item text-decoration-none" href="{{ url_for('designated.designated_dashboard') }}">
+    <i class="ti ti-file-text"></i>
+    <span class="nav-text">My IPCR</span>
+</a>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -42,9 +55,9 @@
     /* Custom styling for disabled RET decision buttons to easily distinguish them */
     #btnRetApprove:disabled,
     #btnRetReject:disabled {
-        background-color: #e9ecef !important;
-        border-color: #dee2e6 !important;
-        color: #adb5bd !important;
+        background-color: var(--c-surface-alt) !important;
+        border-color: var(--c-border) !important;
+        color: var(--c-text-muted) !important;
         opacity: 1 !important;
         cursor: not-allowed !important;
     }
@@ -102,7 +115,7 @@
 
 {% if not active_term %}
 <div class="alert alert-warning shadow-sm border-0 mb-4">
-    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+    <i class="ti ti-alert-triangle me-1"></i>
     <strong>No Active Term:</strong> Please wait for the System Administrator to open a new academic term.
 </div>
 {% else %}
@@ -110,13 +123,25 @@
 <script>
 // --- RET research assignment editor ---
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function toggleAssignRowInputs(indId, isChecked) {
+    const inputs = document.querySelectorAll('.assign-input-' + indId);
+    inputs.forEach(inp => {
+        inp.disabled = !isChecked;
+    });
+}
+
 // Open the assignment editor modal and populate it with the faculty member's
 // rank-eligible RET menu, pre-checking any existing assignments.
 function openAssignmentEditor(empId) {
     const modalEl = document.getElementById('assignmentEditorModal');
     const body = document.getElementById('assignmentEditorBody');
     document.getElementById('assignmentEditorEmpId').value = empId;
-    body.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Loading...</div>';
+    body.innerHTML = '<div class="text-center py-4 text-muted"><i class="ti ti-hourglass"></i> Loading...</div>';
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 
@@ -135,24 +160,57 @@ function openAssignmentEditor(empId) {
                 return '<h6 class="fw-bold mt-3">' + title + '</h6>' +
                        '<p class="text-muted small mb-0">No indicators in this faculty member\'s rank menu.</p>';
             }
-            let html = '<h6 class="fw-bold mt-3">' + title + '</h6><div class="list-group mb-2">';
+            let html = '<h6 class="fw-bold mt-3 text-primary"><i class="ti ti-star-filled me-2"></i>' + title + '</h6><div class="list-group mb-2">';
             items.forEach(it => {
                 const qty = it.assigned_quantity != null ? it.assigned_quantity : it.default_quantity;
+                const desc = escapeHtml(it.target_description || '');
+                const durVal = it.target_duration_value != null ? it.target_duration_value : '';
+                const durUnit = it.target_duration_unit || 'months';
                 const checked = it.is_assigned ? 'checked' : '';
+                const disabledAttr = it.is_assigned ? '' : 'disabled';
+
+                const units = ['days', 'weeks', 'months', 'semesters'];
+                let unitOptions = '';
+                units.forEach(u => {
+                    unitOptions += '<option value="' + u + '" ' + (durUnit === u ? 'selected' : '') + '>' + u + '</option>';
+                });
+
                 html +=
-                  '<label class="list-group-item d-flex align-items-center gap-2">' +
-                    '<input class="form-check-input m-0 assign-check" type="checkbox" name="assign_indicator_ids[]" value="' + it.indicator_id + '" ' + checked + '>' +
-                    '<span class="flex-grow-1">' + it.indicator_description + '</span>' +
-                    '<input type="number" min="1" class="form-control form-control-sm" style="width:90px;" ' +
-                           'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '">' +
-                  '</label>';
+                  '<div class="list-group-item py-3">' +
+                    '<div class="d-flex align-items-center gap-2">' +
+                      '<input class="form-check-input m-0 assign-check" type="checkbox" name="assign_indicator_ids[]" value="' + it.indicator_id + '" ' + checked + ' onchange="toggleAssignRowInputs(' + it.indicator_id + ', this.checked)">' +
+                      '<span class="flex-grow-1 fw-semibold small text-dark">' + escapeHtml(it.indicator_description) + '</span>' +
+                      '<span class="text-muted small">Qty:</span>' +
+                      '<input type="number" min="1" class="form-control form-control-sm text-center assign-input-' + it.indicator_id + '" style="width:80px;" ' +
+                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + '>' +
+                    '</div>' +
+                    '<div class="row g-2 mt-2 ps-4">' +
+                      '<div class="col-md-7">' +
+                        '<input type="text" class="form-control form-control-sm assign-input-' + it.indicator_id + '" ' +
+                               'name="assign_description_' + it.indicator_id + '" ' +
+                               'placeholder="IPCR target description" ' +
+                               'value="' + desc + '" ' + disabledAttr + '>' +
+                      '</div>' +
+                      '<div class="col-md-5">' +
+                        '<div class="d-flex gap-1">' +
+                          '<input type="number" min="1" class="form-control form-control-sm text-center assign-input-' + it.indicator_id + '" ' +
+                                 'name="assign_dur_value_' + it.indicator_id + '" placeholder="Duration" ' +
+                                 'value="' + durVal + '" ' + disabledAttr + '>' +
+                          '<select class="form-select form-select-sm assign-input-' + it.indicator_id + '" ' +
+                                  'name="assign_dur_unit_' + it.indicator_id + '" ' + disabledAttr + '>' +
+                            unitOptions +
+                          '</select>' +
+                        '</div>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>';
             });
             html += '</div>';
             return html;
         };
 
         // Research only — Extension is distributed to all faculty, not assigned per-person.
-        body.innerHTML = section('Research', data.research);
+        body.innerHTML = section('Research Targets', data.research);
     })
     .catch(err => {
         body.innerHTML = '<div class="alert alert-danger">Error: ' + err + '</div>';
@@ -162,12 +220,12 @@ function openAssignmentEditor(empId) {
 
 <!-- Assignment Editor Modal (Dual Assignment Workflow) -->
 <div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form action="{{ url_for('ret_chair.save_assignments') }}" method="POST">
                 <input type="hidden" name="emp_id" id="assignmentEditorEmpId">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-list-check me-2"></i>Assign Research Targets</h5>
+                    <h5 class="modal-title"><i class="ti ti-list-check me-2"></i>Assign Research Targets</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -183,7 +241,7 @@ function openAssignmentEditor(empId) {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-floppy-fill me-1"></i>Save Assignments</button>
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Save Assignments</button>
                 </div>
             </form>
         </div>
@@ -198,14 +256,14 @@ function openAssignmentEditor(empId) {
             <h2>Phase 1: Targets Cascaded from Dean</h2>
             <p>Official research and extension targets allocated to the RET unit.</p>
         </div>
-        <span class="badge bg-info text-dark"><i class="bi bi-journal-arrow-down me-1"></i> Cascaded Targets</span>
+        <span class="badge bg-info text-dark"><i class="ti ti-download me-1"></i> Cascaded Targets</span>
     </div>
 
     <!-- Research Targets Card -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header border-0 py-3"
-            style="background: linear-gradient(90deg, #e8f4ff 0%, #f8fbff 100%); border-left: 4px solid #0d6efd !important;">
-            <h5 class="fw-bold text-primary mb-0"><i class="bi bi-star-fill me-2"></i>Research</h5>
+            style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-accent) !important;">
+            <h5 class="fw-bold text-primary mb-0"><i class="ti ti-star-filled me-2"></i>Research</h5>
         </div>
         <div class="card-body bg-light rounded-bottom m-0 p-4 border-top">
             <ul class="list-group shadow-sm">
@@ -218,13 +276,13 @@ function openAssignmentEditor(empId) {
                         <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('A. ', '') }}</span>
                         {{ ind.indicator_description }}
                     </span>
-                    <span class="badge bg-primary rounded-pill px-3 py-2">Quota: {{ ind.dean_quota }}</span>
+                    <span class="badge bg-primary px-3 py-2">Quota: {{ ind.dean_quota }}</span>
                 </li>
                 {% endif %}
                 {% endfor %}
                 {% if not ns_res.found %}
                 <li class="list-group-item py-4 text-center text-muted">
-                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                    <i class="ti ti-inbox fs-3 d-block mb-2"></i>
                     No Research targets cascaded yet.
                 </li>
                 {% endif %}
@@ -235,8 +293,8 @@ function openAssignmentEditor(empId) {
     <!-- Extension Targets Card -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header border-0 py-3"
-            style="background: linear-gradient(90deg, #fff8e8 0%, #fffcf5 100%); border-left: 4px solid #fd7e14 !important;">
-            <h5 class="fw-bold text-warning mb-0"><i class="bi bi-tools me-2"></i>Extension Services / Training /
+            style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-warning) !important;">
+            <h5 class="fw-bold text-warning mb-0"><i class="ti ti-tools me-2"></i>Extension Services / Training /
                 Advisory</h5>
         </div>
         <div class="card-body bg-light rounded-bottom m-0 p-4 border-top">
@@ -250,13 +308,13 @@ function openAssignmentEditor(empId) {
                         <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('B. ', '') }}</span>
                         {{ ind.indicator_description }}
                     </span>
-                    <span class="badge bg-primary rounded-pill px-3 py-2">Quota: {{ ind.dean_quota }}</span>
+                    <span class="badge bg-primary px-3 py-2">Quota: {{ ind.dean_quota }}</span>
                 </li>
                 {% endif %}
                 {% endfor %}
                 {% if not ns_ext.found %}
                 <li class="list-group-item py-4 text-center text-muted">
-                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                    <i class="ti ti-inbox fs-3 d-block mb-2"></i>
                     No Extension targets cascaded yet.
                 </li>
                 {% endif %}
@@ -276,23 +334,23 @@ function openAssignmentEditor(empId) {
 
     {% if active_term %}
     <div class="alert alert-info shadow-sm border-0 mb-3 small py-2 rounded">
-        <strong><i class="bi bi-calendar-check me-1"></i>Active Term:</strong>
+        <strong><i class="ti ti-calendar-check me-1"></i>Active Term:</strong>
         {{ active_term.academic_year }} ({{ active_term.semester }})
     </div>
     {% endif %}
 
     <!-- Direct Research Assignment (relocated from the old Faculty RET Access panel) -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #0d6efd !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-accent) !important;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold mb-0 text-primary">
-                    <i class="bi bi-person-lines-fill me-2"></i>Assign Research Targets to Faculty
+                    <i class="ti ti-users-group me-2"></i>Assign Research Targets to Faculty
                 </h5>
                 <small class="text-muted">Every regular faculty may self-select Research. Use this to directly assign
                     Research targets and ensure coverage. Assignments are limited to each faculty member's rank menu.</small>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-search text-muted"></i>
+                <i class="ti ti-search text-muted"></i>
                 <input type="text" id="assignFacultySearch" class="form-control form-control-sm"
                        placeholder="Search faculty..." style="width: 240px;" onkeyup="filterAssignFacultyTable()">
             </div>
@@ -318,7 +376,7 @@ function openAssignmentEditor(empId) {
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-outline-primary"
                                         onclick="openAssignmentEditor({{ f.emp_id }})">
-                                    <i class="bi bi-list-check me-1"></i>Assign
+                                    <i class="ti ti-list-check me-1"></i>Assign
                                     {% if f.assignment_count and f.assignment_count > 0 %}
                                     <span class="badge bg-primary ms-1">{{ f.assignment_count }}</span>
                                     {% endif %}
@@ -329,7 +387,7 @@ function openAssignmentEditor(empId) {
                         {% else %}
                         <tr>
                             <td colspan="4" class="text-center py-4 text-muted">
-                                <i class="bi bi-people fs-3 d-block mb-2"></i>No regular faculty profiles found.
+                                <i class="ti ti-users fs-3 d-block mb-2"></i>No regular faculty profiles found.
                             </td>
                         </tr>
                         {% endif %}
@@ -348,94 +406,12 @@ function openAssignmentEditor(empId) {
     }
     </script>
 
-    <!-- Distribute Extension Targets to all regular faculty -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #fd7e14 !important;">
-        <form action="{{ url_for('ret_chair.save_extension_distribution') }}" method="POST">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-start">
-                <div>
-                    <h5 class="fw-bold mb-0 text-warning">
-                        <i class="bi bi-tools me-2"></i>Distribute Extension Targets to All Faculty
-                    </h5>
-                    <small class="text-muted">All Extension targets are distributed equally to every regular
-                        faculty across all specializations. Set the per-faculty quantity, description and
-                        duration for each. This is a one-time action and locks once distributed.</small>
-                </div>
-                {% if extension_locked %}
-                <span class="badge bg-secondary px-3 py-2"><i class="bi bi-lock-fill me-1"></i>Distributed &amp; Locked</span>
-                {% endif %}
-            </div>
-            <div class="card-body">
-                {% if extension_locked %}
-                <div class="alert alert-secondary border-0 small py-2 mb-3">
-                    <i class="bi bi-info-circle me-1"></i>Extension has been distributed for this term and can no longer be changed.
-                </div>
-                {% endif %}
-                {% if extension_distribution %}
-                <div class="list-group mb-3">
-                    {% for ext in extension_distribution %}
-                    <div class="list-group-item">
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="hidden" name="ext_indicator_ids[]" value="{{ ext.indicator_id }}">
-                            <i class="bi bi-broadcast text-warning"></i>
-                            <span class="flex-grow-1 fw-semibold small">{{ ext.indicator_description }}
-                                {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
-                            </span>
-                            <span class="text-muted small">Qty / faculty</span>
-                            <input type="number" min="1" class="form-control form-control-sm" style="width: 90px;"
-                                   name="ext_quantity_{{ ext.indicator_id }}"
-                                   value="{{ ext.distributed_quantity if ext.distributed_quantity > 0 else 1 }}"
-                                   {% if extension_locked %}disabled{% endif %}>
-                        </div>
-                        {# Description + duration, matching how the Program Chair allocates —
-                           the duration is what makes this target scorable for Timeliness. #}
-                        <div class="row g-2 mt-2 ps-4">
-                            <div class="col-md-7">
-                                <input type="text" class="form-control form-control-sm"
-                                       name="ext_description_{{ ext.indicator_id }}"
-                                       placeholder="IPCR target description"
-                                       value="{{ ext.target_description or '' }}"
-                                       {% if extension_locked %}disabled{% endif %}>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="d-flex gap-1">
-                                    <input type="number" min="1" class="form-control form-control-sm text-center"
-                                           name="ext_dur_value_{{ ext.indicator_id }}" placeholder="Duration"
-                                           value="{{ ext.target_duration_value or '' }}"
-                                           {% if extension_locked %}disabled{% endif %}>
-                                    <select class="form-select form-select-sm"
-                                            name="ext_dur_unit_{{ ext.indicator_id }}"
-                                            {% if extension_locked %}disabled{% endif %}>
-                                        {% for u in ['days', 'weeks', 'months', 'semesters'] %}
-                                        <option value="{{ u }}" {% if ext.target_duration_unit == u %}selected{% elif not ext.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% if not extension_locked %}
-                <div class="text-end">
-                    <button type="submit" class="btn btn-warning fw-bold"
-                            onclick="return confirm('Distribute these Extension targets to ALL regular faculty? This is a one-time action and cannot be changed afterward.');">
-                        <i class="bi bi-broadcast me-1"></i>Distribute to All Faculty
-                    </button>
-                </div>
-                {% endif %}
-                {% else %}
-                <div class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>No Extension indicators configured for this term.
-                </div>
-                {% endif %}
-            </div>
-        </form>
-    </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #10B981 !important;">
+
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="fw-bold mb-0 text-success">
-                <i class="bi bi-globe me-2"></i>RET Targets with Quotas
+                <i class="ti ti-world me-2"></i>RET Targets with Quotas
             </h5>
             <small class="text-muted">Track how cascaded RET targets are distributed across your sector profile and
                 whether quotas are met.</small>
@@ -454,7 +430,7 @@ function openAssignmentEditor(empId) {
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                     <div style="flex: 1; min-width: 250px;">
                         <h6 class="fw-bold text-dark mb-1">
-                            <i class="bi bi-bullseye text-success me-1"></i> {{ ind.indicator_description }}
+                            <i class="ti ti-target text-success me-1"></i> {{ ind.indicator_description }}
                         </h6>
                         <span class="badge bg-secondary small">{{ title }}</span>
                     </div>
@@ -468,10 +444,10 @@ function openAssignmentEditor(empId) {
                         </div>
                         <div>
                             {% if distributed >= quota %}
-                            <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Fully
+                            <span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>Fully
                                 Distributed</span>
                             {% else %}
-                            <span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>Under Distributed (-{{ quota - distributed }})</span>
+                            <span class="badge bg-warning text-dark px-3 py-2"><i class="ti ti-hourglass me-1"></i>Under Distributed (-{{ quota - distributed }})</span>
                             {% endif %}
                         </div>
                     </div>
@@ -512,20 +488,20 @@ function openAssignmentEditor(empId) {
                                     {% if assignment.review_status == 'Approved' %}
                                     <span
                                         class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
-                                        <i class="bi bi-check-circle-fill me-1"></i>
+                                        <i class="ti ti-circle-check me-1"></i>
                                         Approved
                                     </span>
                                     {% elif assignment.review_status == 'Rejected' or assignment.review_status ==
                                     'Returned' %}
                                     <span
                                         class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small">
-                                        <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                        <i class="ti ti-arrow-back-up me-1"></i>
                                         Returned
                                     </span>
                                     {% else %}
                                     <span
                                         class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small">
-                                        <i class="bi bi-hourglass-split me-1"></i>
+                                        <i class="ti ti-hourglass me-1"></i>
                                         Pending Review
                                     </span>
                                     {% endif %}
@@ -536,7 +512,7 @@ function openAssignmentEditor(empId) {
                             {% if not ns_faculty.found %}
                             <tr>
                                 <td colspan="4" class="text-center text-muted py-3">
-                                    <i class="bi bi-info-circle me-1"></i>
+                                    <i class="ti ti-info-circle me-1"></i>
                                     No faculty drafts available for this indicator yet.
                                 </td>
                             </tr>
@@ -549,7 +525,7 @@ function openAssignmentEditor(empId) {
             {% endfor %}
             {% if not ns_cat.found %}
             <div class="p-3 mb-4 rounded border shadow-sm bg-white text-center text-muted">
-                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                <i class="ti ti-inbox fs-3 d-block mb-2"></i>
                 No {{ title }} targets registered.
             </div>
             {% endif %}
@@ -565,10 +541,123 @@ function openAssignmentEditor(empId) {
         <p>Map the cascaded targets to specific academic ranks to create dynamic faculty menus.</p>
     </div>
 
+    <!-- Distribute Extension Targets to all regular faculty -->
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
+        <form action="{{ url_for('ret_chair.save_extension_distribution') }}" method="POST">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="fw-bold mb-0 text-warning">
+                        <i class="ti ti-tools me-2"></i>Distribute Extension Targets to All Faculty
+                    </h5>
+                    <small class="text-muted">All Extension targets are distributed equally to every regular
+                        faculty across all specializations. Set the per-faculty quantity, description and
+                        duration for each. This is a one-time action and locks once distributed.</small>
+                </div>
+                {% if extension_locked %}
+                <span class="badge bg-secondary px-3 py-2"><i class="ti ti-lock me-1"></i>Distributed &amp; Locked</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if extension_locked %}
+                <div class="alert alert-secondary border-0 small py-2 mb-3">
+                    <i class="ti ti-info-circle me-1"></i>Extension has been distributed for this term and can no longer be changed.
+                </div>
+                {% endif %}
+                {% if extension_distribution %}
+                <div class="list-group mb-3">
+                    {% for ext in extension_distribution %}
+                    <div class="list-group-item">
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="hidden" name="ext_indicator_ids[]" value="{{ ext.indicator_id }}">
+                            <i class="ti ti-broadcast text-warning"></i>
+                            <span class="flex-grow-1 fw-semibold small">{{ ext.indicator_description }}
+                                {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
+                            </span>
+                            <span class="text-muted small">Qty / faculty</span>
+                            <input type="number" min="1" class="form-control form-control-sm" style="width: 90px;"
+                                   name="ext_quantity_{{ ext.indicator_id }}"
+                                   value="{{ ext.distributed_quantity if ext.distributed_quantity > 0 else 1 }}"
+                                   {% if extension_locked %}disabled{% endif %}>
+                        </div>
+                        {# Description + duration, matching how the Program Chair allocates —
+                           the duration is what makes this target scorable for Timeliness. #}
+                        <div class="row g-2 mt-2 ps-4">
+                            <div class="col-md-7">
+                                <input type="text" class="form-control form-control-sm"
+                                       name="ext_description_{{ ext.indicator_id }}"
+                                       placeholder="IPCR target description"
+                                       value="{{ ext.target_description or '' }}"
+                                       {% if extension_locked %}disabled{% endif %}>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="d-flex gap-1">
+                                    <input type="number" min="1" class="form-control form-control-sm text-center"
+                                           name="ext_dur_value_{{ ext.indicator_id }}" placeholder="Duration"
+                                           value="{{ ext.target_duration_value or '' }}"
+                                           {% if extension_locked %}disabled{% endif %}>
+                                    <select class="form-select form-select-sm"
+                                            name="ext_dur_unit_{{ ext.indicator_id }}"
+                                            {% if extension_locked %}disabled{% endif %}>
+                                        {% for u in ['days', 'weeks', 'months', 'semesters'] %}
+                                        <option value="{{ u }}" {% if ext.target_duration_unit == u %}selected{% elif not ext.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if not extension_locked %}
+                <div class="text-end">
+                    <button type="button" class="btn btn-warning fw-bold" onclick="showConfirmExtDistModal()">
+                        <i class="ti ti-broadcast me-1"></i>Distribute to All Faculty
+                    </button>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="ti ti-inbox fs-3 d-block mb-2"></i>No Extension indicators configured for this term.
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Confirm Extension Distribution Modal -->
+    <div class="modal fade" id="confirmExtDistModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header bg-warning text-dark border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                    <h5 class="modal-title fw-bold"><i class="ti ti-alert-triangle me-2"></i>Confirm Extension Distribution</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <i class="ti ti-broadcast text-warning display-3 d-block mb-3"></i>
+                    <h6 class="fw-bold text-dark mb-2" style="font-size: 1.1rem;">Distribute Extension Targets to ALL Faculty?</h6>
+                    <p class="text-secondary small mb-0">This is a <strong>one-time action</strong> for the active term. Once distributed, extension targets are locked and cannot be edited or redistributed.</p>
+                </div>
+                <div class="modal-footer border-0 p-3 justify-content-center bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning fw-bold px-4" onclick="submitExtDistForm()">Confirm &amp; Distribute</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    function showConfirmExtDistModal() {
+        new bootstrap.Modal(document.getElementById('confirmExtDistModal')).show();
+    }
+    function submitExtDistForm() {
+        const form = document.querySelector('form[action="{{ url_for('ret_chair.save_extension_distribution') }}"]');
+        if (form) form.submit();
+    }
+    </script>
+
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
             <h5 class="fw-bold text-dark mb-0">Phase 2: Research Menu Configuration</h5>
-            <span class="badge bg-primary"><i class="bi bi-gear-fill me-1"></i> Setup Rules</span>
+            <span class="badge bg-primary"><i class="ti ti-settings me-1"></i> Setup Rules</span>
         </div>
         <div class="card-body">
             <p class="text-muted small mb-4">Map the registered Research targets to specific academic ranks to generate
@@ -597,7 +686,7 @@ function openAssignmentEditor(empId) {
                         </select>
                     </div>
                     <div class="col-md-8">
-                        <label class="form-label fw-bold text-primary"><i class="bi bi-star-fill me-1"></i>Research
+                        <label class="form-label fw-bold text-primary"><i class="ti ti-star-filled me-1"></i>Research
                             Required</label>
                         <input type="number" class="form-control shadow-sm" id="research_selections"
                             name="research_selections" value="0" min="0" max="10" required placeholder="Count">
@@ -611,7 +700,7 @@ function openAssignmentEditor(empId) {
                         <!-- Research Indicators -->
                         <div class="col-md-12 mb-3">
                             <div class="card shadow-sm border-0 h-100"
-                                style="border-top: 3px solid #0d6efd !important;">
+                                style="border-top: 3px solid var(--c-accent) !important;">
                                 <div class="card-header bg-light py-2">
                                     <h6 class="fw-bold text-primary mb-0 small">Research Options</h6>
                                 </div>
@@ -677,7 +766,7 @@ function openAssignmentEditor(empId) {
 
                 <div class="text-end border-top pt-3">
                     <button type="submit" id="save_rule_btn" class="btn btn-primary fw-bold px-4 shadow-sm"><i
-                            class="bi bi-save"></i>
+                            class="ti ti-device-floppy"></i>
                         Save Menu Rules</button>
                 </div>
             </form>
@@ -688,7 +777,7 @@ function openAssignmentEditor(empId) {
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
             <h5 class="fw-bold text-dark mb-0">Active Research Rules</h5>
-            <span class="badge bg-secondary"><i class="bi bi-list-check me-1"></i> Configured Menus</span>
+            <span class="badge bg-secondary"><i class="ti ti-list-check me-1"></i> Configured Menus</span>
         </div>
         <div class="card-body">
             <p class="text-muted small">Current logic mappings dictating what faculty see on their dashboards.</p>
@@ -717,13 +806,13 @@ function openAssignmentEditor(empId) {
                                 <div class="d-flex justify-content-end gap-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary px-3"
                                         onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}, desc_text: {{ (i.target_description or "") | tojson }}, dur_value: {{ i.duration_value if i.duration_value else "null" }}, dur_unit: {{ (i.duration_unit or "") | tojson }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
-                                        <i class="bi bi-pencil me-1"></i>Edit
+                                        <i class="ti ti-pencil me-1"></i>Edit
                                     </button>
                                     <form method="POST" action="{{ url_for('ret_chair.ret_chair_delete_rule') }}"
                                         class="m-0" onsubmit="return confirm('Delete all RET rules for this rank?');">
                                         <input type="hidden" name="rule_id" value="{{ rule.rule_id }}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger px-3"><i
-                                                class="bi bi-trash me-1"></i>Delete</button>
+                                                class="ti ti-trash me-1"></i>Delete</button>
                                     </form>
                                 </div>
                             </td>
@@ -738,6 +827,8 @@ function openAssignmentEditor(empId) {
             </div>
         </div>
     </div>
+
+
 </div>
 </div>
 
@@ -749,10 +840,10 @@ function openAssignmentEditor(empId) {
             <p>Review and approve the specific research and extension targets selected by faculty members for this
                 semester.</p>
         </div>
-        <span class="badge bg-warning text-dark"><i class="bi bi-person-check-fill me-1"></i> Commitments</span>
+        <span class="badge bg-warning text-dark"><i class="ti ti-user-check me-1"></i> Commitments</span>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #FFC107 !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
         <div class="card-body">
             <p class="text-muted small">Review and approve the specific research and extension targets selected by
                 faculty members for this semester.</p>
@@ -780,14 +871,14 @@ function openAssignmentEditor(empId) {
                             <td class="text-center fw-bold text-primary small">{{ draft.target_count }}</td>
                             <td>
                                 {% if draft.review_status == 'Rejected' or draft.review_status == 'Returned' %}
-                                <span class="badge bg-danger"><i class="bi bi-arrow-counterclockwise me-1"></i>Returned
+                                <span class="badge bg-danger"><i class="ti ti-arrow-back-up me-1"></i>Returned
                                     to Faculty</span>
                                 {% elif draft.ipcr_status == 'draft' %}
-                                <span class="badge bg-secondary"><i class="bi bi-pencil me-1"></i>Draft
+                                <span class="badge bg-secondary"><i class="ti ti-pencil me-1"></i>Draft
                                     (Unsubmitted)</span>
                                 {% else %}
                                 <span class="badge bg-warning text-dark"><i
-                                        class="bi bi-hourglass-split me-1"></i>Pending Review</span>
+                                        class="ti ti-hourglass me-1"></i>Pending Review</span>
                                 {% endif %}
                             </td>
                             <td class="text-end pe-4">
@@ -795,19 +886,19 @@ function openAssignmentEditor(empId) {
                                 {% if draft.review_status in ('Rejected', 'Returned') %}
                                 <button class="btn btn-sm btn-outline-secondary" disabled
                                     title="Awaiting faculty resubmission.">
-                                    <i class="bi bi-hourglass-split me-1"></i>Awaiting Resubmission
+                                    <i class="ti ti-hourglass me-1"></i>Awaiting Resubmission
                                 </button>
                                 {% else %}
                                 <button class="btn btn-sm btn-outline-secondary" disabled
                                     title="Faculty has not submitted yet.">
-                                    <i class="bi bi-clock me-1"></i>Review RET Targets
+                                    <i class="ti ti-clock me-1"></i>Review RET Targets
                                 </button>
                                 {% endif %}
                                 {% else %}
                                 <button class="btn btn-sm btn-outline-primary open-ret-review-modal"
                                     data-emp-id="{{ draft.emp_id }}" data-bs-toggle="modal"
                                     data-bs-target="#reviewRetModal">
-                                    <i class="bi bi-pencil-square me-1"></i>Review RET Targets
+                                    <i class="ti ti-pencil me-1"></i>Review RET Targets
                                 </button>
                                 {% endif %}
                             </td>
@@ -831,7 +922,7 @@ function openAssignmentEditor(empId) {
         <h2>Approved RET Choices</h2>
         <p>Faculty members whose research and extension targets have been approved and verified.</p>
     </div>
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 4px solid #198754 !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
         <div class="card-body">
             <p class="text-muted small">The following faculty members have had their RET selections verified and
                 approved by you.</p>
@@ -859,13 +950,13 @@ function openAssignmentEditor(empId) {
                             <td class="text-center fw-bold text-primary small">{{ draft.target_count }}</td>
                             <td>
                                 <span class="badge bg-success"><i
-                                        class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                                        class="ti ti-circle-check me-1"></i>Approved</span>
                             </td>
                             <td class="text-end pe-4">
                                 <button class="btn btn-sm btn-outline-secondary open-ret-review-modal"
                                     data-emp-id="{{ draft.emp_id }}" data-bs-toggle="modal"
                                     data-bs-target="#reviewRetModal">
-                                    <i class="bi bi-eye me-1"></i>View RET Targets
+                                    <i class="ti ti-eye me-1"></i>View RET Targets
                                 </button>
                             </td>
                         </tr>
@@ -886,14 +977,14 @@ function openAssignmentEditor(empId) {
 
 <!-- RET REVIEW MODAL -->
 <div class="modal fade" id="reviewRetModal" tabindex="-1" aria-labelledby="reviewRetModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
             <!-- Modal Header -->
             <div class="modal-header border-0 py-3"
-                style="background: linear-gradient(135deg, #6f42c1 0%, #59359a 100%);">
+                style="background: var(--c-indigo);">
                 <div>
                     <h5 class="modal-title text-white fw-bold mb-0" id="reviewRetModalLabel">
-                        <i class="bi bi-journal-check me-2"></i>
+                        <i class="ti ti-clipboard-check me-2"></i>
                         <span id="retModalFacultyName">Loading...</span>
                     </h5>
                     <small class="text-white opacity-75" id="retModalFacultyRank"></small>
@@ -907,7 +998,7 @@ function openAssignmentEditor(empId) {
 
             <!-- Loading spinner -->
             <div id="retModalLoader" class="text-center py-5">
-                <div class="spinner-border" role="status" style="color: #6f42c1;">
+                <div class="spinner-border" role="status" style="color: var(--c-indigo);">
                     <span class="visually-hidden">Loading...</span>
                 </div>
                 <p class="text-muted mt-3 small">Fetching RET selections...</p>
@@ -918,7 +1009,7 @@ function openAssignmentEditor(empId) {
                 <!-- Section 1: Submitted Targets -->
                 <div class="px-4 pt-4 pb-2">
                     <h6 class="fw-bold text-secondary text-uppercase mb-3">
-                        <i class="bi bi-list-check me-2"></i>SUBMITTED TARGETS
+                        <i class="ti ti-list-check me-2"></i>SUBMITTED TARGETS
                         <small class="text-muted fw-normal ms-2 text-capitalize" id="retModalSubTitle">(Adjust
                             quantities and add remarks per item)</small>
                     </h6>
@@ -944,7 +1035,7 @@ function openAssignmentEditor(empId) {
                 <!-- Section 2: Unselected Indicators -->
                 <div class="px-4 pb-2">
                     <h6 class="fw-bold text-secondary text-uppercase mb-3">
-                        <i class="bi bi-exclamation-circle me-2"></i>UNSELECTED INDICATORS
+                        <i class="ti ti-alert-circle me-2"></i>UNSELECTED INDICATORS
                         <small class="text-muted fw-normal ms-2">(Faculty did not pick these. You can assign quantities
                             here.)</small>
                     </h6>
@@ -968,7 +1059,7 @@ function openAssignmentEditor(empId) {
             <!-- Modal Footer -->
             <div class="modal-footer border-top bg-light px-4 py-3 d-block" id="retModalFooter" style="display:none;">
                 <h6 class="fw-bold text-secondary text-uppercase mb-2">
-                    <i class="bi bi-stamp me-2"></i>Decision
+                    <i class="ti ti-stamp me-2"></i>Decision
                 </h6>
 
                 <input type="hidden" id="retModalReviewId">
@@ -990,7 +1081,7 @@ function openAssignmentEditor(empId) {
                     <div>
                         <button type="button" class="btn btn-outline-danger" id="btnRetReject"
                             onclick="submitRetDecision('reject')">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i>Return to Faculty
+                            <i class="ti ti-arrow-back-up me-1"></i>Return to Faculty
                         </button>
                     </div>
                     <div class="d-flex gap-2">
@@ -999,7 +1090,7 @@ function openAssignmentEditor(empId) {
                         </button>
                         <button type="button" class="btn btn-success" id="btnRetApprove"
                             onclick="submitRetDecision('approve')">
-                            <i class="bi bi-check-circle-fill me-1"></i>Approve RET Choices
+                            <i class="ti ti-circle-check me-1"></i>Approve RET Choices
                         </button>
                     </div>
                 </div>
@@ -1269,19 +1360,20 @@ function openAssignmentEditor(empId) {
         // Status badge
         const badge = document.getElementById('retModalStatusBadge');
         const statusMap = {
-            'Approved': ['bg-success', 'check-circle-fill', 'Approved by RET'],
-            'Rejected': ['bg-danger', 'x-circle-fill', 'Returned'],
-            'Pending': ['bg-warning text-dark', 'hourglass-split', 'Pending Review'],
-            'Pending Review': ['bg-warning text-dark', 'hourglass-split', 'Pending Review']
+            'Approved': ['bg-success', 'circle-check', 'Approved by RET'],
+            'Rejected': ['bg-danger', 'circle-x', 'Returned'],
+            'Pending': ['bg-warning text-dark', 'hourglass', 'Pending Review'],
+            'Pending Review': ['bg-warning text-dark', 'hourglass', 'Pending Review']
         };
         const s = statusMap[data.overall_status] || statusMap['Pending'];
         badge.className = `badge fs-6 px-3 py-2 ${s[0]}`;
-        badge.innerHTML = `<i class="bi bi-${s[1]} me-1"></i>${s[2]}`;
+        badge.innerHTML = `<i class="ti ti-${s[1]} me-1"></i>${s[2]}`;
 
         // Disable decision actions and overall remarks if already decided (Approved or Rejected)
         const isDecided = data.overall_status === 'Approved' || data.overall_status === 'Rejected';
         document.getElementById('btnRetApprove').disabled = isDecided;
         document.getElementById('btnRetReject').disabled = isDecided;
+        document.getElementById('btnRetReject').style.display = (data.overall_status === 'Approved' || isDecided) ? 'none' : '';
         document.getElementById('retOverallRemarks').disabled = isDecided;
 
         // Render both tables
@@ -1336,7 +1428,7 @@ function openAssignmentEditor(empId) {
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-secondary';
                 headerTr.innerHTML = `
-                    <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
+                    <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: var(--c-surface-alt);">
                         ${displayCat}
                     </td>
                 `;
@@ -1374,7 +1466,7 @@ function openAssignmentEditor(empId) {
                         <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-ret-item-btn"
                                 data-indicator-id="${item.indicator_id}" title="Remove selection"
                                 ${isDecided ? 'style="display:none;"' : ''}>
-                            <i class="bi bi-trash-fill"></i>
+                            <i class="ti ti-trash"></i>
                         </button>
                     </div>
                 </td>
@@ -1391,7 +1483,7 @@ function openAssignmentEditor(empId) {
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-secondary';
                 headerTr.innerHTML = `
-                    <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
+                    <td colspan="5" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: var(--c-surface-alt);">
                         ${displayCat}
                     </td>
                 `;
@@ -1403,11 +1495,11 @@ function openAssignmentEditor(empId) {
                 <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
                 <td>
                     <div class="small fw-semibold">${ext.indicator_description}</div>
-                    <span class="badge bg-warning bg-opacity-10 text-warning mt-1" style="font-size: 0.75rem; width: fit-content; display: block;"><i class="bi bi-broadcast me-1"></i>Distributed to all faculty</span>
+                    <span class="badge bg-warning bg-opacity-10 text-warning mt-1" style="font-size: 0.75rem; width: fit-content; display: block;"><i class="ti ti-broadcast me-1"></i>Distributed to all faculty</span>
                 </td>
                 <td class="text-center text-muted">${ext.reviewed_quantity}</td>
                 <td class="text-center fw-bold">${ext.reviewed_quantity}</td>
-                <td class="text-center text-muted small"><i class="bi bi-lock-fill me-1"></i>Not editable</td>
+                <td class="text-center text-muted small"><i class="ti ti-lock me-1"></i>Not editable</td>
             `;
             tbody.appendChild(tr);
         });
@@ -1442,7 +1534,7 @@ function openAssignmentEditor(empId) {
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-secondary';
                 headerTr.innerHTML = `
-                    <td colspan="3" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: #e9ecef;">
+                    <td colspan="3" class="fw-bold text-uppercase text-dark py-2 px-3" style="font-size: 0.85rem; letter-spacing: 0.5px; background-color: var(--c-surface-alt);">
                         ${displayCat}
                     </td>
                 `;
@@ -1458,7 +1550,7 @@ function openAssignmentEditor(empId) {
                     <button type="button" class="btn btn-sm btn-success add-unpicked-btn fw-bold"
                             data-indicator-id="${ind.indicator_id}"
                             ${isDecided ? 'disabled' : ''}>
-                        <i class="bi bi-plus-lg me-1"></i> Add
+                        <i class="ti ti-plus me-1"></i> Add
                     </button>
                 </td>
             `;
@@ -1598,7 +1690,7 @@ function openAssignmentEditor(empId) {
 
         const icon = document.getElementById('retConfirmModalIcon');
         if (iconClass) {
-            icon.className = `bi ${iconClass}`;
+            icon.className = `ti ${iconClass}`;
             icon.style.display = '';
         } else {
             icon.style.display = 'none';
@@ -1635,7 +1727,7 @@ function openAssignmentEditor(empId) {
                 subText: "They will be notified and can proceed to Program Chair verification.",
                 confirmText: "Yes, Approve",
                 confirmClass: "btn-success",
-                iconClass: "bi-check-circle-fill",
+                iconClass: "ti-circle-check",
                 onConfirm: () => proceedRetDecision('approve', remarks)
             });
         } else {
@@ -1656,14 +1748,14 @@ function openAssignmentEditor(empId) {
                 <h5 class="modal-title fw-bold text-dark mb-3" id="retConfirmModalTitle"
                     style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
                 <p class="mb-2 text-secondary fw-semibold px-2" id="retConfirmModalTextMain"
-                    style="font-size: 0.95rem; line-height: 1.5; color: #495057 !important;">Main message</p>
+                    style="font-size: 0.95rem; line-height: 1.5; color: var(--c-text-sub) !important;">Main message</p>
                 <p class="text-muted small px-3 mb-0" id="retConfirmModalTextSub"
                     style="font-size: 0.85rem; line-height: 1.4;">Sub message</p>
             </div>
             <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
                 <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
                     id="retConfirmModalCancelBtn"
-                    style="border-radius: 10px; background-color: #6c757d; font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                    style="border-radius: 10px; background-color: var(--bs-secondary); font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
                 <button type="button"
                     class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
                     id="retConfirmModalConfirmBtn"
@@ -1686,13 +1778,13 @@ function openAssignmentEditor(empId) {
             <p>Review and verify Research &amp; Extension accomplishment evidence submitted by faculty members across departments.</p>
         </div>
         <span class="badge bg-primary px-3 py-2 fs-6 shadow-sm">
-            <i class="bi bi-journal-bookmark-fill me-2"></i>{{ evidence_faculty_list|length }} Faculty Listed
+            <i class="ti ti-users me-2"></i>{{ evidence_faculty_list|length }} Faculty Listed
         </span>
     </div>
 
-    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-journal-check me-2 text-primary"></i>Faculty RET Evidence Submissions</h5>
+            <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-clipboard-check me-2 text-primary"></i>Faculty RET Evidence Submissions</h5>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -1709,8 +1801,8 @@ function openAssignmentEditor(empId) {
                         </tr>
                     </thead>
                     <tbody>
-                        {% if evidence_faculty_list %}
-                            {% for fac in evidence_faculty_list %}
+                        {% if pending_evidence_faculty_list %}
+                            {% for fac in pending_evidence_faculty_list %}
                             <tr>
                                 <td class="ps-4 py-3">
                                     <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
@@ -1720,16 +1812,18 @@ function openAssignmentEditor(empId) {
                                 <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
                                 <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
                                 <td class="text-center">
-                                    {% if fac.evidence_status == 'Submitted' %}
-                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Evidences Submitted</span>
+                                    {% if fac.verification_status_code == 'WAITING_CHAIR' %}
+                                        <span class="badge bg-warning text-dark px-3 py-2"><i class="ti ti-hourglass me-1"></i>Waiting for Program Chair Approval</span>
+                                    {% elif fac.verification_status_code == 'WAITING_RET' %}
+                                        <span class="badge bg-info text-dark px-3 py-2"><i class="ti ti-hourglass me-1"></i>Waiting for RET Chair Approval</span>
                                     {% else %}
-                                        <span class="badge bg-secondary px-3 py-2 rounded-pill"><i class="bi bi-pencil-square me-1"></i>In Progress</span>
+                                        <span class="badge bg-secondary px-3 py-2"><i class="ti ti-hourglass me-1"></i>Evidences Submitted</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-center pe-4">
-                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 rounded-pill fw-bold shadow-sm"
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
                                         onclick="openRetFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
-                                        <i class="bi bi-eye-fill me-1"></i>View Evidences
+                                        <i class="ti ti-eye me-1"></i>View Evidences
                                     </button>
                                 </td>
                             </tr>
@@ -1737,7 +1831,61 @@ function openAssignmentEditor(empId) {
                         {% else %}
                             <tr>
                                 <td colspan="7" class="text-center py-4 text-muted">
-                                    No faculty Research &amp; Extension evidence submissions found for this academic term.
+                                    No pending faculty Research &amp; Extension evidence submissions found for this academic term.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved RET Evidence Submissions Table -->
+    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-circle-check me-2 text-success"></i>Approved RET Evidence Submissions</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Faculty Member</th>
+                            <th class="text-center">Academic Rank</th>
+                            <th class="text-center">Department / Specialization</th>
+                            <th class="text-center">RET Targets Committed</th>
+                            <th class="text-center">RET Targets Met</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if approved_evidence_faculty_list %}
+                            {% for fac in approved_evidence_faculty_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                </td>
+                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
+                                <td class="text-center">{{ fac.specialization or 'Department Faculty' }}</td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success px-3 py-2"><i class="ti ti-checks me-1"></i>Approved</span>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
+                                        onclick="openRetFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                        <i class="ti ti-eye me-1"></i>View Evidences
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    No fully approved Research &amp; Extension evidence submissions yet.
                                 </td>
                             </tr>
                         {% endif %}
@@ -1750,10 +1898,10 @@ function openAssignmentEditor(empId) {
 
 <!-- RET Faculty Evidence Verification Modal -->
 <div class="modal fade" id="retFacultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-            <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
-                <h5 class="modal-title fw-bold" id="retEvidenceModalTitle"><i class="bi bi-file-earmark-check-fill me-2"></i>Research &amp; Extension Evidence Verification</h5>
+            <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
+                <h5 class="modal-title fw-bold" id="retEvidenceModalTitle"><i class="ti ti-file-check me-2"></i>Research &amp; Extension Evidence Verification</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -1762,7 +1910,7 @@ function openAssignmentEditor(empId) {
                         <h6 class="fw-bold mb-0 text-dark" id="modalRetFacultyName">-</h6>
                         <small class="text-muted" id="modalRetFacultyRank">-</small>
                     </div>
-                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold">
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 fw-bold">
                         RET Chair Verification View
                     </span>
                 </div>
@@ -1771,10 +1919,11 @@ function openAssignmentEditor(empId) {
                     <table class="table align-middle border mb-0" style="border-radius: 10px; overflow: hidden;">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3" width="40%">Research &amp; Extension Indicator</th>
+                                <th class="ps-3" width="35%">Research &amp; Extension Indicator</th>
                                 <th class="text-center" width="12%">Target Qty</th>
                                 <th class="text-center" width="15%">Accomplished Qty</th>
-                                <th class="ps-3" width="33%">Uploaded Evidences</th>
+                                <th class="text-center" width="15%">Status</th>
+                                <th class="ps-3" width="23%">Uploaded Evidences</th>
                             </tr>
                         </thead>
                         <tbody id="modalRetEvidenceTableBody">
@@ -1784,7 +1933,7 @@ function openAssignmentEditor(empId) {
                 </div>
             </div>
             <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -1795,7 +1944,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
     document.getElementById('modalRetFacultyName').innerText = facultyName;
     document.getElementById('modalRetFacultyRank').innerText = 'Loading details...';
     const tbody = document.getElementById('modalRetEvidenceTableBody');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading RET evidence files...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading RET evidence files...</td></tr>';
 
     const modal = new bootstrap.Modal(document.getElementById('retFacultyEvidenceVerificationModal'));
     modal.show();
@@ -1804,7 +1953,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
         .then(res => res.json())
         .then(data => {
             if (!data.success) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error: ${data.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Error: ${data.message}</td></tr>`;
                 return;
             }
 
@@ -1812,7 +1961,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
             tbody.innerHTML = '';
 
             if (!data.targets || data.targets.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No committed Research & Extension targets found for this faculty member.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No committed Research & Extension targets found for this faculty member.</td></tr>';
                 return;
             }
 
@@ -1848,8 +1997,8 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
                 const headerTr = document.createElement('tr');
                 headerTr.className = 'table-light fw-bold';
                 headerTr.innerHTML = `
-                    <td colspan="4" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: #f1f3f5; border-top: 2px solid #dee2e6;">
-                        <i class="bi bi-folder-fill me-2 text-primary"></i>${group.title}
+                    <td colspan="5" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: var(--c-surface-alt); border-top: 2px solid var(--c-border);">
+                        <i class="ti ti-folder me-2 text-primary"></i>${group.title}
                     </td>
                 `;
                 tbody.appendChild(headerTr);
@@ -1862,17 +2011,33 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
 
                     let evHtml = '';
                     if (t.evidence_list && t.evidence_list.length > 0) {
-                        evHtml = `<button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold shadow-xs"
+                        evHtml = `<button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold shadow-xs"
                             onclick="openEvidenceViewerFor(${t.target_id})">
-                            <i class="bi bi-folder2-open me-1"></i>View Uploaded Evidence (${t.evidence_list.length})
+                            <i class="ti ti-folder-open me-1"></i>View Uploaded Evidence (${t.evidence_list.length})
                         </button>`;
                     } else {
                         evHtml = '<span class="badge bg-light text-muted border">No evidence uploaded</span>';
                     }
 
                     const qtyMetBadge = (t.actual_quantity >= t.assigned_quantity && t.assigned_quantity > 0)
-                        ? `<span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>${t.actual_quantity}</span>`
-                        : `<span class="badge bg-secondary px-3 py-2 rounded-pill">${t.actual_quantity || 0}</span>`;
+                        ? `<span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>${t.actual_quantity}</span>`
+                        : `<span class="badge bg-secondary px-3 py-2">${t.actual_quantity || 0}</span>`;
+
+                    let verifyHtml;
+                    const evs = t.evidence_list || [];
+                    if (evs.length === 0) {
+                        verifyHtml = '<span class="badge bg-light text-muted border small">No evidence</span>';
+                    } else {
+                        const returned = evs.filter(e => e.verification_status === 'Returned').length;
+                        const approved = evs.filter(e => e.verification_status === 'Approved').length;
+                        if (returned > 0) {
+                            verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
+                        } else if (approved === evs.length) {
+                            verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="ti ti-circle-check me-1"></i>Approved</span>';
+                        } else {
+                            verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
+                        }
+                    }
 
                     tr.innerHTML = `
                         <td class="ps-3 py-3">
@@ -1881,6 +2046,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
                         </td>
                         <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                         <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
+                        <td class="text-center" id="target-verify-status-${t.target_id}">${verifyHtml}</td>
                         <td class="ps-3 py-3">${evHtml}</td>
                     `;
                     tbody.appendChild(tr);
@@ -1888,7 +2054,7 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
             });
         })
         .catch(err => {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
         });
 }
 
@@ -1922,22 +2088,22 @@ function openEvidenceViewer(evidenceList) {
                     </div>`;
             } else {
                 previewHtml = `<div class="evidence-portrait-container text-center py-4">
-                        <i class="bi bi-file-earmark-arrow-down-fill fs-1 text-light mb-2 d-block"></i>
+                        <i class="ti ti-file-download fs-1 text-light mb-2 d-block"></i>
                         <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-outline-light">
-                            <i class="bi bi-download me-1"></i>View / Download File
+                            <i class="ti ti-download me-1"></i>View / Download File
                         </a>
                     </div>`;
             }
 
             const statusBadge = ev.verification_status === 'Approved'
-                ? '<span class="badge bg-success rounded-pill">Approved</span>'
+                ? '<span class="badge bg-success">Approved</span>'
                 : ev.verification_status === 'Returned'
-                ? '<span class="badge bg-danger rounded-pill">Returned</span>'
-                : '<span class="badge bg-warning text-dark rounded-pill">Pending</span>';
+                ? '<span class="badge bg-danger">Returned</span>'
+                : '<span class="badge bg-warning text-dark">Pending</span>';
 
             const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
             const commentHtml = ev.supervisor_comment
-                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="bi bi-chat-left-text me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
                 : '';
 
             html += `
@@ -1948,19 +2114,19 @@ function openEvidenceViewer(evidenceList) {
                             <span class="ms-2" id="evidence-status-${ev.evidence_id}">${statusBadge}</span>
                         </div>
                         <div class="small text-muted flex-shrink-0">
-                            <span><i class="bi bi-check-circle me-1"></i>Qty: ${ev.actual_qty_Q}</span>
-                            ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="bi bi-people-fill me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
+                            <span><i class="ti ti-circle-check me-1"></i>Qty: ${ev.actual_qty_Q}</span>
+                            ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
                         </div>
                     </div>
                     ${commentHtml}
-                    <div class="d-flex justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none;"' : ''}>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                    <div class="${isDecided ? 'd-none' : 'd-flex'} justify-content-end gap-2 mb-2" id="evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none !important;"' : ''}>
+                        <button type="button" class="btn btn-sm btn-outline-danger px-3"
                                 onclick="returnEvidence(${ev.evidence_id})">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i>Return
+                            <i class="ti ti-arrow-back-up me-1"></i>Return
                         </button>
-                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3"
+                        <button type="button" class="btn btn-sm btn-success px-3"
                                 onclick="verifyEvidence(${ev.evidence_id}, 'Approved')">
-                            <i class="bi bi-check-circle-fill me-1"></i>Approve
+                            <i class="ti ti-circle-check me-1"></i>Approve
                         </button>
                     </div>
                     ${previewHtml}
@@ -1972,15 +2138,56 @@ function openEvidenceViewer(evidenceList) {
     new bootstrap.Modal(document.getElementById('evidenceViewerModal')).show();
 }
 
-// Returning requires a reason, which is shown back to the faculty member.
+let pendingReturnEvidenceId = null;
+
 function returnEvidence(evidenceId) {
-    const reason = prompt('Reason for returning this evidence (required):');
-    if (reason === null) return;                 // cancelled
-    if (!reason.trim()) {
-        alert('A reason is required when returning evidence.');
+    for (const tid in EVIDENCE_BY_TARGET) {
+        const list = EVIDENCE_BY_TARGET[tid] || [];
+        const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+        if (item && item.verification_status === 'Approved') {
+            alert('Approved evidence cannot be returned.');
+            return;
+        }
+    }
+    pendingReturnEvidenceId = evidenceId;
+    document.getElementById('returnEvidenceReasonInput').value = '';
+    document.getElementById('returnEvidenceReasonError').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('returnEvidenceReasonModal')).show();
+}
+
+function confirmReturnEvidence() {
+    const reason = document.getElementById('returnEvidenceReasonInput').value.trim();
+    if (!reason) {
+        document.getElementById('returnEvidenceReasonError').style.display = '';
         return;
     }
-    verifyEvidence(evidenceId, 'Returned', reason.trim());
+    const modalEl = document.getElementById('returnEvidenceReasonModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    if (pendingReturnEvidenceId) {
+        verifyEvidence(pendingReturnEvidenceId, 'Returned', reason);
+    }
+}
+
+let evidenceVerificationChanged = false;
+
+function updateTargetStatusBadge(targetId) {
+    const evs = EVIDENCE_BY_TARGET[targetId] || [];
+    if (evs.length === 0) return;
+    const returned = evs.filter(e => e.verification_status === 'Returned').length;
+    const approved = evs.filter(e => e.verification_status === 'Approved').length;
+    let verifyHtml = '';
+    if (returned > 0) {
+        verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
+    } else if (approved === evs.length) {
+        verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="ti ti-circle-check me-1"></i>Approved</span>';
+    } else {
+        verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
+    }
+    const targetStatusEl = document.getElementById('target-verify-status-' + targetId);
+    if (targetStatusEl) {
+        targetStatusEl.innerHTML = verifyHtml;
+    }
 }
 
 function verifyEvidence(evidenceId, status, comment) {
@@ -1992,30 +2199,83 @@ function verifyEvidence(evidenceId, status, comment) {
     .then(r => r.json())
     .then(data => {
         if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+        evidenceVerificationChanged = true;
         const badge = document.getElementById('evidence-status-' + evidenceId);
         const actions = document.getElementById('evidence-actions-' + evidenceId);
         if (badge) {
             badge.innerHTML = status === 'Approved'
-                ? '<span class="badge bg-success rounded-pill">Approved</span>'
-                : '<span class="badge bg-danger rounded-pill">Returned</span>';
+                ? '<span class="badge bg-success">Approved</span>'
+                : '<span class="badge bg-danger">Returned</span>';
         }
-        if (actions) actions.style.display = 'none';
+        if (actions) {
+            actions.classList.remove('d-flex');
+            actions.classList.add('d-none');
+            actions.style.setProperty('display', 'none', 'important');
+        }
+
+        // Real-time update of memory and main modal target row badge
+        let targetIdFound = null;
+        for (const tid in EVIDENCE_BY_TARGET) {
+            const list = EVIDENCE_BY_TARGET[tid];
+            const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+            if (item) {
+                item.verification_status = status;
+                if (comment) item.supervisor_comment = comment;
+                targetIdFound = tid;
+                break;
+            }
+        }
+        if (targetIdFound) {
+            updateTargetStatusBadge(targetIdFound);
+        }
     })
     .catch(err => alert('Error: ' + err));
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const el = document.getElementById('retFacultyEvidenceVerificationModal');
+    if (el) {
+        el.addEventListener('hidden.bs.modal', function() {
+            if (evidenceVerificationChanged) {
+                window.location.reload();
+            }
+        });
+    }
+});
 </script>
 
 <div class="modal fade" id="evidenceViewerModal" tabindex="-1" aria-hidden="true">
     <!-- Full-width so PDF/image evidence is readable while verifying. -->
     <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white border-0 py-3" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
-                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-file-earmark-pdf-fill me-2"></i>Uploaded Evidence</h5>
+            <div class="modal-header text-white border-0 py-3" style="background: var(--c-accent);">
+                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="evidenceViewerBody"></div>
             <div class="modal-footer border-0 p-3 bg-light">
-                <button type="button" class="btn btn-secondary fw-semibold px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Return Evidence Reason Modal -->
+<div class="modal fade" id="returnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence to Faculty</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-start">
+                <label for="returnEvidenceReasonInput" class="form-label fw-bold small">Reason for Returning (Required)</label>
+                <textarea class="form-control" id="returnEvidenceReasonInput" rows="3" placeholder="Explain why this evidence is being returned so the faculty member can fix it..."></textarea>
+                <div id="returnEvidenceReasonError" class="text-danger small mt-2" style="display:none;">A reason is required before returning evidence.</div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger fw-bold px-4" onclick="confirmReturnEvidence()">Submit Return</button>
             </div>
         </div>
     </div>
@@ -2059,7 +2319,7 @@ function verifyEvidence(evidenceId, status, comment) {
     #evidenceViewerModal .modal-body {
         flex: 1;
         overflow-y: auto;
-        background: #f8f9fa;
+        background: var(--c-surface-alt);
     }
 
     #evidenceViewerModal .modal-header {
@@ -2078,7 +2338,7 @@ function verifyEvidence(evidenceId, status, comment) {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #1a1a2e;
+        background: var(--c-text);
         border-radius: 8px;
         padding: 8px;
         min-height: 40vh;

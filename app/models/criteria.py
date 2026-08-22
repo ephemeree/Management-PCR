@@ -19,6 +19,7 @@ LANE_CHAIR = 'CHAIR'   # Program Chair reviews (Instruction, Support, + future c
 LANE_RET = 'RET'       # RET Chair reviews (Research, Extension)
 
 # stable category slugs backfilled in Phase 0
+SLUG_ADMINISTRATIVE = 'administrative'
 SLUG_INSTRUCTION = 'instruction'
 SLUG_RESEARCH = 'research'
 SLUG_EXTENSION = 'extension'
@@ -174,6 +175,46 @@ def set_criteria_active(conn, cursor, category_id, is_active):
 # at 25% for Designated) — see old MDS/DYNAMIC_CRITERIA.md for the source IPCR forms.
 # Values match tbl_employee_profiles.designation used elsewhere in the codebase.
 DESIGNATION_TYPES = ['Regular Faculty', 'Designated Faculty']
+
+# tbl_employee_profiles.designation stores a person's *job title* — an open-ended set
+# ('Program Chair', 'RET Chair', 'Dean', 'Designated Faculty', and any other role the
+# institution designates, including ones outside the College). Only two weight tables
+# exist, so a title has to be resolved to one of DESIGNATION_TYPES before any weight,
+# category or teaching-load lookup. Anyone who is not plain Regular Faculty is rated
+# against the Designated Faculty table.
+DESIGNATION_REGULAR = 'Regular Faculty'
+DESIGNATION_DESIGNATED = 'Designated Faculty'
+
+# Titles belonging to system accounts rather than to rated faculty. These have no IPCR.
+NON_FACULTY_DESIGNATIONS = {'Admin'}
+
+
+def resolve_designation_type(designation):
+    """
+    Map a stored job title onto the weight table it is rated against.
+
+    Returns 'Regular Faculty', 'Designated Faculty', or None when the title belongs to a
+    system account with no IPCR. Blank/unknown falls back to Regular Faculty, which is the
+    safe default — it is the table every rank-band weight is configured under.
+    """
+    title = (designation or '').strip()
+    if not title:
+        return DESIGNATION_REGULAR
+    if title in NON_FACULTY_DESIGNATIONS:
+        return None
+    if title == DESIGNATION_REGULAR:
+        return DESIGNATION_REGULAR
+    return DESIGNATION_DESIGNATED
+
+
+def has_own_ipcr(designation):
+    """True when this job title is rated with an IPCR of its own."""
+    return resolve_designation_type(designation) is not None
+
+
+def is_designated(designation):
+    """True when this job title is rated against the Designated Faculty weight table."""
+    return resolve_designation_type(designation) == DESIGNATION_DESIGNATED
 
 # Weights can be allocated one of two ways per (term, designation type):
 #   GENERAL  — one set of percentages applying to every academic rank. Stored as rows with

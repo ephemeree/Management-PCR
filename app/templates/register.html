@@ -4,7 +4,7 @@
 {% block auth_content %}
 <div class="mb-3">
     <div class="alert border-0 shadow-sm p-2 mb-3" style="font-size: 0.82rem; border-radius: 10px; background-color: #fef9c3; color: #854d0e;">
-        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <i class="ti ti-alert-triangle me-1"></i>
         <strong>HR Notice:</strong> Your profile must be pre-registered by HR.
     </div>
     
@@ -29,7 +29,7 @@
         <div class="password-field-wrapper">
             <input type="password" name="password" id="password" class="form-control" placeholder="SamplePassword@123" required>
             <button class="toggle-password-btn" type="button" data-target="password" tabindex="-1" title="Toggle Password Visibility">
-                <i class="bi bi-eye-slash fs-5"></i>
+                <i class="ti ti-eye-off fs-5"></i>
             </button>
         </div>
     </div>
@@ -40,11 +40,11 @@
         <div class="password-field-wrapper">
             <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="SamplePassword@123" required>
             <button class="toggle-password-btn" type="button" data-target="confirm_password" tabindex="-1" title="Toggle Password Visibility">
-                <i class="bi bi-eye-slash fs-5"></i>
+                <i class="ti ti-eye-off fs-5"></i>
             </button>
         </div>
         <div id="confirmPasswordError" class="text-danger small mt-1" style="display: none;">
-            <i class="bi bi-exclamation-circle me-1"></i> Passwords do not match.
+            <i class="ti ti-alert-circle me-1"></i> Passwords do not match.
         </div>
     </div>
 
@@ -54,24 +54,24 @@
         <div class="row row-cols-2 g-2">
             <div class="col">
                 <div id="req-length" class="policy-item invalid">
-                    <i class="bi bi-check2 me-2"></i> <span>At least 8 characters</span>
+                    <i class="ti ti-check me-2"></i> <span>At least 8 characters</span>
                 </div>
                 <div id="req-uppercase" class="policy-item invalid">
-                    <i class="bi bi-check2 me-2"></i> <span>One uppercase letter</span>
+                    <i class="ti ti-check me-2"></i> <span>One uppercase letter</span>
                 </div>
                 <div id="req-lowercase" class="policy-item invalid">
-                    <i class="bi bi-check2 me-2"></i> <span>One lowercase letter</span>
+                    <i class="ti ti-check me-2"></i> <span>One lowercase letter</span>
                 </div>
             </div>
             <div class="col">
                 <div id="req-number" class="policy-item invalid">
-                    <i class="bi bi-check2 me-2"></i> <span>One number</span>
+                    <i class="ti ti-check me-2"></i> <span>One number</span>
                 </div>
                 <div id="req-special" class="policy-item invalid">
-                    <i class="bi bi-check2 me-2"></i> <span>One special character</span>
+                    <i class="ti ti-check me-2"></i> <span>One special character</span>
                 </div>
                 <div id="req-nospace" class="policy-item valid">
-                    <i class="bi bi-check2 me-2"></i> <span>No spaces</span>
+                    <i class="ti ti-check me-2"></i> <span>No spaces</span>
                 </div>
             </div>
         </div>

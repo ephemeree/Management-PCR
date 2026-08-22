@@ -291,6 +291,7 @@ def get_ret_faculty_assignments(cursor, term_id, emp_id):
     """
     query = """
         SELECT ra.indicator_id, ra.target_quantity,
+               ra.target_description, ra.target_duration_value, ra.target_duration_unit,
                mi.indicator_description, tc.category_name, tc.slug
         FROM tbl_ret_assignments ra
         JOIN tbl_master_indicators mi ON ra.indicator_id = mi.indicator_id
@@ -307,8 +308,9 @@ def save_ret_assignments(conn, cursor, term_id, emp_id, assignments, assigned_by
     """
     Replaces the RET Chair's assignments for a faculty member in a term.
 
-    `assignments` is a list of (indicator_id, target_quantity) tuples. Only
-    indicators that belong to the faculty member's rank menu (tbl_ret_rules) are
+    `assignments` is a list of tuples: either (indicator_id, target_quantity) or
+    (indicator_id, target_quantity, target_description, target_duration_value, target_duration_unit).
+    Only indicators that belong to the faculty member's rank menu (tbl_ret_rules) are
     accepted — assignments are restricted to the rank-eligible pool.
     """
     try:
@@ -332,16 +334,28 @@ def save_ret_assignments(conn, cursor, term_id, emp_id, assignments, assigned_by
 
         saved = 0
         skipped = 0
-        for indicator_id, qty in assignments:
+        for item in assignments:
+            if len(item) == 5:
+                indicator_id, qty, desc, dur_val, dur_unit = item
+            else:
+                indicator_id, qty = item[0], item[1]
+                desc, dur_val, dur_unit = None, None, None
+
             if indicator_id not in allowed_ids:
                 skipped += 1
                 continue
             qty = qty if qty and int(qty) > 0 else 1
             cursor.execute("""
-                INSERT INTO tbl_ret_assignments (term_id, emp_id, indicator_id, target_quantity, assigned_by)
-                VALUES (%s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE target_quantity = VALUES(target_quantity), assigned_by = VALUES(assigned_by)
-            """, (term_id, emp_id, indicator_id, int(qty), assigned_by))
+                INSERT INTO tbl_ret_assignments (term_id, emp_id, indicator_id, target_quantity,
+                                                target_description, target_duration_value, target_duration_unit, assigned_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    target_quantity = VALUES(target_quantity),
+                    target_description = VALUES(target_description),
+                    target_duration_value = VALUES(target_duration_value),
+                    target_duration_unit = VALUES(target_duration_unit),
+                    assigned_by = VALUES(assigned_by)
+            """, (term_id, emp_id, indicator_id, int(qty), desc, dur_val, dur_unit, assigned_by))
             saved += 1
 
         conn.commit()
@@ -704,21 +718,22 @@ def save_ret_review_items(cursor, conn, review_id, items):
 
 def get_ret_chair_evidence_faculty(cursor, term_id):
     from app.models.connection import timed_query
+    from app.models.faculty import enrich_faculty_verification_status
     query = """
         SELECT ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization,
                COUNT(DISTINCT ct.target_id) as total_targets,
                SUM(CASE WHEN ct.actual_quantity >= ct.assigned_quantity AND ct.assigned_quantity > 0 THEN 1 ELSE 0 END) as met_targets,
-               MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified') THEN 1 ELSE 0 END) as has_submitted
+               MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) as has_submitted
         FROM tbl_employee_profiles ep
         JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s AND (tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%')
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization
-        HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified') THEN 1 ELSE 0 END) = 1
+        HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name
     """
     rows = timed_query(cursor, query, (term_id,), label="get_ret_chair_evidence_faculty")
     for r in rows:
-        r['evidence_status'] = 'Submitted'
+        enrich_faculty_verification_status(cursor, r, term_id)
     return rows

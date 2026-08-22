@@ -212,7 +212,7 @@ def is_faculty_ret_eligible(cursor, emp_id, term_id):
     return cursor.fetchone()[0] > 0
 
 
-def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
+def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets):
     """
     selected_research_targets parameter format:
     [
@@ -220,20 +220,20 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
         ...
     ]
     """
+    if not term_id:
+        return False, "No active term specified."
+
+    active_term_id = int(term_id)
+    conn.autocommit = False
     try:
         # Check if they are resubmitting (meaning a review record already exists for the active term)
-        cursor.execute("SELECT term_id FROM tbl_academic_terms WHERE is_active = 1 LIMIT 1")
-        term_row = cursor.fetchone()
-        active_term_id = term_row[0] if term_row else None
-
         is_resubmission = False
-        if active_term_id:
-            cursor.execute("""
-                SELECT 1 FROM tbl_ipcr_chair_review 
-                WHERE emp_id = %s AND term_id = %s
-                LIMIT 1
-            """, (emp_id, active_term_id))
-            is_resubmission = cursor.fetchone() is not None
+        cursor.execute("""
+            SELECT 1 FROM tbl_ipcr_chair_review 
+            WHERE emp_id = %s AND term_id = %s
+            LIMIT 1
+        """, (emp_id, active_term_id))
+        is_resubmission = cursor.fetchone() is not None
 
         ret_eligible = is_faculty_ret_eligible(cursor, emp_id, active_term_id)
         ret_editable = False
@@ -404,11 +404,12 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                 # Materialize the RET Chair's direct Research assignments (locked — always
                 # present regardless of self-selection). Chair-assigned quantities are
                 # authoritative if the same indicator was also self-selected.
-                # Assigned research inherits the same rank-menu description/duration so it
-                # scores identically to a self-selected target.
+                # Assigned research inherits any rank-menu description/duration unless overridden by the chair.
                 cursor.execute("""
                     SELECT ra.indicator_id, ra.target_quantity,
-                           rri.target_description, rri.target_duration_value, rri.target_duration_unit
+                           COALESCE(ra.target_description, rri.target_description),
+                           COALESCE(ra.target_duration_value, rri.target_duration_value),
+                           COALESCE(ra.target_duration_unit, rri.target_duration_unit)
                     FROM tbl_ret_assignments ra
                     LEFT JOIN tbl_ret_rule_indicators rri ON rri.indicator_id = ra.indicator_id
                     LEFT JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
@@ -438,8 +439,13 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                         """, (emp_id, assign_ind_id, assign_qty, target_status, a_desc, a_deadline,
                               a_dur_value, a_dur_unit))
             else:
-                # RET review already decided (Approved/Rejected): Research is locked from
-                # further self-editing; only refresh its status. Scoped to research.
+                # RET review already decided: Research is locked from further self-editing.
+                #
+                # Only a *rejected* research selection goes back into review. An approved
+                # one must keep its 'Approved' status — resetting it made the Program Chair
+                # show "Awaiting RET Chair Approval" and refuse to approve, while the RET
+                # Chair's own review still read Approved so nothing appeared in their queue.
+                # The faculty member could not move in either direction.
                 if ret_status == 'Rejected':
                     cursor.execute("""
                         UPDATE tbl_draft_targets dt
@@ -450,26 +456,17 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
                           AND tc.slug = 'research'
                     """, (target_status, emp_id))
 
-                cursor.execute("""
-                    UPDATE tbl_draft_targets dt
-                    JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
-                    JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                    SET dt.review_status = %s
-                    WHERE dt.emp_id = %s
-                      AND tc.slug = 'research'
-                """, (target_status, emp_id))
-
         # 7b. Materialize distributed Extension targets — uniform to ALL regular faculty,
         # locked (not self-selectable), independent of Research eligibility. Rewrite from
         # the term's distribution so removed distributions disappear on resubmit. Extension
         # auto-flows to the Program Chair (it never enters RET review).
-        cursor.execute("""
-            DELETE dt FROM tbl_draft_targets dt
-            JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
-            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-            WHERE dt.emp_id = %s AND tc.slug = 'extension'
-        """, (emp_id,))
         if active_term_id:
+            cursor.execute("""
+                DELETE dt FROM tbl_draft_targets dt
+                JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
+                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                WHERE dt.emp_id = %s AND tc.slug = 'extension'
+            """, (emp_id,))
             cursor.execute("""
                 SELECT indicator_id, target_quantity, target_description,
                        target_duration_value, target_duration_unit
@@ -564,6 +561,8 @@ def submit_faculty_ipcr(conn, cursor, emp_id, selected_research_targets):
     except Exception as e:
         conn.rollback()
         return False, str(e)
+    finally:
+        conn.autocommit = True
 
 
 # ──────────────────────────────────────────────
@@ -578,6 +577,7 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
                COALESCE(ct.target_description, mi.indicator_description) as indicator_description,
                ct.target_deadline, ct.target_duration_value, ct.target_duration_unit,
                ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
+               ct.is_admin_function, ct.print_remarks,
                mi.efficiency_type,
                tc.category_name, tc.category_id
         FROM tbl_committed_targets ct
@@ -602,11 +602,13 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
 
 
 def save_accomplishment_details(conn, cursor, emp_id, target_id, actual_duration_value,
-                                completion_status, efficiency_rating_E):
+                                completion_status, efficiency_rating_E, print_remarks=None):
     """
     Save the per-target accomplishment inputs used for Timeliness (T) and, where the
     indicator is client-satisfaction rated, Efficiency (E). Ownership is enforced so a
     faculty member can only update their own committed targets.
+
+    print_remarks is the free-text note that appears in the printed IPCR's Remarks column.
     """
     from app.models.scoring import COMPLETION_STATUSES
     try:
@@ -624,11 +626,14 @@ def save_accomplishment_details(conn, cursor, emp_id, target_id, actual_duration
         if completion_status and completion_status != 'COMPLETED':
             actual_duration_value = None
 
+        remarks = (print_remarks or '').strip()[:255] or None
         cursor.execute("""
             UPDATE tbl_committed_targets
-            SET actual_duration_value = %s, completion_status = %s, efficiency_rating_E = %s
+            SET actual_duration_value = %s, completion_status = %s, efficiency_rating_E = %s,
+                print_remarks = %s
             WHERE target_id = %s
-        """, (actual_duration_value, completion_status or None, efficiency_rating_E, target_id))
+        """, (actual_duration_value, completion_status or None, efficiency_rating_E,
+              remarks, target_id))
         conn.commit()
         return True, "Accomplishment details saved."
     except Exception as e:
@@ -681,19 +686,32 @@ def upload_evidence_item(cursor, target_id, file_path, quantity):
     return evidence_id
 
 
-def delete_evidence_item(cursor, evidence_id):
-    # Find target_id first
-    cursor.execute("SELECT target_id FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
+def delete_evidence_item(cursor, evidence_id, emp_id):
+    """
+    Delete one uploaded evidence file.
+
+    emp_id is required and checked against the owner of the target the evidence hangs off.
+    Without it, anyone could delete anyone else's evidence by posting an arbitrary
+    evidence_id — the id is the only thing the request carries.
+    """
+    cursor.execute("""
+        SELECT er.target_id, ct.emp_id
+        FROM tbl_evidence_repo er
+        JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+        WHERE er.evidence_id = %s
+    """, (evidence_id,))
     row = cursor.fetchone()
     if not row:
         return False
-    target_id = row[0]
-    
+    target_id, owner_emp_id = row
+    if owner_emp_id != emp_id:
+        return False
+
     # Delete co-author relationships
     cursor.execute("DELETE FROM tbl_co_authors WHERE evidence_id = %s", (evidence_id,))
     # Delete evidence item
     cursor.execute("DELETE FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
-    
+
     recalculate_target_accomplished_quantity(cursor, target_id)
     return True
 
@@ -788,6 +806,7 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
         return {
             'all_evidence_ready': False,
             'evidence_submitted': False,
+            'has_returned_evidence': False,
             'total_targets': 0,
             'targets_with_evidence': 0,
             'targets_met_qty': 0
@@ -797,6 +816,7 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
     targets_with_evidence = 0
     targets_met_qty = 0
     submitted_count = 0
+    has_returned_evidence = False
 
     for t in assigned_targets:
         ev_list = t.get('evidence_list')
@@ -804,23 +824,28 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
             ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             t['evidence_list'] = ev_list
 
-        if len(ev_list) > 0:
+        valid_evs = [e for e in ev_list if e.get('verification_status') not in ('Returned', 'Rejected')]
+        if len(valid_evs) > 0:
             targets_with_evidence += 1
+
+        if any(e.get('verification_status') in ('Returned', 'Rejected') for e in ev_list):
+            has_returned_evidence = True
 
         actual_q = t.get('actual_quantity') or 0
         assigned_q = t.get('assigned_quantity') or 0
         if actual_q >= assigned_q and assigned_q > 0:
             targets_met_qty += 1
 
-        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified'):
+        if t.get('status') in ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved') and not any(e.get('verification_status') in ('Returned', 'Rejected') for e in ev_list):
             submitted_count += 1
 
     all_ready = (total_targets > 0) and (targets_with_evidence == total_targets) and (targets_met_qty == total_targets)
-    evidence_submitted = (submitted_count == total_targets) and (total_targets > 0)
+    evidence_submitted = (submitted_count == total_targets) and (total_targets > 0) and not has_returned_evidence
 
     return {
         'all_evidence_ready': all_ready,
         'evidence_submitted': evidence_submitted,
+        'has_returned_evidence': has_returned_evidence,
         'total_targets': total_targets,
         'targets_with_evidence': targets_with_evidence,
         'targets_met_qty': targets_met_qty
@@ -850,11 +875,13 @@ def set_evidence_verification(conn, cursor, evidence_id, status, comment=None):
         return False, "A reason is required when returning evidence."
 
     try:
-        cursor.execute("SELECT target_id FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
+        cursor.execute("SELECT target_id, verification_status FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
         row = cursor.fetchone()
         if not row:
             return False, "Evidence not found."
-        target_id = row[0]
+        target_id, current_status = row[0], row[1]
+        if current_status == EVIDENCE_APPROVED and status == EVIDENCE_RETURNED:
+            return False, "Approved evidence cannot be returned."
 
         cursor.execute("""
             UPDATE tbl_evidence_repo
@@ -907,5 +934,90 @@ def submit_faculty_evidences(conn, cursor, emp_id, term_id):
     except Exception as e:
         conn.rollback()
         return False, f"Error submitting evidences: {str(e)}"
+
+
+def enrich_faculty_verification_status(cursor, faculty_dict, term_id):
+    """
+    Computes the verification status for a faculty member across Program Chair (CHAIR) and RET Chair (RET).
+    Sets:
+      - verification_status_code: 'APPROVED', 'WAITING_CHAIR', 'WAITING_RET', 'SUBMITTED'
+      - evidence_status: Human-readable status label
+      - is_both_approved: True if both Program Chair and RET Chair have approved all respective evidence items
+      - chair_finished: True if Program Chair target evidences are all approved (or no Chair targets exist)
+      - ret_finished: True if RET target evidences are all approved (or no RET targets exist)
+    """
+    emp_id = faculty_dict['emp_id']
+    cursor.execute("""
+        SELECT 
+            tc.category_name,
+            er.evidence_id,
+            er.verification_status,
+            ct.status
+        FROM tbl_committed_targets ct
+        JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        LEFT JOIN tbl_evidence_repo er ON er.target_id = ct.target_id
+        WHERE ct.emp_id = %s AND mi.term_id = %s
+    """, (emp_id, term_id))
+    rows = cursor.fetchall()
+
+    chair_targets_has_ev = False
+    chair_all_approved = True
+    chair_has_targets = False
+
+    ret_targets_has_ev = False
+    ret_all_approved = True
+    ret_has_targets = False
+    is_submitted_to_dean = any(r[3] in ('Submitted to Dean', 'Dean Approved') for r in rows) if rows else False
+
+    for cat_name, ev_id, ev_status, ct_status in rows:
+        cat_str = (cat_name or '')
+        is_ret = ('Research' in cat_str or 'Extension' in cat_str)
+        if is_ret:
+            ret_has_targets = True
+            if ev_id is not None:
+                ret_targets_has_ev = True
+                if ev_status != 'Approved':
+                    ret_all_approved = False
+        else:
+            chair_has_targets = True
+            if ev_id is not None:
+                chair_targets_has_ev = True
+                if ev_status != 'Approved':
+                    chair_all_approved = False
+
+    if not chair_has_targets:
+        chair_finished = True
+    else:
+        chair_finished = chair_targets_has_ev and chair_all_approved
+
+    if not ret_has_targets:
+        ret_finished = True
+    else:
+        ret_finished = ret_targets_has_ev and ret_all_approved
+
+    is_both_approved = chair_finished and ret_finished and (chair_has_targets or ret_has_targets)
+
+    if is_both_approved:
+        status_code = 'APPROVED'
+        status_label = 'Approved'
+    elif ret_finished and not chair_finished:
+        status_code = 'WAITING_CHAIR'
+        status_label = 'Waiting for Program Chair Approval'
+    elif chair_finished and not ret_finished:
+        status_code = 'WAITING_RET'
+        status_label = 'Waiting for RET Chair Approval'
+    else:
+        status_code = 'SUBMITTED'
+        status_label = 'Evidences Submitted'
+
+    faculty_dict['verification_status_code'] = status_code
+    faculty_dict['evidence_status'] = status_label
+    faculty_dict['is_both_approved'] = is_both_approved
+    faculty_dict['chair_finished'] = chair_finished
+    faculty_dict['ret_finished'] = ret_finished
+    faculty_dict['is_submitted_to_dean'] = is_submitted_to_dean
+    return faculty_dict
+
 
 
