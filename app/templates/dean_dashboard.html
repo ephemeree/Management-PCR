@@ -855,8 +855,71 @@
         const inputs = document.querySelectorAll('.dean-assign-input-' + indId);
         inputs.forEach(inp => {
             inp.disabled = !isChecked;
+            if (!isChecked) {
+                inp.classList.remove('is-invalid', 'border-danger');
+            }
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const assignModalForm = document.querySelector('#designatedAssignmentModal form');
+        if (assignModalForm) {
+            assignModalForm.addEventListener('submit', function(e) {
+                const checked = assignModalForm.querySelectorAll('input[name="assign_indicator_ids[]"]:checked');
+                let isValid = true;
+                let firstInvalid = null;
+                let errorMsg = '';
+
+                assignModalForm.querySelectorAll('.is-invalid, .border-danger').forEach(el => {
+                    el.classList.remove('is-invalid', 'border-danger');
+                });
+
+                checked.forEach(cb => {
+                    const indId = cb.value;
+                    const qtyInp = assignModalForm.querySelector(`input[name="assign_quantity_${indId}"]`);
+                    const durInp = assignModalForm.querySelector(`input[name="assign_dur_value_${indId}"]`);
+
+                    if (qtyInp && (!qtyInp.value || parseInt(qtyInp.value) <= 0)) {
+                        qtyInp.classList.add('is-invalid');
+                        isValid = false;
+                        if (!firstInvalid) {
+                            firstInvalid = qtyInp;
+                            errorMsg = 'Assigned quantity must be greater than 0.';
+                        }
+                    }
+
+                    if (durInp && (!durInp.value.trim() || parseInt(durInp.value) <= 0)) {
+                        durInp.classList.add('is-invalid');
+                        isValid = false;
+                        if (!firstInvalid) {
+                            firstInvalid = durInp;
+                            errorMsg = 'All assigned targets must have a valid deadline (target duration) specified.';
+                        }
+                    }
+
+                    const descInp = assignModalForm.querySelector(`input[name="assign_description_${indId}"]`);
+                    if (descInp && !descInp.value.trim()) {
+                        descInp.classList.add('is-invalid');
+                        isValid = false;
+                        if (!firstInvalid) {
+                            firstInvalid = descInp;
+                            errorMsg = 'All assigned targets must have an IPCR target description.';
+                        }
+                    }
+                });
+
+                if (!isValid) {
+                    e.preventDefault();
+                    if (window.showCustomAlert) {
+                        showCustomAlert('Incomplete Target Assignment', errorMsg || 'Please provide a valid deadline duration and target description for all assigned targets.', 'warning', firstInvalid);
+                    } else {
+                        if (firstInvalid) firstInvalid.focus();
+                        alert(errorMsg || 'Please provide a valid deadline duration and target description for all assigned targets.');
+                    }
+                }
+            });
+        }
+    });
 
     function openDesignatedAssignmentEditor(empId) {
         const modalEl = document.getElementById('designatedAssignmentModal');

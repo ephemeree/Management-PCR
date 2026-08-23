@@ -899,7 +899,11 @@
 
                 // Quick Frontend Validation check
                 if (!description || !quantity || parseInt(quantity) < 1 || !durValue || parseInt(durValue) < 1) {
-                    alert('Please fill in all required fields, including quantity and a valid target duration (deadline).');
+                    if (window.showCustomAlert) {
+                        showCustomAlert('Missing Required Fields', 'Please fill in all required fields, including quantity and a valid target duration (deadline).', 'warning');
+                    } else {
+                        alert('Please fill in all required fields, including quantity and a valid target duration (deadline).');
+                    }
                     return;
                 }
 
@@ -912,7 +916,11 @@
                     }
                 });
                 if (isDuplicate) {
-                    alert('A target with this description already exists in your list.');
+                    if (window.showCustomAlert) {
+                        showCustomAlert('Duplicate Target', 'A target with this description already exists in your list.', 'warning');
+                    } else {
+                        alert('A target with this description already exists in your list.');
+                    }
                     return;
                 }
 
@@ -929,8 +937,11 @@
                 // the scoring flag puts them under.
                 const tbody = document.getElementById('tbody-support');
                 if (!tbody) {
-                    alert('Could not add the target: the Strategic Priorities / Support '
-                          + 'Functions table is missing from this page.');
+                    if (window.showCustomAlert) {
+                        showCustomAlert('Target Table Missing', 'Could not add the target: the Strategic Priorities / Support Functions table is missing from this page.', 'danger');
+                    } else {
+                        alert('Could not add the target: the Strategic Priorities / Support Functions table is missing from this page.');
+                    }
                     return;
                 }
 
@@ -991,8 +1002,12 @@
                 const customDescriptions = form.querySelectorAll('input[name="custom_descriptions[]"]');
 
                 if (checkedBoxes.length === 0 && customDescriptions.length === 0) {
-                    alert('Please select at least one standard target or add a custom target before submitting.');
                     e.preventDefault();
+                    if (window.showCustomAlert) {
+                        showCustomAlert('No Targets Selected', 'Please select at least one standard target or add a custom target before submitting.', 'warning');
+                    } else {
+                        alert('Please select at least one standard target or add a custom target before submitting.');
+                    }
                     return;
                 }
 
@@ -1021,7 +1036,7 @@
                     }
 
                     // 2. Validate Deadline / Target Duration Value
-                    const durInput = row.querySelector(`input[name="target_dur_value_${cb.value}"]`);
+                    const durInput = row.querySelector(`input[name="target_dur_value_${cb.value}"], input[name="target_dur_value_${cb.value}_adm"]`);
                     if (durInput) {
                         const durVal = parseInt(durInput.value) || 0;
                         if (!durInput.value.trim() || durVal <= 0) {
@@ -1042,17 +1057,21 @@
                 uncheckedBoxes.forEach(cb => {
                     const row = cb.closest('tr');
                     const qtyInput = row.querySelector(`input[name="target_qty_${cb.value}"]`);
-                    const durInput = row.querySelector(`input[name="target_dur_value_${cb.value}"]`);
+                    const durInput = row.querySelector(`input[name="target_dur_value_${cb.value}"], input[name="target_dur_value_${cb.value}_adm"]`);
                     if (qtyInput) qtyInput.classList.remove('is-invalid');
                     if (durInput) durInput.classList.remove('is-invalid');
                 });
 
                 if (!valid) {
-                    alert(errorMsg || 'Please ensure all selected targets have their quantity and deadline filled up.');
-                    if (firstInvalidInput) {
-                        firstInvalidInput.focus();
-                    }
                     e.preventDefault();
+                    if (window.showCustomAlert) {
+                        showCustomAlert('Incomplete Target Details', errorMsg || 'Please ensure all selected targets have their quantity and deadline filled up.', 'warning', firstInvalidInput);
+                    } else {
+                        if (firstInvalidInput) {
+                            firstInvalidInput.focus();
+                        }
+                        alert(errorMsg || 'Please ensure all selected targets have their quantity and deadline filled up.');
+                    }
                 }
             });
 

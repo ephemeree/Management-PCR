@@ -206,8 +206,13 @@ def is_faculty_ret_eligible(cursor, emp_id, term_id):
         FROM tbl_ret_rules r
         JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
         JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
-        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-        WHERE r.academic_rank = %s AND mi.term_id = %s AND tc.slug = 'research'
+        LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        WHERE r.academic_rank = %s AND (mi.term_id = %s OR mi.term_id IS NULL)
+          AND (
+              LOWER(COALESCE(tc.slug, '')) = 'research'
+              OR LOWER(COALESCE(tc.category_name, '')) LIKE '%%research%%'
+              OR LOWER(COALESCE(tc.review_lane, '')) = 'ret'
+          )
     """, (academic_rank, term_id))
     return cursor.fetchone()[0] > 0
 
@@ -357,7 +362,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets
                 ret_row = cursor.fetchone()
                 if ret_row:
                     ret_status = ret_row[0]
-                    if ret_status in ('Approved', 'Rejected'):
+                    if ret_status == 'Approved':
                         ret_editable = False
 
             if ret_editable:

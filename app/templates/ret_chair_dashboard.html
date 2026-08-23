@@ -216,6 +216,114 @@ function openAssignmentEditor(empId) {
         body.innerHTML = '<div class="alert alert-danger">Error: ' + err + '</div>';
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation for Assignment Editor Modal Form
+    const assignForm = document.querySelector('#assignmentEditorModal form');
+    if (assignForm) {
+        assignForm.addEventListener('submit', function(e) {
+            const checked = assignForm.querySelectorAll('input[name="assign_indicator_ids[]"]:checked');
+            let isValid = true;
+            let firstInvalid = null;
+            let errorMsg = '';
+
+            assignForm.querySelectorAll('.is-invalid, .border-danger').forEach(el => el.classList.remove('is-invalid', 'border-danger'));
+
+            checked.forEach(cb => {
+                const indId = cb.value;
+                const qtyInp = assignForm.querySelector(`input[name="assign_quantity_${indId}"]`);
+                const durInp = assignForm.querySelector(`input[name="assign_dur_value_${indId}"]`);
+                const descInp = assignForm.querySelector(`input[name="assign_description_${indId}"]`);
+
+                if (qtyInp && (!qtyInp.value || parseInt(qtyInp.value) <= 0)) {
+                    qtyInp.classList.add('is-invalid');
+                    isValid = false;
+                    if (!firstInvalid) { firstInvalid = qtyInp; errorMsg = 'Assigned quantity must be greater than 0.'; }
+                }
+
+                if (descInp && !descInp.value.trim()) {
+                    descInp.classList.add('is-invalid');
+                    isValid = false;
+                    if (!firstInvalid) { firstInvalid = descInp; errorMsg = 'All assigned targets must have an IPCR target description.'; }
+                }
+
+                if (durInp && (!durInp.value.trim() || parseInt(durInp.value) <= 0)) {
+                    durInp.classList.add('is-invalid');
+                    isValid = false;
+                    if (!firstInvalid) { firstInvalid = durInp; errorMsg = 'All assigned targets must have a valid deadline (target duration) specified.'; }
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                if (window.showCustomAlert) {
+                    showCustomAlert('Incomplete Target Assignment', errorMsg || 'Please provide a valid deadline duration and description for all assigned targets.', 'warning', firstInvalid);
+                } else {
+                    if (firstInvalid) firstInvalid.focus();
+                    alert(errorMsg || 'Please provide a valid deadline duration and description for all assigned targets.');
+                }
+            }
+        });
+    }
+
+    // Validation for Research Menu Rules Form
+    const saveRuleForm = document.querySelector('form[action="{{ url_for('ret_chair.ret_chair_save_rule') }}"]');
+    if (saveRuleForm) {
+        saveRuleForm.addEventListener('submit', function(e) {
+            const checked = saveRuleForm.querySelectorAll('.research-indicator-checkbox:checked');
+            if (checked.length === 0) {
+                e.preventDefault();
+                if (window.showCustomAlert) {
+                    showCustomAlert('No Indicators Selected', 'Please select at least one research indicator option for this rank rule.', 'warning');
+                } else {
+                    alert('Please select at least one research indicator option for this rank rule.');
+                }
+                return;
+            }
+
+            let isValid = true;
+            let firstInvalid = null;
+            let errorMsg = '';
+
+            saveRuleForm.querySelectorAll('.is-invalid, .border-danger').forEach(el => el.classList.remove('is-invalid', 'border-danger'));
+
+            checked.forEach(cb => {
+                const indId = cb.value;
+                const qtyInp = saveRuleForm.querySelector(`input[name="research_quantity_${indId}"]`);
+                const durInp = saveRuleForm.querySelector(`input[name="research_dur_value_${indId}"]`);
+                const descInp = saveRuleForm.querySelector(`input[name="research_description_${indId}"]`);
+
+                if (qtyInp && (!qtyInp.value || parseInt(qtyInp.value) <= 0)) {
+                    qtyInp.classList.add('is-invalid');
+                    isValid = false;
+                    if (!firstInvalid) { firstInvalid = qtyInp; errorMsg = 'Research target quantity must be greater than 0.'; }
+                }
+
+                if (descInp && !descInp.value.trim()) {
+                    descInp.classList.add('is-invalid');
+                    isValid = false;
+                    if (!firstInvalid) { firstInvalid = descInp; errorMsg = 'All selected research targets must have an IPCR target description.'; }
+                }
+
+                if (durInp && (!durInp.value.trim() || parseInt(durInp.value) <= 0)) {
+                    durInp.classList.add('is-invalid');
+                    isValid = false;
+                    if (!firstInvalid) { firstInvalid = durInp; errorMsg = 'All selected research targets must have a valid deadline (target duration) specified.'; }
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                if (window.showCustomAlert) {
+                    showCustomAlert('Incomplete Research Rule', errorMsg || 'Please specify a valid deadline duration and target description for all selected research targets.', 'warning', firstInvalid);
+                } else {
+                    if (firstInvalid) firstInvalid.focus();
+                    alert(errorMsg || 'Please specify a valid deadline duration and target description for all selected research targets.');
+                }
+            }
+        });
+    }
+});
 </script>
 
 <!-- Assignment Editor Modal (Dual Assignment Workflow) -->
@@ -646,6 +754,61 @@ function openAssignmentEditor(empId) {
     </div>
     <script>
     function showConfirmExtDistModal() {
+        const form = document.querySelector('form[action="{{ url_for('ret_chair.save_extension_distribution') }}"]');
+        if (!form) return;
+
+        let isValid = true;
+        let firstInvalid = null;
+        let errorMsg = '';
+
+        form.querySelectorAll('.is-invalid, .border-danger').forEach(el => {
+            el.classList.remove('is-invalid', 'border-danger');
+        });
+
+        const items = form.querySelectorAll('.list-group-item');
+        items.forEach(item => {
+            const qtyInp = item.querySelector('input[name^="ext_quantity_"]');
+            const durInp = item.querySelector('input[name^="ext_dur_value_"]');
+            const descInp = item.querySelector('input[name^="ext_description_"]');
+
+            if (qtyInp && (!qtyInp.value || parseInt(qtyInp.value) <= 0)) {
+                qtyInp.classList.add('is-invalid');
+                isValid = false;
+                if (!firstInvalid) {
+                    firstInvalid = qtyInp;
+                    errorMsg = 'Extension quantity must be greater than 0.';
+                }
+            }
+
+            if (durInp && (!durInp.value.trim() || parseInt(durInp.value) <= 0)) {
+                durInp.classList.add('is-invalid');
+                isValid = false;
+                if (!firstInvalid) {
+                    firstInvalid = durInp;
+                    errorMsg = 'All extension targets must have a valid deadline (target duration) specified.';
+                }
+            }
+
+            if (descInp && !descInp.value.trim()) {
+                descInp.classList.add('is-invalid');
+                isValid = false;
+                if (!firstInvalid) {
+                    firstInvalid = descInp;
+                    errorMsg = 'All extension targets must have an IPCR target description.';
+                }
+            }
+        });
+
+        if (!isValid) {
+            if (window.showCustomAlert) {
+                showCustomAlert('Incomplete Extension Distribution', errorMsg || 'Please specify a valid deadline duration and target description for all extension targets.', 'warning', firstInvalid);
+            } else {
+                if (firstInvalid) firstInvalid.focus();
+                alert(errorMsg || 'Please specify a valid deadline duration and target description for all extension targets.');
+            }
+            return;
+        }
+
         new bootstrap.Modal(document.getElementById('confirmExtDistModal')).show();
     }
     function submitExtDistForm() {

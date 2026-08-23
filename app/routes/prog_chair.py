@@ -153,6 +153,13 @@ def prog_chair_submit_to_dean():
         term_id = active_term['term_id']
         from app.models.prog_chair import submit_evidence_package_to_dean
         success, msg = submit_evidence_package_to_dean(conn, cursor, int(emp_id), term_id)
+        if success:
+            try:
+                from app.services.notification_service import send_evidence_package_to_dean_notification
+                send_evidence_package_to_dean_notification(conn, cursor, int(emp_id), int(term_id), request.host_url)
+            except Exception as notif_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error triggering evidence package to dean notification: {notif_err}")
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -177,6 +184,13 @@ def prog_chair_verify_evidence():
     try:
         from app.models.faculty import set_evidence_verification
         success, msg = set_evidence_verification(conn, cursor, int(evidence_id), status, comment)
+        if success and status == 'Approved':
+            try:
+                from app.services.notification_service import check_and_trigger_evidence_approved_notification
+                check_and_trigger_evidence_approved_notification(conn, cursor, int(evidence_id), 'Program Chair', request.host_url)
+            except Exception as notif_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error triggering evidence approved notification: {notif_err}")
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -281,18 +295,29 @@ def assign_chair_target():
         allocations = []
         for idx, (ind_id, qty) in enumerate(zip(indicator_ids, assigned_quantities)):
             try:
-                c_desc = custom_descriptions[idx].strip() if idx < len(custom_descriptions) and custom_descriptions[idx] else None
-                # Structured duration drives Timeliness; the text label is derived from it
-                # so existing deadline displays keep working.
-                raw_value = target_duration_values[idx] if idx < len(target_duration_values) else None
-                raw_unit = target_duration_units[idx] if idx < len(target_duration_units) else None
-                dur_value, dur_unit, t_dead = parse_duration_fields(
-                    {'v': raw_value, 'u': raw_unit}, 'v', 'u')
-                allocations.append((int(ind_id), int(qty), c_desc, t_dead, dur_value, dur_unit))
+                qty_val = int(qty)
+                if qty_val > 0:
+                    c_desc = custom_descriptions[idx].strip() if idx < len(custom_descriptions) and custom_descriptions[idx] else None
+                    if not c_desc:
+                        flash("All allocated targets must have an IPCR target description.", "danger")
+                        return redirect(url_for('prog_chair.prog_chair_dashboard'))
+
+                    raw_value = target_duration_values[idx] if idx < len(target_duration_values) else None
+                    raw_unit = target_duration_units[idx] if idx < len(target_duration_units) else None
+                    dur_value, dur_unit, t_dead = parse_duration_fields(
+                        {'v': raw_value, 'u': raw_unit}, 'v', 'u')
+
+                    if not dur_value or dur_value <= 0:
+                        flash("All allocated targets must have a valid deadline (target duration) specified.", "danger")
+                        return redirect(url_for('prog_chair.prog_chair_dashboard'))
+
+                    allocations.append((int(ind_id), qty_val, c_desc, t_dead, dur_value, dur_unit))
+                else:
+                    allocations.append((int(ind_id), 0, None, None, None, None))
             except ValueError:
                 continue
 
-        if not allocations:
+        if not any(a[1] > 0 for a in allocations):
             flash("No valid allocations to save.", "warning")
             return redirect(url_for('prog_chair.prog_chair_dashboard'))
 
@@ -648,11 +673,11 @@ def decide_ipcr():
         if success and row:
             if action == 'approve':
                 try:
-                    from app.services.notification_service import check_and_trigger_tier1_notification
-                    check_and_trigger_tier1_notification(conn, cursor, int(emp_id), int(term_id))
+                    from app.services.notification_service import send_chair_approval_notification
+                    send_chair_approval_notification(conn, cursor, int(emp_id), int(term_id))
                 except Exception as notif_err:
                     import logging
-                    logging.getLogger(__name__).error(f"Error triggering Tier 1 notification: {notif_err}")
+                    logging.getLogger(__name__).error(f"Error triggering Chair approval notification: {notif_err}")
             elif action == 'reject':
                 try:
                     from app.services.notification_service import send_return_notification

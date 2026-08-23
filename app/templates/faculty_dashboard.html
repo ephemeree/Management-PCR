@@ -386,14 +386,12 @@
                             {% endfor %}
                             <label
                                 class="ret-card d-block p-3 mb-2 bg-white rounded shadow-sm border border-light transition-all hover-shadow"
-                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or ns.is_assigned or (chair_review and chair_review.overall_status == 'Rejected') or (ret_review and ret_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
+                                style="cursor: pointer; transition: all 0.2s ease; {% if has_submitted or ns.is_assigned or (ret_review and ret_review.overall_status == 'Rejected') or (chair_review and chair_review.overall_status == 'Rejected') %}pointer-events: none; opacity: 0.85;{% endif %}">
                                 <div class="d-flex align-items-start gap-3">
                                     <div class="form-check mt-1">
                                         <input class="form-check-input research-checkbox" type="checkbox"
                                             name="ret_indicators[]" value="{{ ind.indicator_id }}" {% if ns.is_selected
-                                            %}checked{% endif %} {% if has_submitted or ns.is_assigned or (chair_review and
-                                            chair_review.overall_status=='Rejected' ) or (ret_review and
-                                            ret_review.overall_status=='Rejected' ) %}disabled{% endif %}
+                                            %}checked{% endif %} {% if has_submitted or ns.is_assigned or (ret_review and ret_review.overall_status == 'Rejected') or (chair_review and chair_review.overall_status == 'Rejected') %}disabled{% endif %}
                                             style="transform: scale(1.2);">
                                     </div>
                                     <div>
@@ -960,6 +958,11 @@
     }};
     const isRetRejected = {{ 'true' if (ret_review and ret_review.overall_status == 'Rejected') else 'false' }};
 
+    const submitIpcrForm = () => {
+        researchCheckboxes.forEach(cb => { if (cb.checked) cb.disabled = false; });
+        document.getElementById('ipcrForm').submit();
+    };
+
     if (isChairRejected) {
         showCustomConfirm({
             title: "Submit IPCR for Approval?",
@@ -968,7 +971,7 @@
             confirmText: "Yes, Submit",
             confirmClass: "btn-success",
             iconClass: "ti-send",
-            onConfirm: () => document.getElementById('ipcrForm').submit()
+            onConfirm: submitIpcrForm
         });
     } else if (isRetRejected) {
         showCustomConfirm({
@@ -978,7 +981,7 @@
             confirmText: "Yes, Submit for Approval",
             confirmClass: "btn-success",
             iconClass: "ti-send",
-            onConfirm: () => document.getElementById('ipcrForm').submit()
+            onConfirm: submitIpcrForm
         });
     } else {
         showCustomConfirm({
@@ -988,7 +991,7 @@
             confirmText: "Yes, Submit for Review",
             confirmClass: "btn-primary",
             iconClass: "ti-eye",
-            onConfirm: () => document.getElementById('ipcrForm').submit()
+            onConfirm: submitIpcrForm
         });
     }
         });

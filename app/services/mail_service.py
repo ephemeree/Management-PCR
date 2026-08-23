@@ -82,11 +82,13 @@ def _send_email_sync(subject: str, recipients: list[str], html_body: str, text_b
             mail.send(msg)
 
         logger.info(f"[FLASK-MAIL SUCCESS] Email sent to {valid_recipients} with Subject: '{subject}'")
+        print(f"[FLASK-MAIL SUCCESS] Email sent to {valid_recipients} with Subject: '{subject}'", flush=True)
         return True, "SENT"
 
     except Exception as e:
         error_msg = f"Failed to send email via Flask-Mail to {valid_recipients}: {str(e)}"
         logger.error(f"[FLASK-MAIL ERROR] {error_msg}")
+        print(f"[FLASK-MAIL ERROR] {error_msg}", flush=True)
         return False, error_msg
 
 

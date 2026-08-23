@@ -398,6 +398,12 @@ def designated_resubmit_ipcr():
         """, (emp_id, int(term_id)))
 
         conn.commit()
+        try:
+            from app.services.notification_service import send_designated_target_submission_notification
+            send_designated_target_submission_notification(conn, cursor, emp_id, int(term_id), is_resubmission=True)
+        except Exception as notif_err:
+            import logging
+            logging.getLogger(__name__).error(f"Error triggering designated resubmission notification: {notif_err}")
         flash("IPCR has been re-submitted for Dean's approval.", "success")
     except Exception as e:
         conn.rollback()
@@ -462,6 +468,12 @@ def designated_submit_evidence():
         from app.models.designated import submit_designated_evidences
         success, msg = submit_designated_evidences(conn, cursor, emp_id, term_id)
         if success:
+            try:
+                from app.services.notification_service import send_evidence_submission_notification
+                send_evidence_submission_notification(conn, cursor, emp_id, int(term_id))
+            except Exception as notif_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error triggering designated evidence notification: {notif_err}")
             flash(msg, "success")
         else:
             flash(msg, "danger")
@@ -587,6 +599,12 @@ def submit_designated_ipcr_route():
         success, msg = submit_designated_ipcr(conn, cursor, emp_id, int(term_id), selected_targets, custom_targets,
                                                oversight_durations=oversight_durations)
         if success:
+            try:
+                from app.services.notification_service import send_designated_target_submission_notification
+                send_designated_target_submission_notification(conn, cursor, emp_id, int(term_id), is_resubmission=False)
+            except Exception as notif_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error triggering designated submission notification: {notif_err}")
             flash(msg, "success")
         else:
             flash(msg, "danger")

@@ -81,6 +81,12 @@ def save_extension_distribution():
         desc = (request.form.get(f'ext_description_{ind_id}', '') or '').strip() or None
         dur_value, dur_unit, _ = parse_duration_fields(
             request.form, f'ext_dur_value_{ind_id}', f'ext_dur_unit_{ind_id}')
+        if not desc:
+            flash("All extension targets must have an IPCR target description.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+        if not dur_value or dur_value <= 0:
+            flash("All extension targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
         distributions.append((int(ind_id), qty, desc, dur_value, dur_unit))
 
     conn = get_db_connection()
@@ -191,7 +197,6 @@ def save_assignments():
         desc_val = request.form.get(f'assign_description_{ind_id}', '').strip() or None
         dur_val_raw = request.form.get(f'assign_dur_value_{ind_id}', '').strip()
         dur_unit_val = request.form.get(f'assign_dur_unit_{ind_id}', 'months').strip() or 'months'
-
         try:
             qty = int(qty_val)
         except (ValueError, TypeError):
@@ -201,6 +206,18 @@ def save_assignments():
             dur_val = int(dur_val_raw) if dur_val_raw else None
         except (ValueError, TypeError):
             dur_val = None
+
+        if qty <= 0:
+            flash("Assigned quantity must be greater than 0.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
+        if not desc_val:
+            flash("All assigned targets must have an IPCR target description.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
+        if not dur_val or dur_val <= 0:
+            flash("All assigned targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
         assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val))
 
@@ -241,6 +258,13 @@ def ret_chair_verify_evidence():
     try:
         from app.models.faculty import set_evidence_verification
         success, msg = set_evidence_verification(conn, cursor, int(evidence_id), status, comment)
+        if success and status == 'Approved':
+            try:
+                from app.services.notification_service import check_and_trigger_evidence_approved_notification
+                check_and_trigger_evidence_approved_notification(conn, cursor, int(evidence_id), 'RET Chair', request.host_url)
+            except Exception as notif_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error triggering evidence approved notification: {notif_err}")
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -322,6 +346,15 @@ def ret_chair_save_rule():
         desc = (request.form.get(f'research_description_{r_id}', '') or '').strip() or None
         dur_value, dur_unit, _ = parse_duration_fields(
             request.form, f'research_dur_value_{r_id}', f'research_dur_unit_{r_id}')
+
+        if not desc:
+            flash("All selected research targets must have an IPCR target description.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
+        if not dur_value or dur_value <= 0:
+            flash("All selected research targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('ret_chair.ret_chair_dashboard'))
+
         research_indicators.append((int(r_id), qty, desc, dur_value, dur_unit))
 
     try:
@@ -615,11 +648,11 @@ def decide_ipcr():
         if success and row:
             if action == 'approve':
                 try:
-                    from app.services.notification_service import check_and_trigger_tier1_notification
-                    check_and_trigger_tier1_notification(conn, cursor, int(emp_id), int(term_id))
+                    from app.services.notification_service import send_ret_approval_notifications
+                    send_ret_approval_notifications(conn, cursor, int(emp_id), int(term_id))
                 except Exception as notif_err:
                     import logging
-                    logging.getLogger(__name__).error(f"Error triggering Tier 1 notification: {notif_err}")
+                    logging.getLogger(__name__).error(f"Error triggering RET approval notification: {notif_err}")
             elif action == 'reject':
                 try:
                     from app.services.notification_service import send_return_notification
