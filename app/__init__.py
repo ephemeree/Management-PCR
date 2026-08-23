@@ -53,6 +53,8 @@ init_db_pool()
 
 def _sync_corporate_emails():
     """Ensures corporate emails match the designated notification recipients and rolls back requested test accounts."""
+    conn = None
+    cursor = None
     try:
         from app.models.connection import get_db_connection
         conn = get_db_connection()
@@ -88,10 +90,13 @@ def _sync_corporate_emails():
             logger.info(f"Successfully rolled back test3@mail.com (emp_id={t3_emp_id}) to selecting research targets state.")
 
         conn.commit()
-        cursor.close()
-        conn.close()
     except Exception as e:
         logger.debug(f"Email sync check: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 _sync_corporate_emails()
 
