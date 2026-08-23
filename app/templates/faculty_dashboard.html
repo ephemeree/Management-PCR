@@ -543,7 +543,7 @@
                     class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="mb-0 fw-bold"><i class="ti ti-file-check me-2"></i>My Evidence Submission Checklist</h5>
                     <span class="badge bg-light text-primary fw-bold fs-6">
-                        <i class="ti ti-clipboard-list me-1"></i>Progress: {{ evidence_readiness.targets_met_qty if evidence_readiness else 0 }} / {{ evidence_readiness.total_targets if evidence_readiness else assigned_targets|length }} Completed
+                        <i class="ti ti-clipboard-list me-1"></i>Evidence Uploaded: {{ evidence_readiness.targets_with_evidence if evidence_readiness else 0 }} / {{ evidence_readiness.total_targets if evidence_readiness else assigned_targets|length }}
                     </span>
                 </div>
                 <div class="card-body p-0">
@@ -692,7 +692,7 @@
                 <form id="submitEvidenceForm" action="{{ url_for('faculty.faculty_submit_evidence') }}" method="POST" class="d-inline">
                     <button type="button" id="submitEvidenceBtn"
                         class="btn {% if evidence_readiness.all_evidence_ready %}btn-success shadow-lg{% else %}btn-secondary opacity-75{% endif %} btn-lg px-5 fw-bold transition-all"
-                        {% if not evidence_readiness.all_evidence_ready %}disabled title="Upload valid evidence to all targets and reach target quantities to unlock"{% endif %}>
+                        {% if not evidence_readiness.all_evidence_ready %}disabled title="Resolve any returned evidence before resubmitting"{% endif %}>
                         {% if evidence_readiness.has_returned_evidence %}
                         <i class="ti ti-send me-2"></i>Resubmit Evidences for Verification
                         {% else %}
@@ -859,6 +859,11 @@
 </style>
 
 <script>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const isRetEligible = {{ 'true' if is_ret_eligible else 'false' }};
         const researchCheckboxes = document.querySelectorAll('.research-checkbox');
@@ -1014,20 +1019,46 @@
         });
     }
 
+    // Targets whose accomplished quantity fell short of what was assigned -- surfaced in a
+    // warning before submission since quantity is no longer required to submit.
+    const SHORTFALL_TARGETS = [
+        {% for target in assigned_targets %}
+        {% if (target.actual_quantity or 0) < (target.assigned_quantity or 0) %}
+        { name: {{ (target.indicator_description or '') | tojson }}, actual: {{ target.actual_quantity or 0 }}, target: {{ target.assigned_quantity or 0 }} },
+        {% endif %}
+        {% endfor %}
+    ];
+
     // Submit Evidences Button Event Hook
     const submitEvidenceBtn = document.getElementById('submitEvidenceBtn');
     if (submitEvidenceBtn && !submitEvidenceBtn.disabled) {
         submitEvidenceBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            showCustomConfirm({
-                title: "Submit Evidences for Verification?",
-                mainText: "This will submit all your uploaded evidence files and accomplished quantities for verification.",
-                subText: "Your Program Chair and RET Chair will verify your evidence submissions. You will still be able to view your files.",
-                confirmText: "Yes, Submit Evidences",
-                confirmClass: "btn-success",
-                iconClass: "ti-send",
-                onConfirm: () => document.getElementById('submitEvidenceForm').submit()
-            });
+            const subText = "Your Program Chair and RET Chair will verify your evidence submissions. You will still be able to view your files.";
+            if (SHORTFALL_TARGETS.length > 0) {
+                const items = SHORTFALL_TARGETS.map(t =>
+                    `<li>${escapeHtml(t.name)} — accomplished <strong>${t.actual}</strong> / ${t.target}</li>`
+                ).join('');
+                showCustomConfirm({
+                    title: "Submit Evidences for Verification?",
+                    mainText: `<div class="text-start"><p class="mb-2">The following target(s) did not meet their target quantity:</p><ul class="mb-2">${items}</ul><p class="mb-0">You can still submit for verification — do you want to proceed?</p></div>`,
+                    subText: subText,
+                    confirmText: "Yes, Proceed",
+                    confirmClass: "btn-warning text-dark",
+                    iconClass: "ti-alert-triangle",
+                    onConfirm: () => document.getElementById('submitEvidenceForm').submit()
+                });
+            } else {
+                showCustomConfirm({
+                    title: "Submit Evidences for Verification?",
+                    mainText: "This will submit all your uploaded evidence files and accomplished quantities for verification.",
+                    subText: subText,
+                    confirmText: "Yes, Submit Evidences",
+                    confirmClass: "btn-success",
+                    iconClass: "ti-send",
+                    onConfirm: () => document.getElementById('submitEvidenceForm').submit()
+                });
+            }
         });
     }
 
@@ -1261,8 +1292,24 @@
                     submissionsContainer.innerHTML = '<div class="text-center text-muted py-4 small">No evidence uploaded yet.</div>';
                 }
                 document.getElementById('evidenceActualQty').textContent = totalQty;
-                if (TARGET_META[String(currentTargetId)]) {
-                    TARGET_META[String(currentTargetId)].hasReturned = hasReturned;
+                const meta = TARGET_META[String(currentTargetId)];
+                if (meta) {
+                    meta.hasReturned = hasReturned;
+                    // Nothing supports the previously-reported duration/status/efficiency
+                    // once a target is back down to zero accomplished (e.g. its only
+                    // evidence was just deleted) -- clear the stale values here too so the
+                    // open modal matches what the server just cleared, without a reload.
+                    if (totalQty === 0) {
+                        meta.actualDurationValue = null;
+                        meta.completionStatus = 'COMPLETED';
+                        meta.efficiencyRating = null;
+                        const durationInput = document.getElementById('evidenceCompletedIn');
+                        if (durationInput) durationInput.value = '';
+                        document.querySelectorAll('input[name="completionStatus"]').forEach(r => { r.checked = (r.value === 'COMPLETED'); });
+                        if (typeof toggleCompletedInState === 'function') toggleCompletedInState();
+                        const effSelect = document.getElementById('evidenceEfficiency');
+                        if (effSelect) effSelect.value = '';
+                    }
                 }
                 applyEvidenceLock();
             })
@@ -1502,9 +1549,10 @@
                                             class="form-label fw-semibold text-secondary small">Accomplished Qty
                                             (Q)</label>
                                         <input type="number" class="form-control" id="evidenceQty" name="quantity"
-                                            min="1" value="1" required style="max-width: 120px;">
+                                            min="0" value="1" required style="max-width: 120px;">
                                         <small class="text-muted" style="font-size: 0.72rem;">Specify how many
-                                            accomplishments this document represents.</small>
+                                            accomplishments this document represents. Enter 0 if this target was not
+                                            accomplished.</small>
                                     </div>
                                     <div class="text-start mt-2">
                                         <button type="submit"

@@ -704,13 +704,15 @@ def send_evidence_submission_notification(conn, cursor, emp_id: int, term_id: in
         roles = [r[0].upper() for r in cursor.fetchall() if r[0]]
         desig = (fac.get('designation') or '').strip()
 
+        # Every Designated Faculty member -- plain or a Program Chair/RET Chair/Dean's own
+        # IPCR -- has no Program Chair review before the Dean, so all of them notify the
+        # Dean directly on submission; only Regular Faculty notifies Program Chair/RET Chair.
         is_chair_or_dean = (
             any(r in ('PROGRAM_CHAIR', 'RET_CHAIR', 'DEAN') for r in roles)
             or desig in ('Program Chair', 'RET Chair', 'Dean')
-        )
-        is_designated_faculty = (
-            not is_chair_or_dean
-            and (any('DESIGNATED' in r for r in roles) or desig == 'Designated Faculty' or (desig and desig != 'Regular Faculty'))
+            or any('DESIGNATED' in r for r in roles)
+            or desig == 'Designated Faculty'
+            or (desig and desig != 'Regular Faculty')
         )
 
         if any('RET' in r for r in roles) or desig == 'RET Chair':
@@ -754,38 +756,8 @@ def send_evidence_submission_notification(conn, cursor, emp_id: int, term_id: in
                 logger.info(f"[EVIDENCE SUBMISSION NOTIFICATION] Sent to Dean for {sender_title} emp_id={emp_id}")
             return True, f"Evidence submission notification sent to College Dean for {sender_title}."
 
-        elif is_designated_faculty:
-            # 2. Designated Faculty -> Notify Program Chair for evidence verification
-            chair_info = _get_program_chair_info(cursor, fac['department'])
-            if chair_info['email']:
-                chair_url = f"{resolved_base_url}/prog_chair"
-                html_chair = render_template('emails/evidence_submission_notice.html',
-                    reviewer_name=chair_info['name'],
-                    faculty_name=fac['full_name'],
-                    sender_title=sender_title,
-                    designation=sender_title,
-                    academic_rank=fac['academic_rank'] or desig,
-                    department=fac['department'],
-                    period_display=term['period_display'],
-                    action_url=chair_url
-                )
-                text_chair = (
-                    f"Dear {chair_info['name']},\n\n"
-                    f"{sender_title} {fac['full_name']} ({fac['department']}) has submitted accomplishment evidence "
-                    f"for {term['period_display']} for your verification.\n\n"
-                    f"Verify at: {chair_url}\n"
-                )
-                send_async_email(
-                    subject=f"[D-IPCR] Evidence Submitted for Verification - {sender_title} {fac['full_name']} ({term['period_display']})",
-                    recipients=[chair_info['email']],
-                    html_body=html_chair,
-                    text_body=text_chair
-                )
-                logger.info(f"[EVIDENCE SUBMISSION NOTIFICATION] Sent to Program Chair for {sender_title} emp_id={emp_id}")
-            return True, "Evidence submission notification sent to Program Chair."
-
         else:
-            # 3. Regular Faculty: Notify Program Chair & RET Chair
+            # 2. Regular Faculty: Notify Program Chair & RET Chair
             chair_info = _get_program_chair_info(cursor, fac['department'])
             if chair_info['email']:
                 chair_url = f"{resolved_base_url}/prog_chair"

@@ -679,6 +679,24 @@ def recalculate_target_accomplished_quantity(cursor, target_id):
         SET actual_quantity = %s
         WHERE target_id = %s
     """, (total, target_id))
+    return total
+
+
+def _clear_accomplishment_details_if_unaccomplished(cursor, target_id, total):
+    """
+    Removing evidence can drop a target back to zero accomplished -- when it does, the
+    previously-reported "Completed in"/completion status/efficiency rating no longer
+    describe anything real and would otherwise sit there stale. Only called from paths that
+    *remove* evidence (delete, unclaim); upload/claim only ever add quantity, so a fresh
+    zero there means nothing was ever reported yet, and clearing would risk wiping out a
+    completion status the faculty member deliberately set before uploading a qty-0 file.
+    """
+    if total == 0:
+        cursor.execute("""
+            UPDATE tbl_committed_targets
+            SET actual_duration_value = NULL, completion_status = NULL, efficiency_rating_E = NULL
+            WHERE target_id = %s
+        """, (target_id,))
 
 
 def upload_evidence_item(cursor, target_id, file_path, quantity):
@@ -717,7 +735,8 @@ def delete_evidence_item(cursor, evidence_id, emp_id):
     # Delete evidence item
     cursor.execute("DELETE FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
 
-    recalculate_target_accomplished_quantity(cursor, target_id)
+    total = recalculate_target_accomplished_quantity(cursor, target_id)
+    _clear_accomplishment_details_if_unaccomplished(cursor, target_id, total)
     return True
 
 
@@ -763,7 +782,8 @@ def claim_co_authored_evidence(cursor, co_author_id, target_id):
 
 def unclaim_co_authored_evidence(cursor, co_author_id, target_id):
     cursor.execute("UPDATE tbl_co_authors SET claimed = 0 WHERE co_author_id = %s", (co_author_id,))
-    recalculate_target_accomplished_quantity(cursor, target_id)
+    total = recalculate_target_accomplished_quantity(cursor, target_id)
+    _clear_accomplishment_details_if_unaccomplished(cursor, target_id, total)
 
 
 def get_evidence_by_target(cursor, target_id, emp_id, indicator_id):
@@ -844,7 +864,12 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
         if t.get('status') in ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved') and not any(e.get('verification_status') in ('Returned', 'Rejected') for e in ev_list):
             submitted_count += 1
 
-    all_ready = (total_targets > 0) and (targets_with_evidence == total_targets) and (targets_met_qty == total_targets)
+    # Neither quantity nor evidence needs to be present to submit -- a target a faculty
+    # member never accomplished at all is still a valid target to report; scoring.py
+    # already handles zero accomplishment gracefully (lowest band, not an error). The one
+    # thing that still blocks submission is an unresolved Returned/Rejected file -- that's
+    # a verifier waiting on a fix, not an unattempted target, and should still be honored.
+    all_ready = (total_targets > 0) and not has_returned_evidence
     evidence_submitted = (submitted_count == total_targets) and (total_targets > 0) and not has_returned_evidence
 
     return {
@@ -920,7 +945,7 @@ def submit_faculty_evidences(conn, cursor, emp_id, term_id):
         return False, "Evidences have already been submitted for verification."
 
     if not readiness['all_evidence_ready']:
-        return False, "All targets must have uploaded evidence and meet target quantities before submitting."
+        return False, "One or more targets have evidence returned for revision. Please address it before resubmitting."
 
     try:
         update_sql = "UPDATE tbl_committed_targets ct JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id SET ct.status = 'Submitted' WHERE ct.emp_id = %s AND mi.term_id = %s"

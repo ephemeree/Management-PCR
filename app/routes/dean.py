@@ -88,6 +88,10 @@ def dean_dashboard():
 
         approved_designated_dean_evidence_list = [f for f in approved_dean_evidence_list if _is_designated_or_chair_or_dean(f)]
         approved_regular_dean_evidence_list = [f for f in approved_dean_evidence_list if not _is_designated_or_chair_or_dean(f)]
+        # Every Designated Faculty member -- plain or a chair/Dean's own IPCR -- has no
+        # Program Chair review before landing here, so all of them need the dedicated
+        # Evidence Verification panel, not just chairs/Dean.
+        pending_designated_dean_evidence_list = [f for f in pending_dean_evidence_list if _is_designated_or_chair_or_dean(f)]
 
         departments = get_departments(cursor)
 
@@ -107,6 +111,7 @@ def dean_dashboard():
                                designated_assignments=designated_assignments,
                                college_wide_allocations=college_wide_allocations,
                                pending_dean_evidence_list=pending_dean_evidence_list,
+                               pending_designated_dean_evidence_list=pending_designated_dean_evidence_list,
                                approved_dean_evidence_list=approved_dean_evidence_list,
                                approved_designated_dean_evidence_list=approved_designated_dean_evidence_list,
                                approved_regular_dean_evidence_list=approved_regular_dean_evidence_list,
@@ -619,6 +624,50 @@ def dean_faculty_evidence_details(emp_id):
         conn.close()
 
 
+@dean_bp.route('/designated_evidence_details/<int:emp_id>')
+@role_required('DEAN')
+def dean_designated_evidence_details(emp_id):
+    """
+    Evidence details for any Designated Faculty member (plain, or a Program Chair/RET
+    Chair/Dean's own IPCR) -- unlike prog_chair_faculty_evidence_details, every target
+    category is included since no Program Chair reviews this group's evidence anymore.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        terms = get_all_terms(cursor)
+        active_term = next((t for t in terms if t['is_active'] == 1), None)
+        if not active_term:
+            return jsonify({'success': False, 'message': 'No active term found'}), 400
+        term_id = active_term['term_id']
+
+        cursor.execute("SELECT first_name, last_name, academic_rank, designation FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        fac_row = cursor.fetchone()
+        if not fac_row:
+            return jsonify({'success': False, 'message': 'Faculty member not found'}), 404
+        faculty_name = f"{fac_row[0]} {fac_row[1]}"
+
+        from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
+        targets = get_faculty_committed_targets(cursor, emp_id, term_id)
+
+        for t in targets:
+            t['is_core'] = not bool(t.get('is_admin_function'))
+            t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+
+        return jsonify({
+            'success': True,
+            'faculty_name': faculty_name,
+            'academic_rank': fac_row[2] or '',
+            'designation': fac_row[3] or '',
+            'targets': targets
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @dean_bp.route('/verify_evidence', methods=['POST'])
 @role_required('DEAN')
 def dean_verify_evidence():
@@ -632,8 +681,8 @@ def dean_verify_evidence():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        from app.models.dean import set_dean_evidence_verification
-        success, msg = set_dean_evidence_verification(conn, cursor, int(evidence_id), status, comment)
+        from app.models.faculty import set_evidence_verification
+        success, msg = set_evidence_verification(conn, cursor, int(evidence_id), status, comment)
         if success and status == 'Approved':
             try:
                 from app.services.notification_service import check_and_trigger_evidence_approved_notification
@@ -666,6 +715,21 @@ def dean_approve_package():
             return jsonify({'success': False, 'message': 'No active term.'}), 400
             
         term_id = active_term['term_id']
+
+        # A Designated Faculty member's evidence (plain, or a chair/Dean's own IPCR) has no
+        # Program Chair review before reaching here, so unlike Regular Faculty, the Dean
+        # must explicitly finish reviewing every file for this group before final approval
+        # is allowed.
+        cursor.execute("SELECT designation FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        desig_row = cursor.fetchone()
+        designation = (desig_row[0] or '').strip() if desig_row else ''
+        from app.models.criteria import is_designated
+        if is_designated(designation):
+            from app.models.faculty import enrich_faculty_verification_status
+            status = enrich_faculty_verification_status(cursor, {'emp_id': emp_id}, term_id)
+            if not status.get('is_both_approved'):
+                return jsonify({'success': False, 'message': 'Every evidence file must be reviewed (Approved or Returned) in Evidence Verification before final approval can be given.'}), 400
+
         cursor.execute("""
             UPDATE tbl_committed_targets ct
             JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id

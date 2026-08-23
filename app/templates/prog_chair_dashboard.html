@@ -21,11 +21,6 @@
     <span class="badge bg-danger ms-auto" id="pendingBadge">{{ pending_drafts_count }}</span>
     {% endif %}
 </button>
-<button class="nav-item" data-section="nav-phase3" onclick="showSection('nav-phase3')">
-    <i class="ti ti-calculator"></i>
-    <span class="nav-text">Grading Engine</span>
-</button>
-
 <div class="nav-label">Verification</div>
 <button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
     <i class="ti ti-file-check"></i>
@@ -529,44 +524,6 @@
         </div>
     </div>
 </div>
-
-<!-- ═══════════════════════════════════════════ -->
-<!-- PHASE 3: Grading Engine                     -->
-<!-- ═══════════════════════════════════════════ -->
-<div id="nav-phase3" class="dashboard-section">
-    <div class="page-header">
-        <h2>Phase 3: End-of-Semester Evaluation (Grading Engine)</h2>
-        <p>Review the uploaded evidence and input the qualitative Efficiency (E) and Timeliness (T) ratings (Scale 1 to
-            5).</p>
-    </div>
-
-    <div class="card shadow-sm border-0" style="border-top: 3px solid var(--c-success) !important;">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle shadow-sm border">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Faculty</th>
-                            <th width="30%">Target Description</th>
-                            <th>Evidence File</th>
-                            <th class="text-center">Actual (Q)</th>
-                            <th class="text-center" width="10%">Score (E)</th>
-                            <th class="text-center" width="10%">Score (T)</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-4">Grading engine will be available after
-                                commitments are approved.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
 
 <!-- ═══════════════════════════════════════════ -->
 <!-- IPCR REVIEW MODAL                           -->
@@ -1613,71 +1570,6 @@
                             <tr>
                                 <td colspan="6" class="text-center py-4 text-muted">
                                     No pending faculty evidence submissions found for this academic term.
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Approved Designated Faculty & Chairs Evidences Table -->
-    <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid var(--c-success) !important; border-radius: 12px; overflow: hidden;">
-        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-success"><i class="ti ti-circle-check me-2 text-success"></i>Approved Designated Faculty &amp; Chairs Evidences</h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-4">Faculty Member</th>
-                            <th class="text-center">Academic Rank</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Targets Met</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if approved_designated_evidence_list %}
-                            {% for fac in approved_designated_evidence_list %}
-                            <tr>
-                                <td class="ps-4 py-3">
-                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
-                                    <small class="text-muted">{{ fac.designation or 'Designated Faculty' }}{% if fac.specialization %} ({{ fac.specialization }}){% elif fac.assigned_program %} ({{ fac.assigned_program }}){% endif %}</small>
-                                </td>
-                                <td class="text-center">{{ fac.academic_rank or 'Instructor I' }}</td>
-                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
-                                <td class="text-center fw-bold text-success fs-6">{{ fac.met_targets }} / {{ fac.total_targets }}</td>
-                                <td class="text-center">
-                                    <span class="badge bg-success px-3 py-2"><i class="ti ti-checks me-1"></i>Approved</span>
-                                </td>
-                                <td class="text-center pe-4">
-                                    <div class="d-inline-flex gap-2 align-items-center justify-content-center">
-                                        <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
-                                            onclick="openFacultyEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
-                                            <i class="ti ti-eye me-1"></i>View Evidences
-                                        </button>
-                                        {% if fac.is_submitted_to_dean %}
-                                        <button type="button" class="btn btn-secondary btn-sm px-3 py-2 fw-bold opacity-75" disabled title="Already submitted to Dean for final verification">
-                                            <i class="ti ti-circle-check me-1"></i>Submitted to Dean
-                                        </button>
-                                        {% else %}
-                                        <button type="button" class="btn btn-success btn-sm px-3 py-2 fw-bold shadow-sm"
-                                            onclick="submitFacultyEvidenceToDean({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
-                                            <i class="ti ti-send me-1"></i>Submit to Dean
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">
-                                    No approved evidence submissions from Designated Faculty or Chairs yet.
                                 </td>
                             </tr>
                         {% endif %}

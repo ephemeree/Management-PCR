@@ -449,7 +449,8 @@ def check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets):
             ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
             t['evidence_list'] = ev_list
 
-        if len(ev_list) > 0:
+        valid_evs = [e for e in ev_list if e.get('verification_status') not in ('Returned', 'Rejected')]
+        if len(valid_evs) > 0:
             targets_with_evidence += 1
 
         actual_q = t.get('actual_quantity') or 0
@@ -460,7 +461,11 @@ def check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets):
         if t.get('status') in ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved'):
             submitted_count += 1
 
-    all_ready = (total_targets > 0) and (targets_with_evidence == total_targets) and (targets_met_qty == total_targets)
+    # Neither quantity nor evidence needs to be present to submit -- a target a faculty
+    # member never accomplished at all is still a valid target to report; scoring.py
+    # already handles zero accomplishment gracefully (lowest band, not an error).
+    # targets_with_evidence/targets_met_qty stay informational (progress badges) only.
+    all_ready = total_targets > 0
     evidence_submitted = (submitted_count == total_targets) and (total_targets > 0)
 
     return {
@@ -481,30 +486,20 @@ def submit_designated_evidences(conn, cursor, emp_id, term_id):
     if readiness['evidence_submitted']:
         return False, "Evidences have already been submitted for verification."
 
-    if not readiness['all_evidence_ready']:
-        return False, "All targets must have uploaded evidence and meet target quantities before submitting."
+    # readiness['all_evidence_ready'] is just total_targets > 0 -- already guaranteed by the
+    # dpcr_targets check above, so there's nothing left to gate on here.
 
-    # A plain Designated Faculty member reports to a Program Chair, same as Regular Faculty —
-    # their evidence must go through that Program Chair's review (get_program_chair_evidence_
-    # faculty already lists them there) before it reaches the Dean. A Program Chair/RET Chair/
-    # Dean has no one else positioned to review their own evidence, so theirs goes straight to
-    # the Dean, same as before.
-    cursor.execute("SELECT designation FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
-    row = cursor.fetchone()
-    designation = (row[0] or '').strip() if row else ''
-    is_chair = designation in ('Program Chair', 'RET Chair', 'Dean')
-    new_status = 'Submitted to Dean' if is_chair else 'Submitted'
-    success_msg = ("Evidences successfully submitted to Dean for verification." if is_chair
-                   else "Evidences successfully submitted to the Program Chair for verification.")
-
+    # Every Designated Faculty member -- plain or a Program Chair/RET Chair/Dean's own
+    # IPCR -- has their evidence reviewed by the Dean, not a Program Chair; only Regular
+    # Faculty goes through RET/Program Chair review first.
     try:
         target_ids = [t['target_id'] for t in dpcr_targets if t.get('target_id')]
         if target_ids:
             placeholders = ','.join(['%s'] * len(target_ids))
-            update_sql = f"UPDATE tbl_committed_targets SET status = %s WHERE emp_id = %s AND target_id IN ({placeholders})"
-            cursor.execute(update_sql, [new_status, emp_id] + target_ids)
+            update_sql = f"UPDATE tbl_committed_targets SET status = 'Submitted to Dean' WHERE emp_id = %s AND target_id IN ({placeholders})"
+            cursor.execute(update_sql, [emp_id] + target_ids)
             conn.commit()
-            return True, success_msg
+            return True, "Evidences successfully submitted to the Dean for verification."
     except Exception as e:
         conn.rollback()
         return False, f"Error submitting evidences: {str(e)}"

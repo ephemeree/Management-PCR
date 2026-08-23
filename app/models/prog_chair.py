@@ -647,11 +647,14 @@ def get_program_chair_evidence_faculty(cursor, specialization, term_id):
         JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_system_access sa ON ep.emp_id = sa.emp_id
-        WHERE (ep.specialization = %s 
-               OR (ep.designation IS NOT NULL AND ep.designation <> ''
-                    AND ep.designation NOT IN ('Regular Faculty', 'Admin')) 
-               OR sa.system_role IN ('RET_CHAIR', 'PROGRAM_CHAIR', 'DESIGNATED_FACULTY', 'DEAN'))
+        -- Designated Faculty (plain or chair/Dean) evidence is reviewed by the Dean, not the
+        -- Program Chair. Specialization alone isn't enough to scope this to Regular Faculty --
+        -- designated faculty belong to a specialization too -- so their designations are
+        -- explicitly excluded.
+        WHERE ep.specialization = %s
           AND mi.term_id = %s
+          AND (ep.designation IS NULL OR ep.designation = ''
+               OR ep.designation NOT IN ('Designated Faculty', 'Program Chair', 'RET Chair', 'Dean'))
         GROUP BY ep.emp_id, ep.first_name, ep.last_name, ep.academic_rank, ep.specialization, ep.designation, sa.system_role
         HAVING MAX(CASE WHEN ct.status IN ('Submitted', 'Pending Verification', 'Verified', 'Submitted to Dean', 'Dean Approved') THEN 1 ELSE 0 END) = 1
         ORDER BY ep.last_name, ep.first_name

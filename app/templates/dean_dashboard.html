@@ -27,6 +27,13 @@
     <i class="ti ti-user-plus"></i>
     <span class="nav-text">Target Assignment</span>
 </button>
+<button class="nav-item" data-section="nav-evidence-verification" onclick="showSection('nav-evidence-verification')">
+    <i class="ti ti-file-search"></i>
+    <span class="nav-text">Evidence Verification</span>
+    {% if pending_designated_dean_evidence_list|length > 0 %}
+    <span class="badge bg-danger ms-auto">{{ pending_designated_dean_evidence_list|length }}</span>
+    {% endif %}
+</button>
 <button class="nav-item" data-section="nav-final-verification" onclick="showSection('nav-final-verification')">
     <i class="ti ti-clipboard-check"></i>
     <span class="nav-text">Final Verification</span>
@@ -1132,6 +1139,83 @@
 <!-- ──────────────────────────────────────────────
      Final Verification (Dean Evidence Verification)
      ────────────────────────────────────────────── -->
+<!-- ──────────────────────────────────────────────
+     Evidence Verification (Designated Faculty & Chairs) --
+     Every Designated Faculty member -- plain, or a Program Chair/RET Chair/Dean's own
+     IPCR -- has no Program Chair review before the Dean, so all of them are reviewed here
+     before final approval is allowed on the Final Verification page.
+     ────────────────────────────────────────────── -->
+<div id="nav-evidence-verification" class="dashboard-section">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="ti ti-file-search text-primary me-2"></i>Evidence Verification</h2>
+            <p class="text-muted mb-0">Designated Faculty, Program Chairs, RET Chairs, and the Dean's own submitted evidence has no one else to review it — review each file here before final approval.</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4" style="border-radius: 14px; overflow: hidden;">
+        <div class="card-header bg-white border-0 pt-4 pb-3 px-4 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="ti ti-shield-check text-primary me-2"></i>Pending Evidence Verification
+            </h5>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fw-bold">
+                {{ pending_designated_dean_evidence_list | length }} Pending
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-start">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3">Name</th>
+                            <th class="text-center">Designation</th>
+                            <th class="text-center">Committed Targets</th>
+                            <th class="text-center">Evidence Status</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if pending_designated_dean_evidence_list %}
+                            {% for fac in pending_designated_dean_evidence_list %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark">{{ fac.first_name }} {{ fac.last_name }}</div>
+                                    <small class="text-muted">{{ fac.academic_rank or 'Instructor I' }}</small>
+                                </td>
+                                <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ fac.designation }}</span></td>
+                                <td class="text-center fw-bold text-primary fs-6">{{ fac.total_targets }}</td>
+                                <td class="text-center">
+                                    {% if fac.is_both_approved %}
+                                    <span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>Fully Reviewed</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark px-3 py-2"><i class="ti ti-hourglass me-1"></i>{{ fac.evidence_status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center pe-4">
+                                    <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
+                                        onclick="openDesignatedEvidenceVerificationModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}')">
+                                        <i class="ti ti-file-check me-1"></i>Review Evidence
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    No Designated Faculty/Chair/Dean evidence pending review.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ──────────────────────────────────────────────
+     Final Verification (Dean Evidence Verification)
+     ────────────────────────────────────────────── -->
 <div id="nav-final-verification" class="dashboard-section">
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -1181,8 +1265,9 @@
                                     <span class="badge bg-warning text-dark px-3 py-2 shadow-xs"><i class="ti ti-history me-1"></i>Awaiting Final Verification</span>
                                 </td>
                                 <td class="text-center pe-4">
+                                    {% set is_chair_dean_row = fac.designation in ('Program Chair', 'RET Chair', 'Dean') %}
                                     <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
-                                        onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', true)">
+                                        onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', true, {{ 'true' if is_chair_dean_row else 'false' }}, {{ 'true' if fac.is_both_approved else 'false' }})">
                                         <i class="ti ti-file-check me-1"></i>Review IPCR
                                     </button>
                                 </td>
@@ -1376,10 +1461,90 @@
     </div>
 </div>
 
+<!-- Chair/Dean Evidence Verification Modal -->
+<div class="modal fade" id="designatedEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
+                <h5 class="modal-title fw-bold" id="designatedEvidenceModalTitle"><i class="ti ti-file-check me-2"></i>Evidence Verification</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 p-3 bg-light rounded-3">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark" id="designatedEvidenceModalFacultyName">-</h6>
+                        <small class="text-muted" id="designatedEvidenceModalFacultyRank">-</small>
+                    </div>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 fw-bold">
+                        Dean Verification View
+                    </span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table align-middle border mb-0" style="border-radius: 10px; overflow: hidden;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3" width="26%">Target Indicator</th>
+                                <th class="text-center" width="8%">Target Qty</th>
+                                <th class="text-center" width="10%">Accomplished Qty</th>
+                                <th width="22%">Reported &amp; Rating</th>
+                                <th class="text-center" width="12%">Status</th>
+                                <th class="ps-3" width="22%">Uploaded Evidences</th>
+                            </tr>
+                        </thead>
+                        <tbody id="designatedModalEvidenceTableBody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="designatedEvidenceViewerModal" tabindex="-1" aria-hidden="true">
+    <!-- Full-width so PDF/image evidence is actually readable while verifying. -->
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0 py-3" style="background: var(--c-accent);">
+                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3" id="designatedEvidenceViewerBody"></div>
+            <div class="modal-footer border-0 p-3 bg-light">
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="designatedReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-start">
+                <label for="designatedReturnEvidenceReasonInput" class="form-label fw-bold small">Reason for Returning (Required)</label>
+                <textarea class="form-control" id="designatedReturnEvidenceReasonInput" rows="3" placeholder="Explain why this evidence is being returned..."></textarea>
+                <div id="designatedReturnEvidenceReasonError" class="text-danger small mt-2" style="display:none;">A reason is required before returning evidence.</div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger fw-bold px-4" onclick="confirmReturnDesignatedEvidence()">Submit Return</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     let deanCurrentPendingEmpId = null;
 
-    window.openDeanEvidenceModal = function(empId, facultyName, isPending) {
+    window.openDeanEvidenceModal = function(empId, facultyName, isPending, isChairDeanRow, isFullyReviewed) {
         document.getElementById('deanEvidenceModalFacultyName').textContent = facultyName;
         const container = document.getElementById('deanEvidenceModalContainer');
         container.innerHTML = `
@@ -1388,15 +1553,26 @@
                     id="deanIpcrPreviewIframe"
                     title="IPCR Document Preview"></iframe>
         `;
-        
+
         deanCurrentPendingEmpId = empId;
         const btnApprove = document.getElementById('btnDeanApproveIPCR');
         const btnReturn = document.getElementById('btnDeanReturnIPCR');
-        
+
         if (isPending) {
             if (btnApprove) {
                 btnApprove.style.display = 'inline-block';
-                btnApprove.onclick = () => window.approveDeanEvidencePackage(empId, facultyName);
+                // A Program Chair/RET Chair/Dean's own evidence has no one else to review it,
+                // so final approval is blocked here (and enforced server-side) until every
+                // file has been reviewed in the Evidence Verification panel above.
+                if (isChairDeanRow && !isFullyReviewed) {
+                    btnApprove.disabled = true;
+                    btnApprove.title = 'Complete Evidence Verification for this person first.';
+                    btnApprove.onclick = null;
+                } else {
+                    btnApprove.disabled = false;
+                    btnApprove.title = '';
+                    btnApprove.onclick = () => window.approveDeanEvidencePackage(empId, facultyName);
+                }
             }
             if (btnReturn) {
                 btnReturn.style.display = 'inline-block';
@@ -1468,6 +1644,323 @@
             .catch(err => alert('Error: ' + err));
         }
     };
+
+    // ─────────────────────────────────────────────
+    // Evidence Verification -- Program Chairs, RET Chairs & Dean's own IPCR.
+    // Mirrors the Program Chair's own per-file evidence review
+    // (prog_chair_dashboard.html), since no one else reviews this group's evidence
+    // before it reaches the Dean.
+    // ─────────────────────────────────────────────
+    const DESIGNATED_EVIDENCE_BY_TARGET = {};
+    let designatedEvidenceVerificationChanged = false;
+
+    window.openDesignatedEvidenceVerificationModal = function(empId, facultyName) {
+        document.getElementById('designatedEvidenceModalFacultyName').innerText = facultyName;
+        document.getElementById('designatedEvidenceModalFacultyRank').innerText = 'Loading details...';
+        const tbody = document.getElementById('designatedModalEvidenceTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading evidence files...</td></tr>';
+
+        const modal = new bootstrap.Modal(document.getElementById('designatedEvidenceVerificationModal'));
+        modal.show();
+
+        fetch(`/dean/designated_evidence_details/${empId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Error: ${data.message}</td></tr>`;
+                    return;
+                }
+
+                if (data.faculty_name) {
+                    document.getElementById('designatedEvidenceModalFacultyName').innerText = data.faculty_name;
+                }
+                document.getElementById('designatedEvidenceModalFacultyRank').innerText = `${data.academic_rank || ''} — ${data.designation || ''}`;
+                tbody.innerHTML = '';
+
+                if (!data.targets || data.targets.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No committed targets found for this person.</td></tr>';
+                    return;
+                }
+
+                // A chair/Dean's "My IPCR" only ever shows Core Functions vs Strategic
+                // Priorities & Support Functions (is_core, from is_admin_function) -- same
+                // split used on their own designated dashboard.
+                const groups = {
+                    CORE: { title: '1. CORE FUNCTIONS', items: [] },
+                    STRATEGIC_SUPPORT: { title: '2. STRATEGIC PRIORITIES & SUPPORT FUNCTIONS', items: [] }
+                };
+                data.targets.forEach(t => {
+                    (t.is_core ? groups.CORE : groups.STRATEGIC_SUPPORT).items.push(t);
+                });
+
+                ['CORE', 'STRATEGIC_SUPPORT'].forEach(k => {
+                    const group = groups[k];
+                    if (group.items.length === 0) return;
+
+                    const headerTr = document.createElement('tr');
+                    headerTr.className = 'table-light fw-bold';
+                    headerTr.innerHTML = `
+                        <td colspan="6" class="ps-3 py-2 text-uppercase text-dark" style="letter-spacing: 0.5px; font-size: 0.82rem; background-color: var(--c-surface-alt); border-top: 2px solid var(--c-border);">
+                            <i class="ti ti-folder me-2 text-primary"></i>${group.title}
+                        </td>
+                    `;
+                    tbody.appendChild(headerTr);
+
+                    group.items.forEach(t => {
+                        const tr = document.createElement('tr');
+                        DESIGNATED_EVIDENCE_BY_TARGET[t.target_id] = t.evidence_list || [];
+
+                        let evHtml;
+                        if (t.evidence_list && t.evidence_list.length > 0) {
+                            evHtml = `<button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold shadow-xs"
+                                onclick="openDesignatedEvidenceViewerFor(${t.target_id})">
+                                <i class="ti ti-folder-open me-1"></i>View Uploaded Evidence (${t.evidence_list.length})
+                            </button>`;
+                        } else {
+                            evHtml = '<span class="badge bg-light text-muted border">No evidence uploaded</span>';
+                        }
+
+                        const qtyMetBadge = (t.actual_quantity >= t.assigned_quantity && t.assigned_quantity > 0)
+                            ? `<span class="badge bg-success px-3 py-2"><i class="ti ti-circle-check me-1"></i>${t.actual_quantity}</span>`
+                            : `<span class="badge bg-secondary px-3 py-2">${t.actual_quantity || 0}</span>`;
+
+                        const unit = t.target_duration_unit || '';
+                        let reportedHtml;
+                        if (t.completion_status === 'PARTIAL_AT_DEADLINE') {
+                            reportedHtml = '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Partially completed at deadline</span>';
+                        } else if (t.completion_status === 'NOT_BEGUN') {
+                            reportedHtml = '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Not yet begun</span>';
+                        } else if (t.actual_duration_value != null) {
+                            const tgt = t.target_duration_value != null ? ` <span class="text-muted">of ${t.target_duration_value} ${unit}</span>` : '';
+                            reportedHtml = `<span class="small"><i class="ti ti-stopwatch me-1 text-primary"></i>Completed in <strong>${t.actual_duration_value} ${unit}</strong>${tgt}</span>`;
+                        } else {
+                            reportedHtml = '<span class="badge bg-light text-muted border">Time to complete not reported</span>';
+                        }
+
+                        const r = t.rating || {};
+                        const dash = v => (v === null || v === undefined) ? '—' : v;
+                        const ratingHtml = `
+                            <div class="mt-2 d-flex gap-1 flex-wrap align-items-center">
+                                <span class="badge bg-light text-dark border" style="font-size:0.7rem;">Q ${dash(r.q)}</span>
+                                <span class="badge bg-light text-dark border" style="font-size:0.7rem;">E ${dash(r.e)}</span>
+                                <span class="badge bg-light text-dark border" style="font-size:0.7rem;">T ${dash(r.t)}</span>
+                                <span class="badge bg-primary" style="font-size:0.7rem;">Avg ${dash(r.average)}</span>
+                            </div>`;
+
+                        let verifyHtml;
+                        const evs = t.evidence_list || [];
+                        if (evs.length === 0) {
+                            verifyHtml = '<span class="badge bg-light text-muted border small">No evidence</span>';
+                        } else {
+                            const returned = evs.filter(e => e.verification_status === 'Returned').length;
+                            const approved = evs.filter(e => e.verification_status === 'Approved').length;
+                            if (returned > 0) {
+                                verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
+                            } else if (approved === evs.length) {
+                                verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="ti ti-circle-check me-1"></i>Approved</span>';
+                            } else {
+                                verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
+                            }
+                        }
+
+                        tr.innerHTML = `
+                            <td class="ps-3 py-3">
+                                <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Standard'}</span>
+                                <p class="mb-1 small fw-semibold text-dark">${t.indicator_description}</p>
+                                ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${t.actual_accomplishment}</p>` : ''}
+                            </td>
+                            <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
+                            <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
+                            <td class="py-3">${reportedHtml}${ratingHtml}</td>
+                            <td class="text-center" id="designated-target-verify-status-${t.target_id}">${verifyHtml}</td>
+                            <td class="ps-3 py-3">${evHtml}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                });
+            })
+            .catch(err => {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Error fetching details: ${err.message || err}</td></tr>`;
+            });
+    };
+
+    window.openDesignatedEvidenceViewerFor = function(targetId) {
+        openDesignatedEvidenceViewer(DESIGNATED_EVIDENCE_BY_TARGET[targetId] || []);
+    };
+
+    function openDesignatedEvidenceViewer(evidenceList) {
+        const body = document.getElementById('designatedEvidenceViewerBody');
+        if (!evidenceList || evidenceList.length === 0) {
+            body.innerHTML = '<div class="text-center py-5 text-muted">No evidence files available.</div>';
+        } else {
+            let html = '';
+            evidenceList.forEach((ev) => {
+                const fileUrl = `/evidence_uploads/${ev.evidence_id}`;
+                const fileName = ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, '');
+                const ext = ev.file_path.split('.').pop().toLowerCase();
+                const isImage = ext.match(/^(jpg|jpeg|png|gif|webp)$/i);
+                const isPdf = ext === 'pdf';
+
+                let previewHtml;
+                if (isImage) {
+                    previewHtml = `<div class="evidence-portrait-container">
+                            <img src="${fileUrl}" alt="${fileName}" class="evidence-portrait-img" loading="lazy">
+                        </div>`;
+                } else if (isPdf) {
+                    previewHtml = `<div class="evidence-portrait-container">
+                            <embed src="${fileUrl}" type="application/pdf" class="evidence-pdf-embed">
+                        </div>`;
+                } else {
+                    previewHtml = `<div class="evidence-portrait-container text-center py-4">
+                            <i class="ti ti-file-download fs-1 text-light mb-2 d-block"></i>
+                            <a href="${fileUrl}" target="_blank" class="btn btn-sm btn-outline-light">
+                                <i class="ti ti-download me-1"></i>View / Download File
+                            </a>
+                        </div>`;
+                }
+
+                const statusBadge = ev.verification_status === 'Approved'
+                    ? '<span class="badge bg-success">Approved</span>'
+                    : ev.verification_status === 'Returned'
+                    ? '<span class="badge bg-danger">Returned</span>'
+                    : '<span class="badge bg-warning text-dark">Pending</span>';
+
+                const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
+                const commentHtml = ev.supervisor_comment
+                    ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                    : '';
+
+                html += `
+                    <div class="evidence-item mb-3 p-3 border rounded-3 bg-white shadow-sm" id="designated-evidence-item-${ev.evidence_id}">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="text-truncate me-2">
+                                <span class="fw-semibold small text-dark">${fileName}</span>
+                                <span class="ms-2" id="designated-evidence-status-${ev.evidence_id}">${statusBadge}</span>
+                            </div>
+                            <div class="small text-muted flex-shrink-0">
+                                <span><i class="ti ti-circle-check me-1"></i>Qty: ${ev.actual_qty_Q}</span>
+                                ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
+                            </div>
+                        </div>
+                        ${commentHtml}
+                        <div class="${isDecided ? 'd-none' : 'd-flex'} justify-content-end gap-2 mb-2" id="designated-evidence-actions-${ev.evidence_id}" ${isDecided ? 'style="display:none !important;"' : ''}>
+                            <button type="button" class="btn btn-sm btn-outline-danger px-3"
+                                    onclick="returnDesignatedEvidence(${ev.evidence_id})">
+                                <i class="ti ti-arrow-back-up me-1"></i>Return
+                            </button>
+                            <button type="button" class="btn btn-sm btn-success px-3"
+                                    onclick="verifyDesignatedEvidence(${ev.evidence_id}, 'Approved')">
+                                <i class="ti ti-circle-check me-1"></i>Approve
+                            </button>
+                        </div>
+                        ${previewHtml}
+                    </div>
+                `;
+            });
+            body.innerHTML = html;
+        }
+        new bootstrap.Modal(document.getElementById('designatedEvidenceViewerModal')).show();
+    }
+
+    let pendingReturnDesignatedEvidenceId = null;
+
+    window.returnDesignatedEvidence = function(evidenceId) {
+        for (const tid in DESIGNATED_EVIDENCE_BY_TARGET) {
+            const list = DESIGNATED_EVIDENCE_BY_TARGET[tid] || [];
+            const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+            if (item && item.verification_status === 'Approved') {
+                alert('Approved evidence cannot be returned.');
+                return;
+            }
+        }
+        pendingReturnDesignatedEvidenceId = evidenceId;
+        document.getElementById('designatedReturnEvidenceReasonInput').value = '';
+        document.getElementById('designatedReturnEvidenceReasonError').style.display = 'none';
+        new bootstrap.Modal(document.getElementById('designatedReturnEvidenceReasonModal')).show();
+    };
+
+    window.confirmReturnDesignatedEvidence = function() {
+        const reason = document.getElementById('designatedReturnEvidenceReasonInput').value.trim();
+        if (!reason) {
+            document.getElementById('designatedReturnEvidenceReasonError').style.display = '';
+            return;
+        }
+        const modalEl = document.getElementById('designatedReturnEvidenceReasonModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+        if (pendingReturnDesignatedEvidenceId) {
+            verifyDesignatedEvidence(pendingReturnDesignatedEvidenceId, 'Returned', reason);
+        }
+    };
+
+    function updateDesignatedTargetStatusBadge(targetId) {
+        const evs = DESIGNATED_EVIDENCE_BY_TARGET[targetId] || [];
+        if (evs.length === 0) return;
+        const returned = evs.filter(e => e.verification_status === 'Returned').length;
+        const approved = evs.filter(e => e.verification_status === 'Approved').length;
+        let verifyHtml = '';
+        if (returned > 0) {
+            verifyHtml = `<span class="badge bg-danger-subtle text-danger border border-danger small">${returned} Returned</span>`;
+        } else if (approved === evs.length) {
+            verifyHtml = '<span class="badge bg-success-subtle text-success border border-success small"><i class="ti ti-circle-check me-1"></i>Approved</span>';
+        } else {
+            verifyHtml = `<span class="badge bg-warning-subtle text-warning border border-warning small">${evs.length - approved} Pending</span>`;
+        }
+        const el = document.getElementById('designated-target-verify-status-' + targetId);
+        if (el) el.innerHTML = verifyHtml;
+    }
+
+    window.verifyDesignatedEvidence = function(evidenceId, status, comment) {
+        fetch("{{ url_for('dean.dean_verify_evidence') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ evidence_id: evidenceId, status: status, comment: comment || '' })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+            designatedEvidenceVerificationChanged = true;
+            const badge = document.getElementById('designated-evidence-status-' + evidenceId);
+            const actions = document.getElementById('designated-evidence-actions-' + evidenceId);
+            if (badge) {
+                badge.innerHTML = status === 'Approved'
+                    ? '<span class="badge bg-success">Approved</span>'
+                    : '<span class="badge bg-danger">Returned</span>';
+            }
+            if (actions) {
+                actions.classList.remove('d-flex');
+                actions.classList.add('d-none');
+                actions.style.setProperty('display', 'none', 'important');
+            }
+
+            let targetIdFound = null;
+            for (const tid in DESIGNATED_EVIDENCE_BY_TARGET) {
+                const list = DESIGNATED_EVIDENCE_BY_TARGET[tid];
+                const item = list.find(e => String(e.evidence_id) === String(evidenceId));
+                if (item) {
+                    item.verification_status = status;
+                    if (comment) item.supervisor_comment = comment;
+                    targetIdFound = tid;
+                    break;
+                }
+            }
+            if (targetIdFound) {
+                updateDesignatedTargetStatusBadge(targetIdFound);
+            }
+        })
+        .catch(err => alert('Error: ' + err));
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const el = document.getElementById('designatedEvidenceVerificationModal');
+        if (el) {
+            el.addEventListener('hidden.bs.modal', function() {
+                if (designatedEvidenceVerificationChanged) {
+                    window.location.reload();
+                }
+            });
+        }
+    });
 
     function updateTotals() {
         console.log('Quota values updated');
@@ -2362,6 +2855,79 @@
     #customConfirmModal .btn:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* ── Full-width Chair/Dean Evidence Viewer ────────────── */
+    #designatedEvidenceViewerModal .modal-dialog {
+        position: fixed !important;
+        left: 0;
+        top: 0;
+        margin: 0;
+        height: 100%;
+        max-width: 100vw;
+        width: 100vw;
+        transform: translateY(100%);
+        transition: transform 0.3s ease-out;
+    }
+
+    #designatedEvidenceViewerModal.show .modal-dialog {
+        transform: translateY(0);
+    }
+
+    #designatedEvidenceViewerModal .modal-content {
+        height: 100%;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid rgba(0,0,0,0.1);
+    }
+
+    #designatedEvidenceViewerModal .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        background: var(--c-surface-alt);
+    }
+
+    #designatedEvidenceViewerModal .modal-header {
+        border-radius: 0 !important;
+        flex-shrink: 0;
+    }
+
+    #designatedEvidenceViewerModal .modal-footer {
+        flex-shrink: 0;
+        border-radius: 0 !important;
+    }
+
+    /* Portrait container — tall narrow display area */
+    .evidence-portrait-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--c-text);
+        border-radius: 8px;
+        padding: 8px;
+        min-height: 40vh;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Images: fill width, auto height to maintain portrait/landscape */
+    .evidence-portrait-img {
+        width: 100%;
+        height: auto;
+        max-height: 75vh;
+        object-fit: contain;
+        border-radius: 4px;
+    }
+
+    /* PDF embed: taller now that the viewer is full-width */
+    .evidence-pdf-embed {
+        width: 100%;
+        height: 82vh;
+        border-radius: 4px;
+        border: none;
     }
 </style>
 {% endblock %}

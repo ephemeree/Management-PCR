@@ -98,18 +98,12 @@ def prog_chair_dashboard():
             # Fetch approved & locked IPCRs for the second table
             locked_drafts = get_locked_faculty_ipcrs(cursor, specialization, term_id)
 
+            # get_program_chair_evidence_faculty already excludes every Designated Faculty
+            # designation, so everyone here is Regular Faculty -- no further split needed.
             evidence_faculty_list = get_program_chair_evidence_faculty(cursor, specialization, term_id)
             pending_evidence_faculty_list = [f for f in evidence_faculty_list if not f.get('is_both_approved')]
             approved_evidence_faculty_list = [f for f in evidence_faculty_list if f.get('is_both_approved')]
-            
-            def _is_designated_or_chair_or_dean(f):
-                role = (f.get('system_role') or '').strip()
-                desig = (f.get('designation') or '').strip()
-                return (role in ('DESIGNATED_FACULTY', 'PROGRAM_CHAIR', 'RET_CHAIR', 'DEAN')
-                        or desig in ('Designated Faculty', 'Program Chair', 'RET Chair', 'Dean'))
-
-            approved_designated_evidence_list = [f for f in approved_evidence_faculty_list if _is_designated_or_chair_or_dean(f)]
-            approved_regular_evidence_list = [f for f in approved_evidence_faculty_list if not _is_designated_or_chair_or_dean(f)]
+            approved_regular_evidence_list = approved_evidence_faculty_list
 
         return render_template(
             'prog_chair_dashboard.html',
@@ -126,7 +120,6 @@ def prog_chair_dashboard():
             evidence_faculty_list=evidence_faculty_list if 'evidence_faculty_list' in locals() else [],
             pending_evidence_faculty_list=pending_evidence_faculty_list if 'pending_evidence_faculty_list' in locals() else [],
             approved_evidence_faculty_list=approved_evidence_faculty_list if 'approved_evidence_faculty_list' in locals() else [],
-            approved_designated_evidence_list=approved_designated_evidence_list if 'approved_designated_evidence_list' in locals() else [],
             approved_regular_evidence_list=approved_regular_evidence_list if 'approved_regular_evidence_list' in locals() else [],
             has_own_ipcr=True
         )

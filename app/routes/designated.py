@@ -673,7 +673,7 @@ def designated_upload_evidence():
         return redirect(url_for('designated.designated_dashboard'))
         
     try:
-        qty_val = int(quantity)
+        qty_val = max(0, int(quantity))
     except ValueError:
         qty_val = 1
 

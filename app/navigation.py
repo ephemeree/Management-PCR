@@ -24,6 +24,7 @@ HOME_NAV = {
                 ('nav-draft-ipcr', 'IPCR Draft Approval', 'ti-file-check'),
                 ('nav-phase6', 'Batch Approvals', 'ti-checks'),
                 ('nav-target-assign', 'Target Assignment', 'ti-user-plus'),
+                ('nav-evidence-verification', 'Evidence Verification', 'ti-file-search'),
                 ('nav-final-verification', 'Final Verification', 'ti-clipboard-check'),
             ]),
         ],
@@ -38,7 +39,6 @@ HOME_NAV = {
             ('Phases', [
                 ('nav-phase1', 'Target Allocation', 'ti-sitemap'),
                 ('nav-phase2', 'Commitments', 'ti-user-check'),
-                ('nav-phase3', 'Grading Engine', 'ti-calculator'),
             ]),
             ('Verification', [
                 ('nav-evidence-verification', 'Evidence Verification', 'ti-file-check'),

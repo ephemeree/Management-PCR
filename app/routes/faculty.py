@@ -323,7 +323,7 @@ def faculty_upload_evidence():
         return redirect(url_for('faculty.faculty_dashboard'))
         
     try:
-        qty_val = int(quantity)
+        qty_val = max(0, int(quantity))
     except ValueError:
         qty_val = 1
 
