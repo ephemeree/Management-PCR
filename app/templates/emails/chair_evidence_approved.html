@@ -1,0 +1,55 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}{{ reviewer_role }} Evidences Approved{% endblock %}
+
+{% block content %}
+    <span class="badge-status badge-primary">{{ reviewer_role }} Review Complete</span>
+    
+    <p>Dear <strong>{{ faculty_name }}</strong>,</p>
+    
+    <p>Good news! Your submitted <strong>{{ scope_desc }}</strong> evidence files for <strong>{{ period_display }}</strong> have been reviewed and approved by the <strong>{{ reviewer_role }}</strong>.</p>
+
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">Faculty Member:</span>
+            <span class="info-value">{{ faculty_name }}</span>
+        </div>
+        {% if department %}
+        <div class="info-row">
+            <span class="info-label">Department:</span>
+            <span class="info-value">{{ department }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <span class="info-label">Reviewed By:</span>
+            <span class="info-value">{{ reviewer_role }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Component:</span>
+            <span class="info-value">{{ scope_desc }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Academic Term:</span>
+            <span class="info-value">{{ period_display }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Verification Status:</span>
+            <span class="info-value" style="color: #1e40af; font-weight: 700;">{{ reviewer_role }} Approved</span>
+        </div>
+    </div>
+
+    <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 14px 18px; border-radius: 6px; margin: 20px 0;">
+        <strong style="color: #166534; font-size: 14px;">Next Stage in Verification:</strong>
+        <p style="margin: 6px 0 0 0; font-size: 13px; color: #14532d; line-height: 1.5;">
+            {% if pending_reviewer %}
+            Evidence verification for <strong>{{ pending_scope }}</strong> by the <strong>{{ pending_reviewer }}</strong> is currently in progress. You will receive a final confirmation email once all submitted evidence files across all categories have been reviewed and approved.
+            {% else %}
+            Your remaining evidence files are undergoing review. You will receive a final confirmation notification once all items across all categories are fully verified.
+            {% endif %}
+        </p>
+    </div>
+
+    <div style="text-align: center;">
+        <a href="{{ action_url }}" class="btn-action">View Evidence Dashboard</a>
+    </div>
+{% endblock %}

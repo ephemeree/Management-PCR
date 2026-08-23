@@ -926,9 +926,18 @@ def check_and_trigger_evidence_approved_notification(conn, cursor, evidence_id: 
     - If reviewer is RET Chair: Checks if ALL Research & Extension evidence items submitted by the faculty member are Approved.
     - If reviewer is Program Chair: Checks if ALL Strategic Priority & Support evidence items are Approved.
     - If reviewer is College Dean: Checks if ALL designated faculty evidence items are Approved.
-    If all items in the reviewer's lane are approved, notifies the faculty member.
+    
+    Notification behavior:
+    1. If only ONE chair has finished approving (the other chair still has unapproved/pending evidence):
+       -> Sends single chair approval notification (chair_evidence_approved.html) stating that this chair's review
+          is complete and the other chair's review is currently in progress.
+    2. If BOTH chairs have finished approving (all submitted evidence files across all categories are approved):
+       -> Sends all evidences approved notification (all_evidences_approved.html) stating that all evidence files
+          across all categories are approved and compiled for final endorsement.
     """
     try:
+        _ensure_notification_table(cursor)
+
         # Get target and faculty info from evidence_id
         cursor.execute("""
             SELECT ct.emp_id, mi.term_id
@@ -942,48 +951,64 @@ def check_and_trigger_evidence_approved_notification(conn, cursor, evidence_id: 
             return False, "Evidence target not found."
         emp_id, term_id = row
 
-        if reviewer_role == 'RET Chair':
-            cursor.execute("""
-                SELECT 
-                    COUNT(er.evidence_id) as total_evidences,
-                    SUM(CASE WHEN er.verification_status <> 'Approved' THEN 1 ELSE 0 END) as non_approved_count
-                FROM tbl_evidence_repo er
-                JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
-                JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
-                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE ct.emp_id = %s AND mi.term_id = %s
-                  AND (tc.review_lane = 'RET' OR tc.slug IN ('research', 'extension') OR tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%')
-            """, (emp_id, term_id))
-            scope_desc = "Research & Extension"
-        elif reviewer_role == 'Program Chair':
-            cursor.execute("""
-                SELECT 
-                    COUNT(er.evidence_id) as total_evidences,
-                    SUM(CASE WHEN er.verification_status <> 'Approved' THEN 1 ELSE 0 END) as non_approved_count
-                FROM tbl_evidence_repo er
-                JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
-                JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
-                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE ct.emp_id = %s AND mi.term_id = %s
-                  AND (tc.review_lane = 'CHAIR' OR (tc.slug NOT IN ('research', 'extension') AND tc.category_name NOT LIKE '%%Research%%' AND tc.category_name NOT LIKE '%%Extension%%'))
-            """, (emp_id, term_id))
-            scope_desc = "Strategic Priorities & Support"
-        else: # College Dean (Designated Faculty)
-            cursor.execute("""
-                SELECT 
-                    COUNT(er.evidence_id) as total_evidences,
-                    SUM(CASE WHEN er.verification_status <> 'Approved' THEN 1 ELSE 0 END) as non_approved_count
-                FROM tbl_evidence_repo er
-                JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
-                JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
-                WHERE ct.emp_id = %s AND mi.term_id = %s
-            """, (emp_id, term_id))
-            scope_desc = "Accomplishment"
+        # 1. Program Chair counts
+        cursor.execute("""
+            SELECT 
+                COUNT(er.evidence_id) as total_evidences,
+                SUM(CASE WHEN er.verification_status <> 'Approved' THEN 1 ELSE 0 END) as non_approved_count
+            FROM tbl_evidence_repo er
+            JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE ct.emp_id = %s AND mi.term_id = %s
+              AND (tc.review_lane = 'CHAIR' OR (tc.slug NOT IN ('research', 'extension') AND tc.category_name NOT LIKE '%%Research%%' AND tc.category_name NOT LIKE '%%Extension%%'))
+        """, (emp_id, term_id))
+        chair_counts = cursor.fetchone() or (0, 0)
+        total_chair = chair_counts[0] or 0
+        non_approved_chair = chair_counts[1] or 0
 
-        counts = cursor.fetchone()
-        logger.info(f"[EVIDENCE VERIFICATION CHECK] reviewer={reviewer_role}, emp_id={emp_id}, term_id={term_id}, scope={scope_desc}, total={counts[0] if counts else 0}, non_approved={counts[1] if counts else 0}")
-        if not counts or counts[0] == 0 or (counts[1] or 0) > 0:
-            return False, f"Not all {scope_desc} evidences are approved yet."
+        # 2. RET Chair counts
+        cursor.execute("""
+            SELECT 
+                COUNT(er.evidence_id) as total_evidences,
+                SUM(CASE WHEN er.verification_status <> 'Approved' THEN 1 ELSE 0 END) as non_approved_count
+            FROM tbl_evidence_repo er
+            JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE ct.emp_id = %s AND mi.term_id = %s
+              AND (tc.review_lane = 'RET' OR tc.slug IN ('research', 'extension') OR tc.category_name LIKE '%%Research%%' OR tc.category_name LIKE '%%Extension%%')
+        """, (emp_id, term_id))
+        ret_counts = cursor.fetchone() or (0, 0)
+        total_ret = ret_counts[0] or 0
+        non_approved_ret = ret_counts[1] or 0
+
+        # 3. Overall counts across all categories
+        cursor.execute("""
+            SELECT 
+                COUNT(er.evidence_id) as total_evidences,
+                SUM(CASE WHEN er.verification_status <> 'Approved' THEN 1 ELSE 0 END) as non_approved_count
+            FROM tbl_evidence_repo er
+            JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            WHERE ct.emp_id = %s AND mi.term_id = %s
+        """, (emp_id, term_id))
+        all_counts = cursor.fetchone() or (0, 0)
+        total_all = all_counts[0] or 0
+        non_approved_all = all_counts[1] or 0
+
+        logger.info(f"[EVIDENCE VERIFICATION CHECK] reviewer={reviewer_role}, emp_id={emp_id}, term_id={term_id}, chair=(total:{total_chair}, non_app:{non_approved_chair}), ret=(total:{total_ret}, non_app:{non_approved_ret}), all=(total:{total_all}, non_app:{non_approved_all})")
+
+        # Check if the CURRENT reviewer's lane is completely approved
+        if reviewer_role == 'RET Chair':
+            if total_ret == 0 or non_approved_ret > 0:
+                return False, "Not all Research & Extension evidences are approved yet."
+        elif reviewer_role == 'Program Chair':
+            if total_chair == 0 or non_approved_chair > 0:
+                return False, "Not all Strategic Priorities & Support evidences are approved yet."
+        else: # College Dean (Designated Faculty)
+            if total_all == 0 or non_approved_all > 0:
+                return False, "Not all evidences are approved yet."
 
         fac = _get_faculty_profile(cursor, emp_id)
         if not fac or not fac['email']:
@@ -993,28 +1018,118 @@ def check_and_trigger_evidence_approved_notification(conn, cursor, evidence_id: 
         resolved_base_url = _get_base_url(base_url)
         action_url = f"{resolved_base_url}/faculty" if (fac.get('designation') == 'Regular Faculty' or not fac.get('designation')) else f"{resolved_base_url}/designated"
 
-        html_body = render_template('emails/all_evidences_approved.html',
-            faculty_name=fac['full_name'],
-            department=fac['department'],
-            reviewer_role=reviewer_role,
-            scope_desc=scope_desc,
-            period_display=term['period_display'],
-            action_url=action_url
-        )
-        text_body = (
-            f"Dear {fac['full_name']},\n\n"
-            f"All of your submitted {scope_desc} accomplishment evidence files for {term['period_display']} have been "
-            f"reviewed and approved by the {reviewer_role}.\n\n"
-            f"View dashboard at: {action_url}\n"
-        )
-        send_async_email(
-            subject=f"[D-IPCR] {scope_desc} Accomplishment Evidences Approved by {reviewer_role} - {term['period_display']}",
-            recipients=[fac['email']],
-            html_body=html_body,
-            text_body=text_body
-        )
-        logger.info(f"[{scope_desc.upper()} EVIDENCES APPROVED NOTIFICATION SENT] emp_id={emp_id}, term_id={term_id}, reviewer={reviewer_role}")
-        return True, f"All {scope_desc} evidences approved notification sent to faculty."
+        # Check if ALL evidences overall across both chairs / all categories are approved
+        all_completed = (total_all > 0 and non_approved_all == 0)
+
+        if all_completed:
+            # Check if all-evidences notification was already sent
+            cursor.execute("""
+                SELECT 1 FROM tbl_ipcr_approval_notifications
+                WHERE emp_id = %s AND term_id = %s AND event_type = 'EVIDENCE_APPROVED_ALL' AND status = 'SENT'
+                LIMIT 1
+            """, (emp_id, term_id))
+            if cursor.fetchone():
+                return False, "All evidences approved notification was already sent."
+
+            reviewer_summary = 'Program Chair & RET Chair' if (total_chair > 0 and total_ret > 0) else reviewer_role
+            html_body = render_template('emails/all_evidences_approved.html',
+                faculty_name=fac['full_name'],
+                department=fac['department'],
+                reviewer_role=reviewer_summary,
+                scope_desc="All Accomplishment Evidences",
+                period_display=term['period_display'],
+                action_url=action_url
+            )
+            text_body = (
+                f"Dear {fac['full_name']},\n\n"
+                f"Good news! All of your submitted accomplishment evidence files for {term['period_display']} have been "
+                f"reviewed and approved by the {reviewer_summary}.\n\n"
+                f"Your verified accomplishments are now compiled for final package endorsement and rating computation.\n\n"
+                f"View dashboard at: {action_url}\n"
+            )
+            send_async_email(
+                subject=f"[D-IPCR] All Accomplishment Evidences Approved ({reviewer_summary}) - {term['period_display']}",
+                recipients=[fac['email']],
+                html_body=html_body,
+                text_body=text_body
+            )
+            try:
+                cursor.execute("""
+                    INSERT INTO tbl_ipcr_approval_notifications 
+                    (emp_id, term_id, tier, event_type, recipient_emails, status)
+                    VALUES (%s, %s, 'TIER1_EVIDENCE', 'EVIDENCE_APPROVED_ALL', %s, 'SENT')
+                """, (emp_id, term_id, fac['email']))
+                if conn:
+                    conn.commit()
+            except Exception as rec_err:
+                logger.warning(f"Could not record ALL evidence notification: {rec_err}")
+
+            logger.info(f"[ALL EVIDENCES APPROVED NOTIFICATION SENT] emp_id={emp_id}, term_id={term_id}")
+            return True, "All evidences approved notification sent to faculty."
+
+        else:
+            # Only the current chair has finished; the other chair is still pending!
+            if reviewer_role == 'Program Chair':
+                event_type = 'EVIDENCE_APPROVED_CHAIR'
+                scope_desc = "Strategic Priorities & Support"
+                pending_reviewer = "RET Chair"
+                pending_scope = "Research & Extension"
+            elif reviewer_role == 'RET Chair':
+                event_type = 'EVIDENCE_APPROVED_RET'
+                scope_desc = "Research & Extension"
+                pending_reviewer = "Program Chair"
+                pending_scope = "Strategic Priorities & Support"
+            else:
+                event_type = 'EVIDENCE_APPROVED_DEAN'
+                scope_desc = "Accomplishment"
+                pending_reviewer = None
+                pending_scope = None
+
+            # Check if this chair's approval notice was already sent
+            cursor.execute("""
+                SELECT 1 FROM tbl_ipcr_approval_notifications
+                WHERE emp_id = %s AND term_id = %s AND event_type = %s AND status = 'SENT'
+                LIMIT 1
+            """, (emp_id, term_id, event_type))
+            if cursor.fetchone():
+                return False, f"{reviewer_role} evidence approval notification was already sent."
+
+            html_body = render_template('emails/chair_evidence_approved.html',
+                faculty_name=fac['full_name'],
+                department=fac['department'],
+                reviewer_role=reviewer_role,
+                scope_desc=scope_desc,
+                pending_reviewer=pending_reviewer,
+                pending_scope=pending_scope,
+                period_display=term['period_display'],
+                action_url=action_url
+            )
+            text_body = (
+                f"Dear {fac['full_name']},\n\n"
+                f"Good news! Your submitted {scope_desc} evidence files for {term['period_display']} have been "
+                f"reviewed and approved by the {reviewer_role}.\n\n"
+                f"Evidence verification for {pending_scope} by the {pending_reviewer} is currently in progress.\n\n"
+                f"View dashboard at: {action_url}\n"
+            )
+            send_async_email(
+                subject=f"[D-IPCR] {scope_desc} Evidences Approved by {reviewer_role} - {term['period_display']}",
+                recipients=[fac['email']],
+                html_body=html_body,
+                text_body=text_body
+            )
+            try:
+                cursor.execute("""
+                    INSERT INTO tbl_ipcr_approval_notifications 
+                    (emp_id, term_id, tier, event_type, recipient_emails, status)
+                    VALUES (%s, %s, 'TIER1_EVIDENCE', %s, %s, 'SENT')
+                """, (emp_id, term_id, event_type, fac['email']))
+                if conn:
+                    conn.commit()
+            except Exception as rec_err:
+                logger.warning(f"Could not record {reviewer_role} evidence notification: {rec_err}")
+
+            logger.info(f"[{reviewer_role.upper()} EVIDENCE APPROVAL NOTIFICATION SENT] emp_id={emp_id}, term_id={term_id}")
+            return True, f"{reviewer_role} evidence approved notification sent to faculty."
 
     except Exception as e:
         logger.error(f"Error in check_and_trigger_evidence_approved_notification: {e}")

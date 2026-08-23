@@ -67,7 +67,11 @@ def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
                da.target_duration_value, da.target_duration_unit
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        JOIN tbl_employee_profiles ep ON da.emp_id = ep.emp_id
         WHERE mi.term_id = %s
+          AND tc.review_lane = 'CHAIR'
+          AND ep.designation = 'Regular Faculty'
           AND da.indicator_id IN ({ind_placeholders})
           AND da.emp_id IN ({fac_placeholders})
         GROUP BY da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
@@ -178,8 +182,9 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
 
 def check_chair_targets_saved(cursor, term_id, specialization):
     """
-    Returns True if target allocations have already been saved in tbl_draft_allocation
-    for faculty members under `specialization` for `term_id`.
+    Returns True if baseline departmental target allocations (Instruction & Support)
+    have already been saved in tbl_draft_allocation for regular faculty members under `specialization` for `term_id`.
+    College-wide targets personally assigned by the Dean to chairs are excluded.
     """
     if not term_id or not specialization:
         return False
@@ -187,8 +192,13 @@ def check_chair_targets_saved(cursor, term_id, specialization):
         SELECT COUNT(*) 
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         JOIN tbl_employee_profiles ep ON da.emp_id = ep.emp_id
-        WHERE mi.term_id = %s AND ep.specialization = %s
+        WHERE mi.term_id = %s 
+          AND ep.specialization = %s
+          AND tc.review_lane = 'CHAIR'
+          AND ep.designation = 'Regular Faculty'
+          AND da.assigned_quantity > 0
     """
     cursor.execute(query, (term_id, specialization))
     res = cursor.fetchone()

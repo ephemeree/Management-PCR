@@ -84,60 +84,30 @@ This document contains the complete record of all architecture, lifecycle stages
 - **Department Chairs (Self-IPCR)**: Routes directly to the **College Dean** and displays the sender's title (`RET Chair`, `Program Chair`).
 - **Template**: [`app/templates/emails/evidence_submission_notice.html`](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/templates/emails/evidence_submission_notice.html)
 
-#### B. Program Chair Endorses Package to Dean (`send_evidence_package_to_dean_notification`)
+#### B. Single Chair Evidence Approval (`check_and_trigger_evidence_approved_notification`)
+- **Trigger**: When either the **Program Chair** or **RET Chair** finishes approving all evidence files in their review lane, while the other chair has NOT finished yet.
+- **Recipient**: **Faculty Member**.
+- **Content**: Informs faculty that this specific chair's evidence verification (e.g. `Strategic Priorities & Support` or `Research & Extension`) is complete, noting that the other chair's verification is currently in progress.
+- **Template**: [`app/templates/emails/chair_evidence_approved.html`](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/templates/emails/chair_evidence_approved.html)
+
+#### C. All Evidences Approved Notification (`check_and_trigger_evidence_approved_notification`)
+- **Trigger**: ONLY when **BOTH** Program Chair and RET Chair have finished approving all submitted evidence files across all categories (or when all lanes are complete).
+- **Recipient**: **Faculty Member**.
+- **Content**: Informs faculty that all submitted accomplishment evidence files across all categories have been reviewed and approved, and accomplishments are compiled for final package endorsement and rating computation.
+- **Template**: [`app/templates/emails/all_evidences_approved.html`](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/templates/emails/all_evidences_approved.html)
+
+#### D. Program Chair Endorses Package to Dean (`send_evidence_package_to_dean_notification`)
 - **Trigger**: When the Program Chair verifies all accomplishment evidences for a faculty member and submits the evidence package to the Dean.
 - **Recipients**:
   1. **College Dean**: Action required to review and grant final Tier 2 rating and approval.
   2. **Faculty Member**: Confirmation that their verified package has been endorsed to the Dean.
 - **Template**: [`app/templates/emails/evidence_package_to_dean.html`](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/templates/emails/evidence_package_to_dean.html)
 
-#### C. Evidence File Return / Rejection (`send_return_notification`)
+#### E. Evidence File Return / Rejection (`send_return_notification`)
 - **Trigger**: Reviewer clicks "Return" on any evidence file.
 - **Recipient**: **Faculty Member**.
 - **Content**: Details the indicator title, target description, returned filename, and reviewer remarks.
 - **Template**: [`app/templates/emails/return_notice.html`](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/templates/emails/return_notice.html)
-
----
-
-### 3.3 Final Tier 2 Approval & Scoring Phase
-
-#### Final Approval by Dean (`check_and_trigger_tier2_notification`)
-- **Recipient Policy**: **Exclusively the IPCR Owner** (Faculty member / Designated faculty / Chair). Program Chair and RET Chair notifications were removed as requested.
-- **Dynamic Score Calculation**: Automatically retrieves or computes on-the-fly:
-  - **Final Weighted Rating** (e.g. `4.2500` / `3.7200`)
-  - **Adjectival Rating** (e.g. `Outstanding`, `Very Satisfactory`, `Satisfactory`)
-- **Print Action URL**:
-  - Regular Faculty: `.../faculty/print_ipcr`
-  - Designated Faculty & Chairs: `.../designated/print_ipcr`
-- **Template**: [`app/templates/emails/tier2_final.html`](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/templates/emails/tier2_final.html)
-
----
-
-## 4. Key Bug Fixes & Resiliency Enhancements
-
-### 4.1 SQL Schema Compatibility
-1. **Removed Non-Existent Column `tc.category_type`**:
-   - Fixed `mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'tc.category_type'` in `app/models/faculty.py`.
-2. **Removed Non-Existent Column `ac.username`**:
-   - Fixed `Unknown column 'ac.username'` across `notification_service.py` reviewer lookup queries (`_get_dean_info`, `_get_ret_chair_info`, `_get_program_chair_info`).
-   - Uses `tbl_auth_credentials.corporate_email` and `tbl_system_access.system_role` exclusively.
-
-### 4.2 Module Export Alignment (`app/services/__init__.py`)
-- Replaced obsolete legacy function names with all active notification methods:
-  - `send_target_submission_notification`
-  - `send_ret_approval_notifications`
-  - `send_chair_approval_notification`
-  - `send_return_notification`
-  - `send_designated_target_submission_notification`
-  - `send_designated_target_decision_notification`
-  - `send_evidence_submission_notification`
-  - `send_evidence_package_to_dean_notification`
-  - `check_and_trigger_evidence_approved_notification`
-  - `check_and_trigger_tier2_notification`
-- Added backward-compatibility alias for `check_and_trigger_tier1_notification`.
-
-### 4.3 Robust Profile Lookups (`_get_faculty_profile`)
-- Uses `LEFT JOIN` on `tbl_employee_profiles` and `tbl_auth_credentials` with fallback resolution so profile lookups never return `None` or cause unhandled exceptions.
 
 ---
 
@@ -146,8 +116,10 @@ This document contains the complete record of all architecture, lifecycle stages
 The following diagnostic endpoints were implemented in [`app/routes/faculty.py`](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/routes/faculty.py) for testing and verifying email delivery:
 
 - `/faculty/test_ret_mail`: Tests direct email dispatch to the RET Chair (`corazonlopez062041@gmail.com`).
+- `/faculty/test_chair_approved_first_mail`: Tests single Program Chair evidence approval notification (`casptone@gmail.com`).
 - `/faculty/test_dean_package_mail`: Tests Program Chair evidence package endorsement to the Dean (`deanacccount@gmail.com`).
 - `/faculty/test_designated_tier2_mail`: Tests final approval email with numerical and adjectival ratings to Designated Faculty (`mitsuhataki153@gmail.com`).
 - `/faculty/test_ret_chair_targets_mail`: Tests RET Chair target submission notification with `Designation / Role: RET Chair` to Dean.
 - `/faculty/test_ret_chair_evidence_mail`: Tests RET Chair evidence submission notification with `Designation / Role: RET Chair` to Dean.
 - `/faculty/rollback_faculty/<email>`: Completely resets a faculty account (clears draft selections, review records, committed targets, and evidence files) to test from the target selection phase.
+

@@ -833,3 +833,53 @@ def test_ret_chair_evidence_mail():
     finally:
         cursor.close()
         conn.close()
+
+
+@faculty_bp.route('/test_chair_approved_first_mail')
+def test_chair_approved_first_mail():
+    """Diagnostic route to test sending Program Chair evidence approval notice to casptone@gmail.com."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        from app.services.mail_service import _send_email_sync
+        from app.services.notification_service import _get_base_url
+
+        recipient = request.args.get('email', 'casptone@gmail.com')
+        faculty_name = "wst googletest"
+        department = "WST Program"
+        period_display = "A.Y. 2045-2046 (1st Semester) [Aug 2045 - Dec 2045]"
+        resolved_base_url = _get_base_url(None)
+        action_url = f"{resolved_base_url}/faculty"
+
+        html_body = render_template('emails/chair_evidence_approved.html',
+            faculty_name=faculty_name,
+            department=department,
+            reviewer_role="Program Chair",
+            scope_desc="Strategic Priorities & Support",
+            pending_reviewer="RET Chair",
+            pending_scope="Research & Extension",
+            period_display=period_display,
+            action_url=action_url
+        )
+        text_body = (
+            f"Dear {faculty_name},\n\n"
+            f"Good news! Your submitted Strategic Priorities & Support evidence files for {period_display} have been "
+            f"reviewed and approved by the Program Chair.\n\n"
+            f"Evidence verification for Research & Extension by the RET Chair is currently in progress.\n\n"
+            f"View dashboard at: {action_url}\n"
+        )
+        success, message = _send_email_sync(
+            subject=f"[D-IPCR] Strategic Priorities & Support Evidences Approved by Program Chair - {period_display}",
+            recipients=[recipient],
+            html_body=html_body,
+            text_body=text_body
+        )
+        return {
+            'status': 'SUCCESS' if success else 'FAILED',
+            'recipient': recipient,
+            'message': message
+        }
+    finally:
+        cursor.close()
+        conn.close()
+

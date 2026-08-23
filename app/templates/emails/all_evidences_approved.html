@@ -1,13 +1,13 @@
 {% extends "emails/base_email.html" %}
 
-{% block title %}{{ scope_desc or 'Accomplishment' }} Evidences Approved{% endblock %}
+{% block title %}All Submitted Evidences Approved{% endblock %}
 
 {% block content %}
-    <span class="badge-status badge-success">Evidences Approved</span>
+    <span class="badge-status badge-success">All Evidences Approved</span>
     
     <p>Dear <strong>{{ faculty_name }}</strong>,</p>
     
-    <p>Good news! All of your submitted <strong>{{ scope_desc or 'accomplishment' }}</strong> evidence files for <strong>{{ period_display }}</strong> have been reviewed and approved by the <strong>{{ reviewer_role }}</strong>.</p>
+    <p>Good news! All of your submitted accomplishment evidence files for <strong>{{ period_display }}</strong> have been reviewed and approved{% if reviewer_role %} by the <strong>{{ reviewer_role }}</strong>{% endif %}.</p>
 
     <div class="info-card">
         <div class="info-row">
@@ -22,11 +22,11 @@
         {% endif %}
         <div class="info-row">
             <span class="info-label">Reviewed By:</span>
-            <span class="info-value">{{ reviewer_role }}</span>
+            <span class="info-value">{{ reviewer_role or 'Program Chair & RET Chair' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Component:</span>
-            <span class="info-value">{{ scope_desc or 'Accomplishments' }}</span>
+            <span class="info-value">{{ scope_desc or 'All Accomplishment Evidences' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Academic Term:</span>
@@ -34,7 +34,7 @@
         </div>
         <div class="info-row">
             <span class="info-label">Verification Status:</span>
-            <span class="info-value" style="color: #15803d; font-weight: 700;">Approved</span>
+            <span class="info-value" style="color: #15803d; font-weight: 700;">All Approved</span>
         </div>
     </div>
 
