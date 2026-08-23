@@ -225,7 +225,8 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
 
         # A designated faculty's Core Functions are only their personal teaching work: the
         # mandatory teaching load plus whatever instruction the Program Chair allocated to
-        # them. Everything else they carry — targets picked from the pool, custom items, and
+        # them (departmental CHAIR instruction, not College-Wide Dean assignments). Everything
+        # else they carry — College-Wide targets, targets picked from the pool, custom items, and
         # a chair's oversight cascades — is a Strategic Priorities/Support Function.
         #
         # Derived here rather than taken from the form so the category cannot be spoofed or
@@ -235,7 +236,11 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
             FROM tbl_draft_allocation da
             JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
             JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-            WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
+            JOIN tbl_cascaded_quotas cq ON mi.indicator_id = cq.indicator_id AND cq.term_id = mi.term_id
+            WHERE da.emp_id = %s AND mi.term_id = %s 
+              AND tc.slug = 'instruction'
+              AND tc.review_lane = 'CHAIR'
+              AND cq.assigned_to_role != 'College-Wide'
               AND COALESCE(da.assigned_quantity, 0) > 0
         """, (emp_id, term_id))
         core_indicator_ids = {r[0] for r in cursor.fetchall()}

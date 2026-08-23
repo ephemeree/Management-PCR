@@ -389,7 +389,7 @@
                                     Locked</span>
                                 {% elif draft.review_status == 'Approved' %}
                                 <span class="badge bg-success px-3 py-2"><i
-                                        class="ti ti-circle-check me-1"></i>Approved by Both</span>
+                                        class="ti ti-circle-check me-1"></i>Approved by Program Chair &amp; RET Chair</span>
                                 {% elif draft.review_status in ('Rejected', 'Returned') %}
                                 <span class="badge px-3 py-2"
                                     style="background-color: rgba(176,69,61,0.08) !important; border: 1px solid rgba(176,69,61,0.2); color: var(--c-danger) !important;">
@@ -502,7 +502,7 @@
                                     Locked</span>
                                 {% else %}
                                 <span class="badge bg-success px-3 py-2"><i
-                                        class="ti ti-circle-check me-1"></i>Approved by Both</span>
+                                        class="ti ti-circle-check me-1"></i>Approved by Program Chair &amp; RET Chair</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
@@ -861,48 +861,103 @@
         if (btnInitiateSaveTargets) {
             btnInitiateSaveTargets.addEventListener('click', function () {
                 let isValid = true;
+                let firstInvalidInput = null;
+                let errorMsg = '';
                 const form = document.getElementById('targetAllocationForm');
                 
                 if (!form) return;
                 
-                const assignedInputs = form.querySelectorAll('input[name^="assigned_quantity_"]');
-                const deadlineInputs = form.querySelectorAll('input[name^="target_deadline_value_"]');
-                const deadlineSelects = form.querySelectorAll('select[name^="target_deadline_unit_"]');
-                const descriptionInputs = form.querySelectorAll('textarea[name^="custom_description_"]');
+                // Clear existing error states
+                form.querySelectorAll('.border-danger, .is-invalid').forEach(el => {
+                    el.classList.remove('border-danger', 'is-invalid');
+                });
                 
-                function checkValid(list) {
-                    list.forEach(el => {
-                        if (!el.value || el.value.trim() === '') {
-                            isValid = false;
-                            el.classList.add('border-danger');
-                        } else {
-                            el.classList.remove('border-danger');
+                const rows = form.querySelectorAll('tbody tr');
+                let hasAllocatedTargets = false;
+
+                rows.forEach(row => {
+                    const qtyInput = row.querySelector('.assigned-qty-input');
+                    const deadlineInput = row.querySelector('.target-deadline-input');
+                    const unitSelect = row.querySelector('select[name="target_duration_units"]');
+                    const descInput = row.querySelector('.custom-desc-input');
+
+                    if (qtyInput) {
+                        const qtyVal = parseInt(qtyInput.value) || 0;
+                        if (qtyVal > 0) {
+                            hasAllocatedTargets = true;
+
+                            // 1. Deadline Duration Validation (REQUIRED)
+                            if (!deadlineInput || !deadlineInput.value.trim() || parseInt(deadlineInput.value) <= 0) {
+                                isValid = false;
+                                if (deadlineInput) {
+                                    deadlineInput.classList.add('border-danger', 'is-invalid');
+                                    if (!firstInvalidInput) {
+                                        firstInvalidInput = deadlineInput;
+                                        errorMsg = 'All allocated targets must have a valid deadline (positive duration number) specified.';
+                                    }
+                                }
+                            }
+
+                            // 2. Deadline Unit Validation
+                            if (unitSelect && (!unitSelect.value || unitSelect.value.trim() === '')) {
+                                isValid = false;
+                                unitSelect.classList.add('border-danger', 'is-invalid');
+                                if (!firstInvalidInput) firstInvalidInput = unitSelect;
+                            }
+
+                            // 3. Target Description Validation
+                            if (!descInput || !descInput.value.trim()) {
+                                isValid = false;
+                                if (descInput) {
+                                    descInput.classList.add('border-danger', 'is-invalid');
+                                    if (!firstInvalidInput) {
+                                        firstInvalidInput = descInput;
+                                        errorMsg = errorMsg || 'All allocated targets must have an IPCR target description.';
+                                    }
+                                }
+                            }
                         }
-                    });
+                    }
+                });
+
+                if (!hasAllocatedTargets) {
+                    if (window.showCustomAlert) {
+                        showCustomAlert('No Allocations', 'Please allocate at least one target with a quantity greater than 0 before saving.', 'warning');
+                    } else {
+                        alert('Please allocate at least one target with a quantity greater than 0 before saving.');
+                    }
+                    return;
                 }
-                
-                checkValid(assignedInputs);
-                checkValid(deadlineInputs);
-                checkValid(deadlineSelects);
-                checkValid(descriptionInputs);
 
                 if (!isValid) {
+                    if (firstInvalidInput) {
+                        firstInvalidInput.focus();
+                    }
                     if (window.showCustomAlert) {
-                        showCustomAlert('Missing Fields', 'Please fill out all Assigned Quantities, Deadlines, and Target Descriptions before saving.', 'warning');
+                        showCustomAlert('Missing Required Fields', errorMsg || 'Please fill out all Deadlines (Target Duration) and IPCR Target Descriptions for all allocated targets.', 'warning');
                     } else {
-                        alert('Please fill out all Assigned Quantities, Deadlines, and Target Descriptions before saving.');
+                        alert(errorMsg || 'Please fill out all Deadlines (Target Duration) and IPCR Target Descriptions for all allocated targets.');
                     }
                     return;
                 }
                 
-                const modal = new bootstrap.Modal(document.getElementById('confirmSaveTargetsModal'));
-                modal.show();
+                showCustomConfirm({
+                    title: "Save & Finalize Targets?",
+                    mainText: "Are you sure you want to save and allocate these targets to all faculty members under your department?",
+                    subText: "This action will distribute the quota to your faculty's draft IPCRs and finalize the baseline allocations.",
+                    confirmText: "Yes, Save Targets",
+                    confirmClass: "btn-primary",
+                    iconClass: "ti-device-floppy",
+                    onConfirm: function () {
+                        form.submit();
+                    }
+                });
             });
             
             // Remove error border on input
             document.addEventListener('input', function(e) {
-                if (e.target.classList.contains('border-danger')) {
-                    e.target.classList.remove('border-danger');
+                if (e.target.classList.contains('border-danger') || e.target.classList.contains('is-invalid')) {
+                    e.target.classList.remove('border-danger', 'is-invalid');
                 }
             });
         }
@@ -1064,7 +1119,7 @@
             const badge = document.getElementById('modalStatusBadge');
             const statusMap = {
                 'Locked': ['bg-dark text-white', 'lock', 'Approved & Locked'],
-                'Approved': ['bg-success', 'circle-check', 'Approved by Both'],
+                'Approved': ['bg-success', 'circle-check', 'Approved by Program Chair & RET Chair'],
                 'Rejected': ['bg-danger', 'circle-x', 'Returned'],
                 'Pending': ['bg-warning text-dark', 'hourglass', 'Waiting for RET Review & Approval'],
                 'Waiting for Approval': ['bg-info text-dark', 'history', 'Waiting for Approval'],

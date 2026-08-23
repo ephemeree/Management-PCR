@@ -343,9 +343,21 @@ def submit_review_decision():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
+        cursor.execute("SELECT emp_id, term_id FROM tbl_ipcr_dean_review WHERE review_id = %s", (review_id,))
+        review_row = cursor.fetchone()
+
         success, msg = submit_dean_review_decision(cursor, conn, review_id, action, overall_remarks)
 
         if success:
+            if review_row:
+                emp_id, term_id = review_row
+                try:
+                    from app.services.notification_service import send_designated_target_decision_notification
+                    send_designated_target_decision_notification(conn, cursor, int(emp_id), int(term_id), action, overall_remarks)
+                except Exception as notif_err:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error triggering designated decision notification: {notif_err}")
+
             details = f"Dean {dean_id} {action.lower()} draft IPCR (review #{review_id}). Remarks: {overall_remarks}"
             from app.models.audit import log_audit_action
             log_audit_action(conn, cursor, dean_id, f'DEAN_REVIEW_{action.upper()}', details, request.remote_addr or '127.0.0.1')
@@ -472,6 +484,18 @@ def save_designated_assignments():
             dur_val = int(dur_val_raw) if dur_val_raw else None
         except (ValueError, TypeError):
             dur_val = None
+
+        if qty <= 0:
+            flash("Assigned quantity must be greater than 0.", "danger")
+            return redirect(url_for('dean.dean_dashboard'))
+
+        if not desc_val:
+            flash("All assigned targets must have an IPCR target description.", "danger")
+            return redirect(url_for('dean.dean_dashboard'))
+
+        if not dur_val or dur_val <= 0:
+            flash("All assigned targets must have a valid deadline (target duration) specified.", "danger")
+            return redirect(url_for('dean.dean_dashboard'))
 
         assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val))
 
@@ -610,6 +634,13 @@ def dean_verify_evidence():
     try:
         from app.models.dean import set_dean_evidence_verification
         success, msg = set_dean_evidence_verification(conn, cursor, int(evidence_id), status, comment)
+        if success and status == 'Approved':
+            try:
+                from app.services.notification_service import check_and_trigger_evidence_approved_notification
+                check_and_trigger_evidence_approved_notification(conn, cursor, int(evidence_id), 'College Dean', request.host_url)
+            except Exception as notif_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error triggering evidence approved notification: {notif_err}")
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -642,6 +673,15 @@ def dean_approve_package():
             WHERE ct.emp_id = %s AND mi.term_id = %s AND ct.status = 'Submitted to Dean'
         """, (emp_id, term_id))
         conn.commit()
+
+        # Trigger Tier 2 (Final) email notification asynchronously
+        try:
+            from app.services.notification_service import check_and_trigger_tier2_notification
+            check_and_trigger_tier2_notification(conn, cursor, int(emp_id), int(term_id), request.host_url)
+        except Exception as notif_err:
+            import logging
+            logging.getLogger(__name__).error(f"Error triggering Tier 2 notification: {notif_err}")
+
         return jsonify({'success': True, 'message': 'Evidence package successfully approved!'})
     except Exception as e:
         conn.rollback()

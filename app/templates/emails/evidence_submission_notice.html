@@ -1,0 +1,48 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Evidence Files Submitted for Verification{% endblock %}
+
+{% block content %}
+    <span class="badge-status badge-primary">Evidence Submitted</span>
+    
+    <p>Dear <strong>{{ reviewer_name }}</strong>,</p>
+    
+    <p>{{ sender_title or designation or 'A faculty member' }} <strong>{{ faculty_name }}</strong> has submitted accomplishment evidence files for <strong>{{ period_display }}</strong> and is awaiting your verification.</p>
+
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">Faculty Member:</span>
+            <span class="info-value">{{ faculty_name }}</span>
+        </div>
+        {% if designation or sender_title %}
+        <div class="info-row">
+            <span class="info-label">Designation / Role:</span>
+            <span class="info-value" style="font-weight: 600; color: #2563eb;">{{ designation or sender_title }}</span>
+        </div>
+        {% endif %}
+        {% if academic_rank %}
+        <div class="info-row">
+            <span class="info-label">Academic Rank:</span>
+            <span class="info-value">{{ academic_rank }}</span>
+        </div>
+        {% endif %}
+        {% if department %}
+        <div class="info-row">
+            <span class="info-label">Department:</span>
+            <span class="info-value">{{ department }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <span class="info-label">Academic Term:</span>
+            <span class="info-value">{{ period_display }}</span>
+        </div>
+    </div>
+
+    <p style="font-size: 14px; line-height: 1.6; color: #4b5563;">
+        Please log into the portal to review the submitted proof documents and verify the accomplishments.
+    </p>
+
+    <div style="text-align: center;">
+        <a href="{{ action_url }}" class="btn-action">Verify Evidences</a>
+    </div>
+{% endblock %}

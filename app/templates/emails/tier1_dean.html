@@ -1,0 +1,48 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Tier 1 IPCR Approval Completed — Ready for Dean's Review{% endblock %}
+
+{% block content %}
+<span class="badge-status badge-primary">Tier 1 Review Cleared</span>
+
+<h2 style="font-size: 19px; color: #1e293b; margin-top: 0;">IPCR Ready for Dean's Final Verification</h2>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    Dear <strong>Dean</strong>,
+</p>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    This is to inform you that the Individual Performance Commitment and Review (IPCR) targets for <strong>{{ faculty_name }}</strong> have been reviewed and successfully approved by both the <strong>Program Chair</strong> and the <strong>RET Chair</strong>.
+</p>
+
+<div class="info-card">
+    <div class="info-row">
+        <span class="info-label">Faculty Member:</span>
+        <span class="info-value">{{ faculty_name }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Academic Rank:</span>
+        <span class="info-value">{{ academic_rank or 'N/A' }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Program / Department:</span>
+        <span class="info-value">{{ department or 'N/A' }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Rating Period:</span>
+        <span class="info-value">{{ period_display }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Status:</span>
+        <span class="info-value" style="color: #2563eb;">Passed Tier 1 (Awaiting Final Verification)</span>
+    </div>
+</div>
+
+<p style="font-size: 14px; line-height: 1.6; color: #475569;">
+    Please log in to the system to review the IPCR document, verify the deliverables, and grant your final executive verification.
+</p>
+
+<div style="text-align: center; margin: 30px 0 10px 0;">
+    <a href="{{ action_url }}" class="btn-action">Access Executive Portal to Review</a>
+</div>
+{% endblock %}

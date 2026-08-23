@@ -80,12 +80,16 @@ def designated_dashboard():
             from app.models.designated import get_designated_committed_targets, check_designated_evidence_readiness
             from app.models.faculty import get_evidence_by_target
 
-            # Fetch cascaded instruction allocations to flag them as core
+            # Fetch cascaded instruction allocations from Program Chair (departmental CHAIR instruction, not Dean College-Wide) to flag as core
             cursor.execute("""
                 SELECT da.indicator_id FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
+                JOIN tbl_cascaded_quotas cq ON mi.indicator_id = cq.indicator_id AND cq.term_id = mi.term_id
+                WHERE da.emp_id = %s AND mi.term_id = %s 
+                  AND tc.slug = 'instruction'
+                  AND tc.review_lane = 'CHAIR'
+                  AND cq.assigned_to_role != 'College-Wide'
             """, (emp_id, term_id))
             alloc_ids = {r[0] for r in cursor.fetchall()}
 
@@ -130,7 +134,8 @@ def designated_dashboard():
             # Fetch cascaded allocations (Program Chair instruction + Dean College-Wide)
             cursor.execute("""
                 SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
-                       da.target_duration_value, da.target_duration_unit, tc.slug
+                       da.target_duration_value, da.target_duration_unit, tc.slug, tc.review_lane,
+                       (SELECT COUNT(*) FROM tbl_cascaded_quotas cq WHERE cq.indicator_id = mi.indicator_id AND cq.term_id = mi.term_id AND cq.assigned_to_role = 'College-Wide') as is_college_wide
                 FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
@@ -138,7 +143,8 @@ def designated_dashboard():
             """, (emp_id, term_id))
             alloc_rows = cursor.fetchall()
             alloc_map = {r[0]: {'assigned_quantity': r[1], 'custom_description': r[2], 'target_deadline': r[3],
-                                'target_duration_value': r[4], 'target_duration_unit': r[5], 'slug': r[6]} for r in alloc_rows}
+                                'target_duration_value': r[4], 'target_duration_unit': r[5], 'slug': r[6],
+                                'review_lane': r[7], 'is_college_wide': r[8]} for r in alloc_rows}
 
             draft_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
@@ -184,15 +190,19 @@ def designated_dashboard():
                     t['is_core'] = True
                     t['is_locked'] = True
                 elif ind_id in alloc_map and (alloc_map[ind_id].get('assigned_quantity') or 0) > 0:
-                    is_instruction = alloc_map[ind_id].get('slug') == 'instruction'
+                    is_chair_instruction = (
+                        alloc_map[ind_id].get('slug') == 'instruction'
+                        and alloc_map[ind_id].get('review_lane') == 'CHAIR'
+                        and alloc_map[ind_id].get('is_college_wide', 0) == 0
+                    )
                     t['total_target_value'] = draft_map[ind_id]['total_target_value'] if ind_id in draft_map else alloc_map[ind_id]['assigned_quantity']
                     t['target_description'] = (draft_map[ind_id]['target_description'] if ind_id in draft_map else None) or alloc_map[ind_id]['custom_description'] or t['indicator_description']
                     t['target_deadline'] = (draft_map[ind_id]['target_deadline'] if ind_id in draft_map else None) or alloc_map[ind_id]['target_deadline'] or ''
                     t['status'] = draft_map[ind_id]['status'] if ind_id in draft_map else 'Draft'
                     t['is_selected'] = True
                     t['is_cascaded'] = True
-                    t['is_core'] = is_instruction
-                    t['is_locked'] = is_instruction
+                    t['is_core'] = is_chair_instruction
+                    t['is_locked'] = is_chair_instruction
                 elif ind_id in draft_map:
                     t['total_target_value'] = draft_map[ind_id]['total_target_value']
                     t['target_description'] = draft_map[ind_id]['target_description'] or t['indicator_description']
@@ -285,12 +295,16 @@ def designated_dashboard():
                 }
                 dpcr_targets.insert(0, mandatory_target)
         else:
-            # Fetch cascaded instruction allocations to flag them as core
+            # Fetch cascaded instruction allocations from Program Chair (departmental CHAIR instruction, not Dean College-Wide) to flag as core
             cursor.execute("""
                 SELECT da.indicator_id FROM tbl_draft_allocation da
                 JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-                WHERE da.emp_id = %s AND mi.term_id = %s AND tc.slug = 'instruction'
+                JOIN tbl_cascaded_quotas cq ON mi.indicator_id = cq.indicator_id AND cq.term_id = mi.term_id
+                WHERE da.emp_id = %s AND mi.term_id = %s 
+                  AND tc.slug = 'instruction'
+                  AND tc.review_lane = 'CHAIR'
+                  AND cq.assigned_to_role != 'College-Wide'
             """, (emp_id, term_id))
             alloc_ids = {r[0] for r in cursor.fetchall()}
 
@@ -398,6 +412,12 @@ def designated_resubmit_ipcr():
         """, (emp_id, int(term_id)))
 
         conn.commit()
+        try:
+            from app.services.notification_service import send_designated_target_submission_notification
+            send_designated_target_submission_notification(conn, cursor, emp_id, int(term_id), is_resubmission=True)
+        except Exception as notif_err:
+            import logging
+            logging.getLogger(__name__).error(f"Error triggering designated resubmission notification: {notif_err}")
         flash("IPCR has been re-submitted for Dean's approval.", "success")
     except Exception as e:
         conn.rollback()
@@ -462,6 +482,12 @@ def designated_submit_evidence():
         from app.models.designated import submit_designated_evidences
         success, msg = submit_designated_evidences(conn, cursor, emp_id, term_id)
         if success:
+            try:
+                from app.services.notification_service import send_evidence_submission_notification
+                send_evidence_submission_notification(conn, cursor, emp_id, int(term_id))
+            except Exception as notif_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error triggering designated evidence notification: {notif_err}")
             flash(msg, "success")
         else:
             flash(msg, "danger")
@@ -587,6 +613,12 @@ def submit_designated_ipcr_route():
         success, msg = submit_designated_ipcr(conn, cursor, emp_id, int(term_id), selected_targets, custom_targets,
                                                oversight_durations=oversight_durations)
         if success:
+            try:
+                from app.services.notification_service import send_designated_target_submission_notification
+                send_designated_target_submission_notification(conn, cursor, emp_id, int(term_id), is_resubmission=False)
+            except Exception as notif_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error triggering designated submission notification: {notif_err}")
             flash(msg, "success")
         else:
             flash(msg, "danger")

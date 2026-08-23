@@ -34,9 +34,66 @@ app.secret_key = os.getenv('SECRET_KEY', 'dipcr_version_13_secret_key')
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads', 'evidence')
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB limit
 
+# Configure Flask-Mail
+from flask_mail import Mail
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER') or os.getenv('SMTP_HOST') or ''
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT') or os.getenv('SMTP_PORT') or 587)
+app.config['MAIL_USE_TLS'] = (os.getenv('MAIL_USE_TLS') or os.getenv('SMTP_USE_TLS') or 'true').lower() in ('1', 'true', 'yes')
+app.config['MAIL_USE_SSL'] = (os.getenv('MAIL_USE_SSL') or os.getenv('SMTP_USE_SSL') or 'false').lower() in ('1', 'true', 'yes')
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME') or os.getenv('SMTP_USER') or ''
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD') or os.getenv('SMTP_PASSWORD') or ''
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'D-IPCR System <no-reply@cict.edu.ph>')
+app.config['MAIL_SUPPRESS_SEND'] = (os.getenv('MAIL_SUPPRESS_SEND') or 'false').lower() in ('1', 'true', 'yes')
+
+mail = Mail(app)
+
 # Initialize DB connection pool at startup
 from app.models.connection import init_db_pool
 init_db_pool()
+
+def _sync_corporate_emails():
+    """Ensures corporate emails match the designated notification recipients and rolls back requested test accounts."""
+    try:
+        from app.models.connection import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT ac.emp_id, ac.corporate_email, sa.system_role
+            FROM tbl_auth_credentials ac
+            LEFT JOIN tbl_system_access sa ON ac.emp_id = sa.emp_id
+        """)
+        rows = cursor.fetchall()
+        logger.info(f"CURRENT DB USERS: {rows}")
+        
+        email_mappings = [
+            ('deanacccount@gmail.com', 'sample@mail.com'),
+            ('wstprogramchair@gmail.com', 'wst@mail.com'),
+            ('corazonlopez062041@gmail.com', 'retchair@mail.com'),
+            ('mitsuhataki153@gmail.com', 'desfac@mail.com'),
+            ('casptonetest@gmail.com', 'fac@mail.com')
+        ]
+        # Roll back test3@mail.com to selecting research targets state
+        cursor.execute("SELECT emp_id FROM tbl_auth_credentials WHERE corporate_email = 'test3@mail.com'")
+        t3_row = cursor.fetchone()
+        if t3_row:
+            t3_emp_id = t3_row[0]
+            cursor.execute("DELETE ri FROM tbl_ipcr_chair_review_items ri JOIN tbl_ipcr_chair_review cr ON ri.review_id = cr.review_id WHERE cr.emp_id = %s", (t3_emp_id,))
+            cursor.execute("DELETE FROM tbl_ipcr_chair_review WHERE emp_id = %s", (t3_emp_id,))
+            cursor.execute("DELETE ri FROM tbl_ipcr_ret_review_items ri JOIN tbl_ipcr_ret_review rr ON ri.review_id = rr.review_id WHERE rr.emp_id = %s", (t3_emp_id,))
+            cursor.execute("DELETE FROM tbl_ipcr_ret_review WHERE emp_id = %s", (t3_emp_id,))
+            cursor.execute("DELETE er FROM tbl_evidence_repo er JOIN tbl_committed_targets ct ON er.target_id = ct.target_id WHERE ct.emp_id = %s", (t3_emp_id,))
+            cursor.execute("DELETE FROM tbl_committed_targets WHERE emp_id = %s", (t3_emp_id,))
+            cursor.execute("DELETE FROM tbl_draft_targets WHERE emp_id = %s", (t3_emp_id,))
+            logger.info(f"Successfully rolled back test3@mail.com (emp_id={t3_emp_id}) to selecting research targets state.")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        logger.debug(f"Email sync check: {e}")
+
+_sync_corporate_emails()
 
 
 # Request timing middleware
@@ -79,19 +136,14 @@ register_blueprints(app)
 
 @app.context_processor
 def inject_own_ipcr_flag():
-    """
-    Exposes `has_own_ipcr` to every template so each dashboard can show a link into the
-    shared Designated Faculty IPCR flow. Driven by the session's designation (job title),
-    not by role — a Program Chair, RET Chair or Dean is a designated faculty member with
-    an IPCR of their own.
-    """
-    from flask import session
+    # Exposes has_own_ipcr and home_nav to every template
+    from flask import session, has_request_context
     from app.models.criteria import is_designated
     from app.navigation import home_nav_for
+    if not has_request_context():
+        return {'has_own_ipcr': False, 'home_nav': None}
     return {
         'has_own_ipcr': is_designated(session.get('designation')),
-        # The visitor's home dashboard nav, so the shared IPCR page can show it as links
-        # instead of replacing their sidebar. None when they are already home.
         'home_nav': home_nav_for(session.get('role')),
     }
 

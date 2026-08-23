@@ -1,0 +1,48 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}All Submitted Evidences Approved{% endblock %}
+
+{% block content %}
+    <span class="badge-status badge-success">All Evidences Approved</span>
+    
+    <p>Dear <strong>{{ faculty_name }}</strong>,</p>
+    
+    <p>Good news! All of your submitted accomplishment evidence files for <strong>{{ period_display }}</strong> have been reviewed and approved{% if reviewer_role %} by the <strong>{{ reviewer_role }}</strong>{% endif %}.</p>
+
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">Faculty Member:</span>
+            <span class="info-value">{{ faculty_name }}</span>
+        </div>
+        {% if department %}
+        <div class="info-row">
+            <span class="info-label">Department:</span>
+            <span class="info-value">{{ department }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <span class="info-label">Reviewed By:</span>
+            <span class="info-value">{{ reviewer_role or 'Program Chair & RET Chair' }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Component:</span>
+            <span class="info-value">{{ scope_desc or 'All Accomplishment Evidences' }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Academic Term:</span>
+            <span class="info-value">{{ period_display }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Verification Status:</span>
+            <span class="info-value" style="color: #15803d; font-weight: 700;">All Approved</span>
+        </div>
+    </div>
+
+    <p style="font-size: 14px; line-height: 1.6; color: #4b5563;">
+        Your verified accomplishments are now compiled for final package endorsement and rating computation.
+    </p>
+
+    <div style="text-align: center;">
+        <a href="{{ action_url }}" class="btn-action">View Evidence Dashboard</a>
+    </div>
+{% endblock %}
