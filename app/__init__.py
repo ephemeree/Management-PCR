@@ -129,7 +129,8 @@ def close_db_connection(exc):
     conn = getattr(g, '_db_conn', None)
     if conn is not None:
         try:
-            if conn.is_connected():
+            cnx = getattr(conn, '_cnx', None)
+            if cnx is not None and cnx.is_connected():
                 conn.close()
         except Exception:
             logger.exception("Failed to close DB connection during teardown")
