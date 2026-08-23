@@ -51,10 +51,13 @@ def import_previous_term_indicators(conn, cursor, active_term_id):
         return False, "No previous term found to import from."
 
     # Added is_custom = 0 and NOT LIKE '%Teaching Load%' conditions to prevent importing user-specific custom targets or baseline teaching loads as global indicators
+    # Joined to tbl_target_categories and filtered on is_active so indicators under a criterion the Admin has since deactivated aren't resurrected into the new term
     cursor.execute("""
-        SELECT category_id, indicator_description, efficiency_type 
-        FROM tbl_master_indicators 
-        WHERE term_id = %s AND is_custom = 0 AND indicator_description NOT LIKE '%%Teaching Load%%'
+        SELECT mi.category_id, mi.indicator_description, mi.efficiency_type
+        FROM tbl_master_indicators mi
+        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        WHERE mi.term_id = %s AND mi.is_custom = 0 AND mi.indicator_description NOT LIKE '%%Teaching Load%%'
+          AND tc.is_active = 1
     """, (prev_term[0],))
     prev_indicators = cursor.fetchall()
 

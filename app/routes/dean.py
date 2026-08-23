@@ -274,6 +274,8 @@ def review_draft_fetch(emp_id):
                 'is_custom': item['is_custom'],
                 'target_description': item.get('target_description') or item['indicator_description'],
                 'target_deadline': item.get('target_deadline') or '1 Semester',
+                'target_duration_value': item.get('target_duration_value'),
+                'target_duration_unit': item.get('target_duration_unit'),
                 'is_core': item.get('is_core', False),
                 'is_cascaded': item.get('is_cascaded', False),
             })

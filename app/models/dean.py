@@ -205,7 +205,9 @@ def get_dean_review_items(cursor, review_id):
             mi.efficiency_type,
             mi.is_custom,
             COALESCE(dt.target_description, da.custom_description, mi.indicator_description) as target_description,
-            COALESCE(dt.target_deadline, da.target_deadline, '1 Semester') as target_deadline,
+            COALESCE(dt.target_deadline, da.target_deadline) as target_deadline,
+            dt.target_duration_value,
+            dt.target_duration_unit,
             dt.is_admin_function,
             CASE WHEN da.allocation_id IS NOT NULL THEN 1 ELSE 0 END as is_cascaded
         FROM tbl_ipcr_dean_review_items dri
@@ -218,9 +220,19 @@ def get_dean_review_items(cursor, review_id):
         ORDER BY tc.category_name, mi.indicator_id
     """
     items = timed_query(cursor, query, (review_id,), label="get_dean_review_items")
+    from app.models.scoring import format_duration
     for item in items:
         if item.get('category_name') == 'Custom Target Items':
             item['category_name'] = 'Support Functions'
+        if not item.get('target_deadline'):
+            # A hardcoded '1 Semester' default here would silently mask a real data gap
+            # (e.g. a row whose duration never got saved) behind a plausible-looking value.
+            # Derive from the structured duration columns when present; '1 Semester' is only
+            # the true last resort, when there's no duration data to derive from at all.
+            item['target_deadline'] = (
+                format_duration(item.get('target_duration_value'), item.get('target_duration_unit'))
+                or '1 Semester'
+            )
         is_admin_function = bool(item.get('is_admin_function'))
         is_tl = 'Teaching Load' in (item.get('indicator_description') or '')
         # da.allocation_id matches on emp_id + indicator_id alone, so a chair's Departmental
@@ -279,7 +291,9 @@ def save_dean_review_items(cursor, conn, review_id, items):
     """
     Batch save all review item changes (quantities + remarks).
     Items: [{'item_id': int, 'reviewed_quantity': int, 'item_remarks': str}, ...]
-    For new items (is_new=True, no item_id), creates draft target + review item.
+    For new items (is_new=True, no item_id), creates draft target + review item, using
+    target_description/target_duration_value/target_duration_unit from the item dict when
+    provided.
     Also syncs changes back to tbl_draft_targets so faculty see the update.
     Removes any items that were deleted from the review.
     """
@@ -326,16 +340,23 @@ def save_dean_review_items(cursor, conn, review_id, items):
                 if not r:
                     continue
                 emp_id, term_id = r
-                # Insert draft target. Duration defaults to 1 semester since the Dean's
-                # quick-add here doesn't collect one — without it the target has no deadline
-                # at all, which Timeliness scoring needs.
+                # Duration comes from the Dean's quick-add input; falls back to 1 semester
+                # if omitted — without it the target has no deadline at all, which
+                # Timeliness scoring needs.
                 from app.models.scoring import format_duration
-                dur_value, dur_unit = 1, 'semesters'
+                dur_value = item.get('target_duration_value') or 1
+                dur_unit = item.get('target_duration_unit') or 'semesters'
+                desc = item.get('target_description') or None
+                # Always Dean-added/oversight-originated -- never the designated faculty's
+                # own personal teaching allocation -- so this rolls into Strategic
+                # Priorities/Support like every other oversight row (get_oversight_targets,
+                # submit_designated_ipcr), not Core Functions.
                 cursor.execute("""
                     INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
-                                                   target_duration_value, target_duration_unit, target_deadline)
-                    VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s)
-                """, (emp_id, indicator_id, reviewed_qty, dur_value, dur_unit, format_duration(dur_value, dur_unit)))
+                                                   target_description, target_duration_value, target_duration_unit,
+                                                   target_deadline, is_admin_function)
+                    VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1)
+                """, (emp_id, indicator_id, reviewed_qty, desc, dur_value, dur_unit, format_duration(dur_value, dur_unit)))
                 new_draft_id = cursor.lastrowid
                 # Insert review item linked to new draft
                 cursor.execute("""
@@ -361,6 +382,22 @@ def save_dean_review_items(cursor, conn, review_id, items):
                     SET dt.proposed_quantity = %s
                     WHERE dri.item_id = %s
                 """, (reviewed_qty, item_id))
+
+                # A Dean-added item (original_quantity=-1) also exposes editable
+                # description/duration inputs after its first save — apply any further
+                # edit to those too, or it silently gets dropped on the next save.
+                if item.get('target_duration_value') is not None or item.get('target_description') is not None:
+                    from app.models.scoring import format_duration
+                    dur_value = item.get('target_duration_value') or 1
+                    dur_unit = item.get('target_duration_unit') or 'semesters'
+                    desc = item.get('target_description') or None
+                    cursor.execute("""
+                        UPDATE tbl_draft_targets dt
+                        JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
+                        SET dt.target_description = %s, dt.target_duration_value = %s,
+                            dt.target_duration_unit = %s, dt.target_deadline = %s
+                        WHERE dri.item_id = %s
+                    """, (desc, dur_value, dur_unit, format_duration(dur_value, dur_unit), item_id))
 
         conn.commit()
         return True, "Review items saved successfully."
@@ -456,9 +493,13 @@ def get_designated_faculty_assignments(cursor, term_id, emp_id):
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s AND da.emp_id = %s
+          AND da.indicator_id IN (
+              SELECT indicator_id FROM tbl_cascaded_quotas
+              WHERE term_id = %s AND assigned_to_role = 'College-Wide' AND total_target_value > 0
+          )
         ORDER BY tc.category_name, mi.indicator_id
     """
-    return timed_query(cursor, query, (term_id, emp_id), label="get_designated_faculty_assignments")
+    return timed_query(cursor, query, (term_id, emp_id, term_id), label="get_designated_faculty_assignments")
 
 
 def get_designated_faculty_assignments_batch(cursor, term_id, emp_ids):
@@ -480,8 +521,12 @@ def get_designated_faculty_assignments_batch(cursor, term_id, emp_ids):
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s AND da.emp_id IN ({placeholders})
+          AND da.indicator_id IN (
+              SELECT indicator_id FROM tbl_cascaded_quotas
+              WHERE term_id = %s AND assigned_to_role = 'College-Wide' AND total_target_value > 0
+          )
     """
-    rows = timed_query(cursor, query, [term_id] + emp_ids, label="get_designated_faculty_assignments_batch")
+    rows = timed_query(cursor, query, [term_id] + emp_ids + [term_id], label="get_designated_faculty_assignments_batch")
 
     result = {}
     for row in rows:

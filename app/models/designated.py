@@ -220,6 +220,13 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
             cursor.execute("DELETE FROM tbl_ipcr_dean_review_items WHERE review_id = %s", (old_review_id,))
             cursor.execute("DELETE FROM tbl_ipcr_dean_review WHERE review_id = %s", (old_review_id,))
 
+        # Capture the chair's/RET chair's departmental oversight quota rows (see
+        # get_oversight_targets) BEFORE clearing tbl_draft_targets below — this function
+        # LEFT JOINs the existing draft row to pre-fill a previously-saved target_description/
+        # target_duration_value/target_duration_unit, so calling it after the delete would
+        # always see a fresh, empty join and silently drop whatever the chair had entered.
+        oversight_rows = get_oversight_targets(cursor, emp_id, term_id)
+
         # 1. Clear any prior unverified submissions for this profile to prevent key errors
         cursor.execute("DELETE FROM tbl_draft_targets WHERE emp_id = %s", (emp_id,))
 
@@ -255,7 +262,7 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
         # stray, data-less submission (the template renders no qty/duration fields for a pure
         # oversight row), so it's dropped; one *with* a personal allocation is real Core
         # Function input and must still be processed normally below.
-        oversight_rows = get_oversight_targets(cursor, emp_id, term_id)
+        # (oversight_rows was captured earlier, before the tbl_draft_targets delete.)
         oversight_indicator_ids = {r['indicator_id'] for r in oversight_rows}
         pure_oversight_ids = oversight_indicator_ids - core_indicator_ids
 
@@ -403,12 +410,16 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
                ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
                ct.is_admin_function, ct.print_remarks,
                mi.efficiency_type,
-               tc.category_name, tc.category_id, mi.is_custom
+               tc.category_name, tc.category_id, mi.is_custom,
+               COALESCE(ev.evidence_count, 0) as evidence_count
         FROM tbl_committed_targets ct
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         LEFT JOIN tbl_draft_targets dt ON dt.emp_id = ct.emp_id AND dt.indicator_id = ct.indicator_id
               AND dt.is_admin_function = ct.is_admin_function
+        LEFT JOIN (
+            SELECT target_id, COUNT(*) as evidence_count FROM tbl_evidence_repo GROUP BY target_id
+        ) ev ON ev.target_id = ct.target_id
         WHERE ct.emp_id = %s AND mi.term_id = %s
         ORDER BY tc.category_name, mi.indicator_id
     """

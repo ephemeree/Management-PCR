@@ -67,6 +67,7 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
             LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
             JOIN tbl_employee_profiles ep ON da.emp_id = ep.emp_id
             WHERE ep.specialization = (SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s)
+              AND ep.designation = 'Regular Faculty'
               AND mi.term_id = %s
             GROUP BY da.indicator_id, mi.indicator_description, tc.category_name
             ORDER BY tc.category_name, da.indicator_id
@@ -268,6 +269,7 @@ def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets
             FROM tbl_draft_allocation da
             JOIN tbl_employee_profiles ep ON da.emp_id = ep.emp_id
             WHERE ep.specialization = (SELECT specialization FROM tbl_employee_profiles WHERE emp_id = %s)
+              AND ep.designation = 'Regular Faculty'
             GROUP BY da.indicator_id
         """, (emp_id,))
         chair_allocations = cursor.fetchall()
@@ -584,10 +586,14 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
                ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
                ct.is_admin_function, ct.print_remarks,
                mi.efficiency_type,
-               tc.category_name, tc.category_id
+               tc.category_name, tc.category_id,
+               COALESCE(ev.evidence_count, 0) as evidence_count
         FROM tbl_committed_targets ct
         JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
         LEFT JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+        LEFT JOIN (
+            SELECT target_id, COUNT(*) as evidence_count FROM tbl_evidence_repo GROUP BY target_id
+        ) ev ON ev.target_id = ct.target_id
         WHERE ct.emp_id = %s AND mi.term_id = %s AND ct.assigned_quantity > 0
         ORDER BY tc.category_name, mi.indicator_id
     """

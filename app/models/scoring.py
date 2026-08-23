@@ -250,7 +250,15 @@ def compute_target_rating(target):
     Q / E / T / Average for one committed target (a dict from
     get_faculty_committed_targets). Sub-scores that cannot be computed yet are None,
     and the average is taken over whichever are available.
+
+    A target with no evidence uploaded at all (evidence_count == 0) can't support any
+    of Q/E/T on the 1..5 scale, so all three are forced to 0 rather than left None —
+    None would get silently dropped from the average, masking a non-performing target
+    behind whatever partial score its neighbors happened to compute.
     """
+    if not target.get('evidence_count'):
+        return {'q': 0, 'e': 0, 't': 0, 'average': 0.0, 'is_complete': True}
+
     q = rate_quantity(target.get('actual_quantity'), target.get('assigned_quantity'))
     e = rate_efficiency(target.get('efficiency_type'), target.get('efficiency_rating_E'),
                         target.get('actual_quantity'), target.get('assigned_quantity'))

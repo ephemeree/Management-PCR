@@ -1265,7 +1265,7 @@
                                     <span class="badge bg-warning text-dark px-3 py-2 shadow-xs"><i class="ti ti-history me-1"></i>Awaiting Final Verification</span>
                                 </td>
                                 <td class="text-center pe-4">
-                                    {% set is_chair_dean_row = fac.designation in ('Program Chair', 'RET Chair', 'Dean') %}
+                                    {% set is_chair_dean_row = fac.designation in ('Designated Faculty', 'Program Chair', 'RET Chair', 'Dean') %}
                                     <button type="button" class="btn btn-primary btn-sm px-3 py-2 fw-bold shadow-sm"
                                         onclick="openDeanEvidenceModal({{ fac.emp_id }}, '{{ fac.first_name|replace('\'', '\\\'') }} {{ fac.last_name|replace('\'', '\\\'') }}', true, {{ 'true' if is_chair_dean_row else 'false' }}, {{ 'true' if fac.is_both_approved else 'false' }})">
                                         <i class="ti ti-file-check me-1"></i>Review IPCR
@@ -2436,7 +2436,12 @@
                     <td class="py-3 ps-4">
                         ${badgeHtml}
                         <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
-                        <p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>
+                        ${item.original_quantity === -1 && !isLocked ? `
+                        <input type="text" class="form-control form-control-sm review-desc mt-1"
+                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
+                               value="${(item.target_description && item.target_description !== item.indicator_description) ? item.target_description.replace(/"/g, '&quot;') : ''}"
+                               placeholder="IPCR target description">
+                        ` : `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>`}
                     </td>
                     <td class="text-center">
                         <span class="fw-bold fs-5 text-primary">${origQtyDisplay}</span>
@@ -2448,7 +2453,17 @@
                                ${isLocked ? 'disabled' : ''}>
                     </td>
                     <td class="text-center">
-                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
+                        ${item.original_quantity === -1 && !isLocked ? `
+                        <div class="d-flex gap-1 justify-content-center">
+                            <input type="number" min="1" class="form-control form-control-sm text-center review-dur-value"
+                                   data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
+                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;">
+                            <select class="form-select form-select-sm review-dur-unit"
+                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;">
+                                ${['days', 'weeks', 'months', 'semesters'].map(u => `<option value="${u}" ${(item.target_duration_unit || 'semesters') === u ? 'selected' : ''}>${u}</option>`).join('')}
+                            </select>
+                        </div>
+                        ` : `<span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>`}
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
@@ -2497,7 +2512,12 @@
                     <td class="py-3 ps-4">
                         ${badgeHtml}
                         <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
-                        ${descText !== item.indicator_description ? `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>` : ''}
+                        ${item.original_quantity === -1 && !isLocked ? `
+                        <input type="text" class="form-control form-control-sm review-desc mt-1"
+                               data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
+                               value="${(item.target_description && item.target_description !== item.indicator_description) ? item.target_description.replace(/"/g, '&quot;') : ''}"
+                               placeholder="IPCR target description">
+                        ` : (descText !== item.indicator_description ? `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>` : '')}
                     </td>
                     <td class="text-center">
                         <span class="fw-bold fs-5 text-warning">${origQtyDisplay}</span>
@@ -2509,7 +2529,17 @@
                                ${isLocked ? 'disabled' : ''}>
                     </td>
                     <td class="text-center">
-                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>
+                        ${item.original_quantity === -1 && !isLocked ? `
+                        <div class="d-flex gap-1 justify-content-center">
+                            <input type="number" min="1" class="form-control form-control-sm text-center review-dur-value"
+                                   data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
+                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;">
+                            <select class="form-select form-select-sm review-dur-unit"
+                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;">
+                                ${['days', 'weeks', 'months', 'semesters'].map(u => `<option value="${u}" ${(item.target_duration_unit || 'semesters') === u ? 'selected' : ''}>${u}</option>`).join('')}
+                            </select>
+                        </div>
+                        ` : `<span class="badge bg-light text-dark border" style="font-size: 0.75rem;"><i class="ti ti-clock me-1 text-primary"></i>${item.target_deadline || '1 Semester'}</span>`}
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
@@ -2607,11 +2637,30 @@
             if (itemIdAttr && itemIdAttr !== 'null' && itemIdAttr !== 'undefined') {
                 const itemId = parseInt(itemIdAttr);
                 const remark = document.querySelector(`.review-remark[data-item-id="${itemId}"]`)?.value || '';
-                items.push({ item_id: itemId, reviewed_quantity: qty, item_remarks: remark });
+                // A Dean-added item (original_quantity === -1) still renders editable
+                // description/duration inputs even after its first save gives it a real
+                // item_id — pick them up here too, or a later edit silently gets dropped.
+                const durValInp = document.querySelector(`.review-dur-value[data-item-id="${itemId}"]`);
+                const durUnitInp = document.querySelector(`.review-dur-unit[data-item-id="${itemId}"]`);
+                const descInp = document.querySelector(`.review-desc[data-item-id="${itemId}"]`);
+                items.push({
+                    item_id: itemId, reviewed_quantity: qty, item_remarks: remark,
+                    target_duration_value: durValInp ? (parseInt(durValInp.value) || 1) : undefined,
+                    target_duration_unit: durUnitInp ? durUnitInp.value : undefined,
+                    target_description: descInp ? descInp.value.trim() : undefined
+                });
             } else if (indIdAttr) {
                 const indicatorId = parseInt(indIdAttr);
                 const remark = document.querySelector(`.review-remark[data-indicator-id="${indicatorId}"]`)?.value || '';
-                items.push({ indicator_id: indicatorId, reviewed_quantity: qty, item_remarks: remark, is_new: true });
+                const durValInp = document.querySelector(`.review-dur-value[data-indicator-id="${indicatorId}"]`);
+                const durUnitInp = document.querySelector(`.review-dur-unit[data-indicator-id="${indicatorId}"]`);
+                const descInp = document.querySelector(`.review-desc[data-indicator-id="${indicatorId}"]`);
+                items.push({
+                    indicator_id: indicatorId, reviewed_quantity: qty, item_remarks: remark, is_new: true,
+                    target_duration_value: durValInp ? (parseInt(durValInp.value) || 1) : undefined,
+                    target_duration_unit: durUnitInp ? durUnitInp.value : undefined,
+                    target_description: descInp ? descInp.value.trim() : undefined
+                });
             }
         });
 
@@ -2652,11 +2701,30 @@
             if (itemIdAttr && itemIdAttr !== 'null' && itemIdAttr !== 'undefined') {
                 const itemId = parseInt(itemIdAttr);
                 const remark = document.querySelector(`.review-remark[data-item-id="${itemId}"]`)?.value || '';
-                items.push({ item_id: itemId, reviewed_quantity: qty, item_remarks: remark });
+                // A Dean-added item (original_quantity === -1) still renders editable
+                // description/duration inputs even after its first save gives it a real
+                // item_id — pick them up here too, or a later edit silently gets dropped.
+                const durValInp = document.querySelector(`.review-dur-value[data-item-id="${itemId}"]`);
+                const durUnitInp = document.querySelector(`.review-dur-unit[data-item-id="${itemId}"]`);
+                const descInp = document.querySelector(`.review-desc[data-item-id="${itemId}"]`);
+                items.push({
+                    item_id: itemId, reviewed_quantity: qty, item_remarks: remark,
+                    target_duration_value: durValInp ? (parseInt(durValInp.value) || 1) : undefined,
+                    target_duration_unit: durUnitInp ? durUnitInp.value : undefined,
+                    target_description: descInp ? descInp.value.trim() : undefined
+                });
             } else if (indIdAttr) {
                 const indicatorId = parseInt(indIdAttr);
                 const remark = document.querySelector(`.review-remark[data-indicator-id="${indicatorId}"]`)?.value || '';
-                items.push({ indicator_id: indicatorId, reviewed_quantity: qty, item_remarks: remark, is_new: true });
+                const durValInp = document.querySelector(`.review-dur-value[data-indicator-id="${indicatorId}"]`);
+                const durUnitInp = document.querySelector(`.review-dur-unit[data-indicator-id="${indicatorId}"]`);
+                const descInp = document.querySelector(`.review-desc[data-indicator-id="${indicatorId}"]`);
+                items.push({
+                    indicator_id: indicatorId, reviewed_quantity: qty, item_remarks: remark, is_new: true,
+                    target_duration_value: durValInp ? (parseInt(durValInp.value) || 1) : undefined,
+                    target_duration_unit: durUnitInp ? durUnitInp.value : undefined,
+                    target_description: descInp ? descInp.value.trim() : undefined
+                });
             }
         });
 
