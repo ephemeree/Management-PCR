@@ -191,32 +191,32 @@
                 <div class="card-body">
                     <form action="{{ url_for('admin.admin_open_term') }}" method="POST">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Academic Year</label>
-                            <input type="text" class="form-control" name="academic_year" placeholder="e.g. 2024-2025"
+                            <label class="form-label small fw-bold" for="openTermAcademicYear">Academic Year</label>
+                            <input type="text" class="form-control" id="openTermAcademicYear" name="academic_year" placeholder="e.g. 2024-2025"
                                 required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Semester</label>
-                            <select class="form-select" name="semester" required>
+                            <label class="form-label small fw-bold" for="openTermSemester">Semester</label>
+                            <select class="form-select" id="openTermSemester" name="semester" required>
                                 <option value="1st Semester">1st Semester</option>
                                 <option value="2nd Semester">2nd Semester</option>
                                 <option value="Mid Year">Mid Year</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Submission Deadline</label>
-                            <input type="date" class="form-control" name="deadline_date" required>
+                            <label class="form-label small fw-bold" for="openTermDeadline">Submission Deadline</label>
+                            <input type="date" class="form-control" id="openTermDeadline" name="deadline_date" required>
                         </div>
                         {# The rating period printed on the IPCR header —
                            "...for the period JANUARY to JUNE 2026." #}
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Rating Period From</label>
-                                <input type="date" class="form-control" name="period_start">
+                                <label class="form-label small fw-bold" for="openTermPeriodStart">Rating Period From</label>
+                                <input type="date" class="form-control" id="openTermPeriodStart" name="period_start">
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Rating Period To</label>
-                                <input type="date" class="form-control" name="period_end">
+                                <label class="form-label small fw-bold" for="openTermPeriodEnd">Rating Period To</label>
+                                <input type="date" class="form-control" id="openTermPeriodEnd" name="period_end">
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 fw-bold">Open Term & Deactivate
@@ -289,14 +289,14 @@
                 <div class="card-body">
                     <form action="{{ url_for('admin.admin_add_criteria') }}" method="POST">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Name</label>
-                            <input type="text" class="form-control" name="name" required
+                            <label class="form-label small fw-bold" for="addCritName">Name</label>
+                            <input type="text" class="form-control" id="addCritName" name="name" required
                                    placeholder="e.g. Innovation">
                             <div class="form-text small">A stable slug is generated automatically from the name.</div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Slug <span class="text-muted fw-normal">(optional)</span></label>
-                            <input type="text" class="form-control" name="slug"
+                            <label class="form-label small fw-bold" for="addCritSlug">Slug <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="text" class="form-control" id="addCritSlug" name="slug"
                                    placeholder="leave blank to generate from the name">
                             <div class="form-text small">
                                 Only set this when rebuilding one of the built-in types. The
@@ -307,15 +307,15 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Review Lane</label>
-                            <select class="form-select" name="review_lane" required>
+                            <label class="form-label small fw-bold" for="addCritLane">Review Lane</label>
+                            <select class="form-select" id="addCritLane" name="review_lane" required>
                                 <option value="CHAIR">Program Chair (Instruction / Support / Admin)</option>
                                 <option value="RET">RET Chair (Research / Extension)</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Display Order</label>
-                            <input type="number" class="form-control" name="display_order" value="100" min="0">
+                            <label class="form-label small fw-bold" for="addCritOrder">Display Order</label>
+                            <input type="number" class="form-control" id="addCritOrder" name="display_order" value="100" min="0">
                         </div>
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" name="is_core" id="addCritCore" checked>
@@ -408,29 +408,39 @@
                     <tbody>
                         {% for c in ipcr_categories.get(dt, []) %}
                         {% set assigned = category_types.get(dt, {}).get(c.ipcr_category_id, []) %}
+                        {# Dim only the descriptive cells when inactive — the action buttons
+                           stay at full opacity so they don't read as disabled. #}
+                        {% set dim = 'opacity-50' if not c.is_active else '' %}
                         <tr>
-                            <td class="fw-semibold">{{ c.category_name }}</td>
-                            <td>
+                            <td class="fw-semibold {{ dim }}">{{ c.category_name }}
+                                {% if not c.is_active %}<span class="badge bg-secondary ms-1">Inactive</span>{% endif %}
+                            </td>
+                            <td class="{{ dim }}">
                                 {% for t in criteria if t.category_id in assigned %}
                                 <span class="badge bg-light text-dark border me-1">{{ t.category_name }}</span>
                                 {% else %}
                                 <span class="text-muted small">none assigned</span>
                                 {% endfor %}
                             </td>
-                            <td class="text-center">{{ c.display_order }}</td>
+                            <td class="text-center {{ dim }}">{{ c.display_order }}</td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                        data-cid="{{ c.ipcr_category_id }}"
-                                        data-dt="{{ dt }}"
-                                        data-name="{{ c.category_name | e }}"
-                                        data-order="{{ c.display_order }}"
-                                        data-types="{{ assigned | join(',') }}"
-                                        onclick="fillCategoryModal(this)">Edit</button>
-                                <form action="{{ url_for('admin.admin_toggle_category') }}" method="POST" class="d-inline">
-                                    <input type="hidden" name="ipcr_category_id" value="{{ c.ipcr_category_id }}">
-                                    <input type="hidden" name="is_active" value="0">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
-                                </form>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-cid="{{ c.ipcr_category_id }}"
+                                            data-dt="{{ dt }}"
+                                            data-name="{{ c.category_name | e }}"
+                                            data-order="{{ c.display_order }}"
+                                            data-types="{{ assigned | join(',') }}"
+                                            onclick="fillCategoryModal(this)">Edit</button>
+                                    <form action="{{ url_for('admin.admin_toggle_category') }}" method="POST" class="d-inline"
+                                          onsubmit="return confirm('{{ 'Reactivate' if not c.is_active else 'Deactivate' }} the \'{{ c.category_name | e }}\' category? This category carries scoring weights for {{ dt }}.');">
+                                        <input type="hidden" name="ipcr_category_id" value="{{ c.ipcr_category_id }}">
+                                        <input type="hidden" name="is_active" value="{{ 0 if c.is_active else 1 }}">
+                                        <button type="submit" class="btn btn-sm {% if c.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                            {% if c.is_active %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% else %}
@@ -460,12 +470,12 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Category Name</label>
+                            <label class="form-label small fw-bold" for="catName">Category Name</label>
                             <input type="text" class="form-control" name="category_name" id="catName" required
                                    placeholder="e.g. Strategic Priorities">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Display Order</label>
+                            <label class="form-label small fw-bold" for="catOrder">Display Order</label>
                             <input type="number" class="form-control" name="display_order" id="catOrder" min="0" value="100">
                         </div>
                         <div class="mb-1">
@@ -566,8 +576,8 @@
                     <input type="hidden" name="designation_type" value="{{ dt }}">
                     <input type="hidden" name="mode" id="weightMode_{{ slug }}" value="{{ cur_mode }}">
 
-                    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-                        <span class="small fw-semibold text-muted">Allocation:</span>
+                    <fieldset class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                        <legend class="small fw-semibold text-muted mb-0 w-auto">Allocation:</legend>
                         <div class="form-check form-check-inline mb-0">
                             <input class="form-check-input" type="radio" name="mode_toggle_{{ slug }}"
                                    id="modeGeneral_{{ slug }}" value="GENERAL"
@@ -586,7 +596,7 @@
                                 Specific per Academic Rank
                             </label>
                         </div>
-                    </div>
+                    </fieldset>
 
                     <!-- GENERAL: one set of weights for every rank -->
                     <div class="weight-mode-general" id="weightGeneral_{{ slug }}"
@@ -595,16 +605,16 @@
                             <table class="table table-bordered align-middle mb-3" id="weightGeneralTable_{{ slug }}">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Applies to</th>
+                                        <th scope="col">Applies to</th>
                                         {% for c in cats %}
-                                        <th class="text-center">{{ c.category_name }}</th>
+                                        <th scope="col" class="text-center">{{ c.category_name }}</th>
                                         {% endfor %}
-                                        <th class="text-center" style="width: 110px;">Total</th>
+                                        <th scope="col" class="text-center" style="width: 110px;">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td class="fw-semibold">All Academic Ranks</td>
+                                        <th scope="row" class="fw-semibold">All Academic Ranks</th>
                                         {% for c in cats %}
                                         <td>
                                             <input type="number" class="form-control form-control-sm text-center weight-input"
@@ -629,18 +639,18 @@
                             <table class="table table-bordered align-middle mb-3" id="weightMatrixTable_{{ slug }}">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Academic Rank</th>
+                                        <th scope="col">Academic Rank</th>
                                         {% for c in cats %}
-                                        <th class="text-center">{{ c.category_name }}</th>
+                                        <th scope="col" class="text-center">{{ c.category_name }}</th>
                                         {% endfor %}
-                                        <th class="text-center" style="width: 110px;">Total</th>
+                                        <th scope="col" class="text-center" style="width: 110px;">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for band in rank_bands %}
                                     {% set row_idx = loop.index0 %}
                                     <tr>
-                                        <td class="fw-semibold">{{ band }}</td>
+                                        <th scope="row" class="fw-semibold">{{ band }}</th>
                                         {% for c in cats %}
                                         <td>
                                             <input type="number" class="form-control form-control-sm text-center weight-input"
@@ -700,7 +710,7 @@
                 const rows = table.querySelectorAll('tbody tr');
                 rows.forEach(tr => {
                     let total = 0;
-                    let rankName = tr.querySelector('td:first-child')?.textContent?.trim() || 'Row';
+                    let rankName = tr.querySelector('td:first-child, th:first-child')?.textContent?.trim() || 'Row';
                     tr.querySelectorAll('.weight-input').forEach(inp => {
                         total += parseFloat(inp.value) || 0;
                     });
@@ -777,19 +787,19 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Name</label>
+                            <label class="form-label small fw-bold" for="editCritName">Name</label>
                             <input type="text" class="form-control" name="name" id="editCritName" required>
                             <div class="form-text small">The slug is fixed and cannot be changed.</div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Review Lane</label>
+                            <label class="form-label small fw-bold" for="editCritLane">Review Lane</label>
                             <select class="form-select" name="review_lane" id="editCritLane" required>
                                 <option value="CHAIR">Program Chair (Instruction / Support / Admin)</option>
                                 <option value="RET">RET Chair (Research / Extension)</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Display Order</label>
+                            <label class="form-label small fw-bold" for="editCritOrder">Display Order</label>
                             <input type="number" class="form-control" name="display_order" id="editCritOrder" min="0">
                         </div>
                         <div class="form-check mb-1">
@@ -926,8 +936,8 @@
                     <input type="hidden" name="designation_type" value="{{ dt }}">
                     <input type="hidden" name="mode" id="tlMode_{{ tslug }}" value="{{ cur_mode }}">
 
-                    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-                        <span class="small fw-semibold text-muted">Applies:</span>
+                    <fieldset class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                        <legend class="small fw-semibold text-muted mb-0 w-auto">Applies:</legend>
                         <div class="form-check form-check-inline mb-0">
                             <input class="form-check-input" type="radio" name="tl_mode_{{ tslug }}"
                                    id="tlGeneral_{{ tslug }}" {% if cur_mode == 'GENERAL' %}checked{% endif %}
@@ -944,24 +954,24 @@
                                 Per academic rank
                             </label>
                         </div>
-                    </div>
+                    </fieldset>
 
                     {% set gen = grid.get(general_band, {}) %}
                     <div id="tlGeneralBlock_{{ tslug }}" style="{% if cur_mode != 'GENERAL' %}display:none;{% endif %}">
                         <div class="row g-2 align-items-end mb-3">
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold">Hours</label>
-                                <input type="number" min="1" class="form-control" name="tl_general_hours"
+                                <label class="form-label small fw-bold" for="tlGeneralHours_{{ tslug }}">Hours</label>
+                                <input type="number" min="1" class="form-control" id="tlGeneralHours_{{ tslug }}" name="tl_general_hours"
                                        value="{{ gen.get('hours', '') }}">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold">Duration</label>
-                                <input type="number" min="1" class="form-control" name="tl_general_duration"
+                                <label class="form-label small fw-bold" for="tlGeneralDuration_{{ tslug }}">Duration</label>
+                                <input type="number" min="1" class="form-control" id="tlGeneralDuration_{{ tslug }}" name="tl_general_duration"
                                        value="{{ gen.get('duration_value', 6) }}">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold">Unit</label>
-                                <select class="form-select" name="tl_general_unit">
+                                <label class="form-label small fw-bold" for="tlGeneralUnit_{{ tslug }}">Unit</label>
+                                <select class="form-select" id="tlGeneralUnit_{{ tslug }}" name="tl_general_unit">
                                     {% for u in ['days', 'weeks', 'months', 'semesters'] %}
                                     <option value="{{ u }}" {% if gen.get('duration_unit', 'months') == u %}selected{% endif %}>{{ u }}</option>
                                     {% endfor %}
@@ -975,17 +985,17 @@
                             <table class="table table-bordered align-middle mb-3">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Academic Rank</th>
-                                        <th class="text-center" style="width: 20%;">Hours</th>
-                                        <th class="text-center" style="width: 20%;">Duration</th>
-                                        <th class="text-center" style="width: 20%;">Unit</th>
+                                        <th scope="col">Academic Rank</th>
+                                        <th scope="col" class="text-center" style="width: 20%;">Hours</th>
+                                        <th scope="col" class="text-center" style="width: 20%;">Duration</th>
+                                        <th scope="col" class="text-center" style="width: 20%;">Unit</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for band in rank_bands %}
                                     {% set row = grid.get(band, {}) %}
                                     <tr>
-                                        <td class="fw-semibold">{{ band }}</td>
+                                        <th scope="row" class="fw-semibold">{{ band }}</th>
                                         <td><input type="number" min="0" class="form-control form-control-sm text-center"
                                                    name="tl_{{ loop.index0 }}_hours" value="{{ row.get('hours', '') }}"></td>
                                         <td><input type="number" min="1" class="form-control form-control-sm text-center"
@@ -1035,15 +1045,15 @@
             <form action="{{ url_for('admin.admin_save_institution') }}" method="POST" class="mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-8">
-                        <label class="form-label small fw-bold">College Full Name</label>
-                        <input type="text" class="form-control" name="college_full_name"
+                        <label class="form-label small fw-bold" for="collegeFullName">College Full Name</label>
+                        <input type="text" class="form-control" id="collegeFullName" name="college_full_name"
                                value="{{ institution.get('college_full_name', '') }}"
                                placeholder="College of Information and Communications Technology">
                         <div class="form-text small">Printed in the commitment sentence.</div>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small fw-bold">Code</label>
-                        <input type="text" class="form-control" name="college_code"
+                        <label class="form-label small fw-bold" for="collegeCode">Code</label>
+                        <input type="text" class="form-control" id="collegeCode" name="college_code"
                                value="{{ institution.get('college_code', '') }}" placeholder="CICT">
                     </div>
                     <div class="col-md-2">
@@ -1122,18 +1132,18 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Department Name</label>
+                            <label class="form-label small fw-bold" for="deptName">Department Name</label>
                             <input type="text" class="form-control" name="department_name" id="deptName" required
                                    placeholder="e.g. DST Program">
                             <div class="form-text small">Must match the value used as the faculty's specialization.</div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Short Code</label>
+                            <label class="form-label small fw-bold" for="deptCode">Short Code</label>
                             <input type="text" class="form-control" name="department_code" id="deptCode"
                                    placeholder="e.g. DST">
                         </div>
                         <div class="mb-1">
-                            <label class="form-label small fw-bold">Display Order</label>
+                            <label class="form-label small fw-bold" for="deptOrder">Display Order</label>
                             <input type="number" class="form-control" name="display_order" id="deptOrder" min="0" value="100">
                         </div>
                     </div>
@@ -1298,7 +1308,7 @@
                             <td class="small ps-3">{{ ind.indicator_description }}</td>
                             <td class="text-center"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
                             <td class="text-center">
-                                <div class="d-flex gap-1 justify-content-center">
+                                <div class="d-flex gap-2 justify-content-center">
                                     <button class="btn btn-outline-secondary btn-sm px-2 py-1"
                                         data-bs-toggle="modal" data-bs-target="#editIndicatorModal"
                                         data-ind-id="{{ ind.indicator_id }}"
@@ -1368,7 +1378,7 @@
                             <td class="small ps-3">{{ ind.indicator_description }}</td>
                             <td class="text-center"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
                             <td class="text-center">
-                                <div class="d-flex gap-1 justify-content-center">
+                                <div class="d-flex gap-2 justify-content-center">
                                     <button class="btn btn-outline-secondary btn-sm px-2 py-1"
                                         data-bs-toggle="modal" data-bs-target="#editIndicatorModal"
                                         data-ind-id="{{ ind.indicator_id }}"
@@ -1414,18 +1424,18 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Target Type</label>
+                        <label class="form-label small fw-bold" for="addIndicatorType">Target Type</label>
                         <select class="form-select" name="category_name" id="addIndicatorType" required></select>
                         <div class="form-text small">Target types available under this category.</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Success Indicator (Target + Measure)</label>
-                        <textarea class="form-control" name="description" rows="4" required
+                        <label class="form-label small fw-bold" for="addIndicatorDesc">Success Indicator (Target + Measure)</label>
+                        <textarea class="form-control" name="description" id="addIndicatorDesc" rows="4" required
                             placeholder="e.g. Complete 5 Research outputs in 6 months"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Efficiency Type</label>
-                        <select class="form-select" name="efficiency_type" required>
+                        <label class="form-label small fw-bold" for="addIndicatorEfficiency">Efficiency Type</label>
+                        <select class="form-select" name="efficiency_type" id="addIndicatorEfficiency" required>
                             <option value="Quantity-Based">Quantity-Based</option>
                             <option value="Adjectival">Adjectival</option>
                             <option value="Client Satisfaction">Client Satisfaction</option>
@@ -1609,7 +1619,7 @@ function openAddIndicator(categoryName, targetTypes) {
                 <div class="modal-body">
                     <input type="hidden" name="indicator_id" id="editIndicatorId">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Category (OPCR Group)</label>
+                        <label class="form-label small fw-bold" for="editIndicatorCategory">Category (OPCR Group)</label>
                         <select class="form-select" name="category_name" id="editIndicatorCategory" required>
                             {# Non-core criteria excluded — see the add form above. #}
                             {% for c in criteria if c.is_active and c.is_core %}
@@ -1618,12 +1628,12 @@ function openAddIndicator(categoryName, targetTypes) {
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Indicator Description</label>
+                        <label class="form-label small fw-bold" for="editIndicatorDesc">Indicator Description</label>
                         <textarea class="form-control" name="description" id="editIndicatorDesc" rows="4"
                             required></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Efficiency Type</label>
+                        <label class="form-label small fw-bold" for="editIndicatorType">Efficiency Type</label>
                         <select class="form-select" name="efficiency_type" id="editIndicatorType" required>
                             <option value="Quantity-Based">Quantity-Based</option>
                             <option value="Adjectival">Adjectival</option>
@@ -1651,28 +1661,28 @@ function openAddIndicator(categoryName, targetTypes) {
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Employee ID Number</label>
+                        <label class="form-label small fw-bold" for="emp_id_input">Employee ID Number</label>
                         <input type="text" class="form-control" name="employee_id_number" id="emp_id_input" required>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="form-label small fw-bold">First Name</label>
+                            <label class="form-label small fw-bold" for="first_name_input">First Name</label>
                             <input type="text" class="form-control" name="first_name" id="first_name_input" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Last Name</label>
+                            <label class="form-label small fw-bold" for="last_name_input">Last Name</label>
                             <input type="text" class="form-control" name="last_name" id="last_name_input" required>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="form-label small fw-bold">College</label>
+                            <label class="form-label small fw-bold" for="college_input">College</label>
                             <select class="form-select" name="college" id="college_input">
                                 <option value="CICT">CICT</option>
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Assigned Program</label>
+                            <label class="form-label small fw-bold" for="program_input">Assigned Program</label>
                             <select class="form-select" name="assigned_program" id="program_input">
                                 <option value="BSIT">BSIT</option>
                                 <option value="BSCS">BSCS</option>
@@ -1681,7 +1691,7 @@ function openAddIndicator(categoryName, targetTypes) {
                     </div>
                     <div class="row mb-3">
                         <div class="col-12">
-                            <label class="form-label small fw-bold">Specialization</label>
+                            <label class="form-label small fw-bold" for="specialization_input">Specialization</label>
                             <select class="form-select" name="specialization" id="specialization_input">
                                 <option value="">None</option>
                                 <option value="WST Program">Web Systems and Technologies (WST)</option>
@@ -1693,7 +1703,7 @@ function openAddIndicator(categoryName, targetTypes) {
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Academic Rank</label>
+                            <label class="form-label small fw-bold" for="rank_input">Academic Rank</label>
                             <select class="form-select" name="academic_rank" id="rank_input">
                                 <option value="Instructor I">Instructor I</option>
                                 <option value="Instructor II">Instructor II</option>
@@ -1710,7 +1720,7 @@ function openAddIndicator(categoryName, targetTypes) {
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Employment Status</label>
+                            <label class="form-label small fw-bold" for="status_input">Employment Status</label>
                             <select class="form-select" name="employment_status" id="status_input">
                                 <option value="Regular">Regular</option>
                                 <option value="Part-Time">Part-Time</option>
@@ -1721,7 +1731,7 @@ function openAddIndicator(categoryName, targetTypes) {
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Leave Status</label>
+                            <label class="form-label small fw-bold" for="leave_status_input">Leave Status</label>
                             <select class="form-select" name="leave_status" id="leave_status_input">
                                 <option value="Active">Active</option>
                                 <option value="On-Leave">On-Leave</option>
@@ -1731,7 +1741,7 @@ function openAddIndicator(categoryName, targetTypes) {
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Designation</label>
+                            <label class="form-label small fw-bold" for="designation_input">Designation</label>
                             <select class="form-select" name="designation" id="designation_input">
                                 <option value="">None</option>
                                 <option value="Program Chair">Program Chair</option>
@@ -1769,8 +1779,8 @@ function openAddIndicator(categoryName, targetTypes) {
                             leave_status, designation</em>.
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Select File</label>
-                        <input class="form-control form-control-lg" type="file" name="csv_file" accept=".csv" required>
+                        <label class="form-label fw-bold small" for="csvFileInput">Select File</label>
+                        <input class="form-control form-control-lg" type="file" id="csvFileInput" name="csv_file" accept=".csv" required>
                     </div>
                 </div>
                 <div class="modal-footer border-0">
@@ -1837,7 +1847,11 @@ function openAddIndicator(categoryName, targetTypes) {
         document.getElementById('editIndicatorId').value = btn.dataset.indId;
         let cat = btn.dataset.indCategory;
         if (cat === 'A. Research') cat = 'B. Research';
-        document.getElementById('editIndicatorCategory').value = cat;
+        const editIndicatorCategorySelect = document.getElementById('editIndicatorCategory');
+        if (!editIndicatorCategorySelect.querySelector(`option[value="${cat}"]`)) {
+            console.warn(`Category "${cat}" has no matching option in the indicator category select — the field will render unselected.`);
+        }
+        editIndicatorCategorySelect.value = cat;
         document.getElementById('editIndicatorDesc').value = btn.dataset.indDesc;
         document.getElementById('editIndicatorType').value = btn.dataset.indType;
     }

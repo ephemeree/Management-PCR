@@ -29,7 +29,7 @@
         <div class="password-field-wrapper">
             <input type="password" name="password" id="password" class="form-control" placeholder="SamplePassword@123" required>
             <button class="toggle-password-btn" type="button" data-target="password" tabindex="-1" title="Toggle Password Visibility">
-                <i class="ti ti-eye-off fs-5"></i>
+                <i class="ti ti-eye fs-5"></i>
             </button>
         </div>
     </div>
@@ -40,41 +40,45 @@
         <div class="password-field-wrapper">
             <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="SamplePassword@123" required>
             <button class="toggle-password-btn" type="button" data-target="confirm_password" tabindex="-1" title="Toggle Password Visibility">
-                <i class="ti ti-eye-off fs-5"></i>
+                <i class="ti ti-eye fs-5"></i>
             </button>
         </div>
-        <div id="confirmPasswordError" class="text-danger small mt-1" style="display: none;">
+        <div id="confirmPasswordError" class="text-danger small mt-1" style="display: none;" aria-live="polite">
             <i class="ti ti-alert-circle me-1"></i> Passwords do not match.
         </div>
     </div>
 
     <!-- Password policy section (2 Columns matching reference image) -->
-    <div class="password-policy-box" id="passwordPolicyBox">
+    <div class="password-policy-box" id="passwordPolicyBox" aria-live="polite">
         <div class="policy-title">Password policy</div>
         <div class="row row-cols-2 g-2">
             <div class="col">
                 <div id="req-length" class="policy-item invalid">
-                    <i class="ti ti-check me-2"></i> <span>At least 8 characters</span>
+                    <i class="ti ti-circle me-2"></i> <span>At least 8 characters</span>
                 </div>
                 <div id="req-uppercase" class="policy-item invalid">
-                    <i class="ti ti-check me-2"></i> <span>One uppercase letter</span>
+                    <i class="ti ti-circle me-2"></i> <span>One uppercase letter</span>
                 </div>
                 <div id="req-lowercase" class="policy-item invalid">
-                    <i class="ti ti-check me-2"></i> <span>One lowercase letter</span>
+                    <i class="ti ti-circle me-2"></i> <span>One lowercase letter</span>
                 </div>
             </div>
             <div class="col">
                 <div id="req-number" class="policy-item invalid">
-                    <i class="ti ti-check me-2"></i> <span>One number</span>
+                    <i class="ti ti-circle me-2"></i> <span>One number</span>
                 </div>
                 <div id="req-special" class="policy-item invalid">
-                    <i class="ti ti-check me-2"></i> <span>One special character</span>
+                    <i class="ti ti-circle me-2"></i> <span>One special character</span>
                 </div>
                 <div id="req-nospace" class="policy-item valid">
                     <i class="ti ti-check me-2"></i> <span>No spaces</span>
                 </div>
             </div>
         </div>
+    </div>
+
+    <div id="registerFormError" class="alert alert-danger border-0 shadow-sm py-2 mb-3" style="font-size: 0.85rem; display: none;" role="alert" aria-live="polite">
+        <i class="ti ti-alert-circle me-1"></i> Password does not meet all security policy requirements. Please check the rules below.
     </div>
 
     <button type="submit" id="claimAccountBtn" class="btn btn-dipcr w-100 mb-3" style="padding: 12px;">Claim Account</button>
@@ -90,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmPasswordInput = document.getElementById('confirm_password');
     const confirmError = document.getElementById('confirmPasswordError');
     const registerForm = document.getElementById('registerForm');
+    const registerFormError = document.getElementById('registerFormError');
 
     function checkPasswordPolicy() {
         const val = passwordInput ? passwordInput.value || '' : '';
@@ -126,18 +131,27 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateReq(id, isValid) {
         const el = document.getElementById(id);
         if (!el) return;
+        const icon = el.querySelector('i');
         if (isValid) {
             el.className = 'policy-item valid';
+            if (icon) icon.className = 'ti ti-check me-2';
         } else {
             el.className = 'policy-item invalid';
+            if (icon) icon.className = 'ti ti-circle me-2';
         }
     }
 
     if (passwordInput) {
-        passwordInput.addEventListener('input', checkPasswordPolicy);
+        passwordInput.addEventListener('input', function() {
+            checkPasswordPolicy();
+            if (registerFormError) registerFormError.style.display = 'none';
+        });
     }
     if (confirmPasswordInput) {
-        confirmPasswordInput.addEventListener('input', checkPasswordPolicy);
+        confirmPasswordInput.addEventListener('input', function() {
+            checkPasswordPolicy();
+            if (registerFormError) registerFormError.style.display = 'none';
+        });
     }
 
     if (registerForm) {
@@ -148,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     confirmError.style.display = 'block';
                     confirmPasswordInput.focus();
                 } else {
-                    alert('Password does not meet all security policy requirements. Please check the rules below.');
+                    if (registerFormError) registerFormError.style.display = 'block';
                     passwordInput.focus();
                 }
             }

@@ -18,7 +18,7 @@ def admin_dashboard():
         active_term = next((t for t in terms if t['is_active'] == 1), None)
         indicators = get_master_indicators(cursor, active_term['term_id']) if active_term else []
         criteria = get_all_criteria(cursor)
-        ipcr_categories = {dt: get_ipcr_categories(cursor, dt) for dt in DESIGNATION_TYPES}
+        ipcr_categories = {dt: get_ipcr_categories(cursor, dt, active_only=False) for dt in DESIGNATION_TYPES}
         category_types = {dt: get_category_type_map(cursor, dt) for dt in DESIGNATION_TYPES}
         weights_grid = {
             dt: (get_criteria_weights_grid(cursor, active_term['term_id'], dt) if active_term else {})

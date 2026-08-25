@@ -36,7 +36,7 @@
         .right { text-align: right; }
         .bold { font-weight: bold; }
         .small { font-size: 8.5pt; }
-        .title { text-align: center; font-weight: bold; font-size: 12pt; margin: 0 0 8px; }
+        .title { text-align: center; font: inherit; font-weight: bold; font-size: 12pt; margin: 0 0 8px; }
         .commitment { margin: 0 0 8px; line-height: 1.3; text-align: justify; }
         .ratee { text-align: right; margin-bottom: 8px; line-height: 1.2; }
         .ratee .name { font-weight: bold; text-decoration: underline; }
@@ -50,15 +50,25 @@
         }
         .toolbar { max-width: 1100px; margin: 0 auto 12px; display: flex; gap: 8px; }
         .toolbar button, .toolbar a {
-            font-family: system-ui, sans-serif; font-size: 13px; padding: 8px 16px;
-            border: 1px solid #0d6efd; border-radius: 6px; cursor: pointer;
-            text-decoration: none; background: #0d6efd; color: #fff;
+            font-family: 'Public Sans', 'Segoe UI', system-ui, sans-serif; font-size: 13px; padding: 8px 16px;
+            border: 1px solid #3E5C82; border-radius: 6px; cursor: pointer;
+            text-decoration: none; background: #3E5C82; color: #fff;
         }
-        .toolbar a.secondary { background: #fff; color: #0d6efd; }
+        .toolbar a.secondary { background: #fff; color: #3E5C82; }
+        .visually-hidden {
+            position: absolute; width: 1px; height: 1px; overflow: hidden;
+            clip: rect(0,0,0,0); white-space: nowrap;
+        }
 
         /* Only the form itself goes on paper. */
         @media print {
-            body { background: #fff; padding: 0; font-size: 9pt; }
+            body {
+                background: #fff; padding: 0; font-size: 9pt;
+                /* Without this, Chrome/Edge drop the .section-row shading by default
+                   unless the user manually checks "Background graphics" in the print dialog. */
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
             .toolbar { display: none !important; }
             .sheet {
                 box-shadow: none;
@@ -87,14 +97,14 @@
     <a class="secondary" href="{{ back_url }}">Back</a>
 </div>
 
-<div class="sheet">
+<main class="sheet">
     {% if not form.is_final %}
     <div class="draft-notice">
         DRAFT — this IPCR has not been approved by the Dean yet. Figures may still change.
     </div>
     {% endif %}
 
-    <div class="title">INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR)</div>
+    <h1 class="title">INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR)</h1>
 
     <p class="commitment">{{ form.commitment }}</p>
 
@@ -106,6 +116,7 @@
 
     <!-- Reviewed by / Approved by -->
     <table style="margin-bottom: 8px;">
+        <caption class="visually-hidden">Reviewed by and approved by signatories</caption>
         <tr>
             <td style="width: 42%;">
                 <div>Reviewed by:</div>
@@ -128,19 +139,20 @@
 
     <!-- Main target table -->
     <table>
+        <caption class="visually-hidden">IPCR target ratings by category</caption>
         <thead>
             <tr>
-                <th rowspan="2" style="width: 16%;">{{ form.output_column_label }}</th>
-                <th rowspan="2" style="width: 26%;">Success Indicator<br><span class="small">(Target + Measure)</span></th>
-                <th rowspan="2" style="width: 26%;">Actual Accomplishments</th>
-                <th colspan="4">Rating</th>
-                <th rowspan="2" style="width: 12%;">Remarks</th>
+                <th scope="col" rowspan="2" style="width: 16%;">{{ form.output_column_label }}</th>
+                <th scope="col" rowspan="2" style="width: 26%;">Success Indicator<br><span class="small">(Target + Measure)</span></th>
+                <th scope="col" rowspan="2" style="width: 26%;">Actual Accomplishments</th>
+                <th scope="col" colspan="4">Rating</th>
+                <th scope="col" rowspan="2" style="width: 12%;">Remarks</th>
             </tr>
             <tr>
-                <th class="rating-col small">Q<sup>1</sup></th>
-                <th class="rating-col small">E<sup>2</sup></th>
-                <th class="rating-col small">T<sup>3</sup></th>
-                <th class="rating-col small">A<sup>4</sup></th>
+                <th scope="col" class="rating-col small">Q<sup>1</sup></th>
+                <th scope="col" class="rating-col small">E<sup>2</sup></th>
+                <th scope="col" class="rating-col small">T<sup>3</sup></th>
+                <th scope="col" class="rating-col small">A<sup>4</sup></th>
             </tr>
         </thead>
         <tbody>
@@ -193,6 +205,7 @@
     <!-- Summary box -->
     <div class="summary-block">
     <table style="margin-top: 10px;">
+        <caption class="visually-hidden">IPCR category weights, ratings, and comments summary</caption>
         <tr>
             <td rowspan="{{ 5 + (form.score.breakdown | length) }}" style="width: 46%; vertical-align: top;">
                 <div class="center bold">Comments and Recommendations for Development Purposes</div>
@@ -241,6 +254,7 @@
 
     <!-- Signature footer -->
     <table>
+        <caption class="visually-hidden">Signatories for discussion, assessment, and final rating</caption>
         <tr>
             <th style="width: 24%;">Discussed with</th>
             <th style="width: 8%;">Date</th>
@@ -274,7 +288,7 @@
         </tr>
     </table>
     </div>
-</div>
+</main>
 
 </body>
 </html>

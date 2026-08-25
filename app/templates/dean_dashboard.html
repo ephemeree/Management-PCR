@@ -153,14 +153,14 @@
                     <table class="table table-hover align-middle shadow-sm">
                         <thead class="table-light">
                             <tr>
-                                <th>Master Indicator</th>
+                                <th scope="col">Master Indicator</th>
                                 {# Columns come from the managed department list plus the
                                    non-department cascade roles. #}
                                 {% for d in departments %}
-                                <th>{{ d.department_name }}</th>
+                                <th scope="col">{{ d.department_name }}</th>
                                 {% endfor %}
                                 {% for r in special_roles %}
-                                <th>{{ r }}</th>
+                                <th scope="col">{{ r }}</th>
                                 {% endfor %}
                             </tr>
                         </thead>
@@ -188,6 +188,7 @@
                                         name="quota_{{ loop.index0 }}[]" min="0"
                                         value="{{ existing_quotas.get(indicator.indicator_id, {}).get(role, 0) }}"
                                         data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()"
+                                        aria-label="Quota for {{ indicator.indicator_description }} - {{ role }}"
                                         {% if has_cascaded_quotas %}disabled{% endif %}>
                                 </td>
                                 {% endfor %}
@@ -210,11 +211,11 @@
             </form>
 
             <!-- Cascade confirmation: blocks submission while any target is unassigned -->
-            <div class="modal fade" id="cascadeConfirmModal" tabindex="-1" aria-hidden="true">
+            <div class="modal fade" id="cascadeConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="cascadeConfirmModalLabel">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title fw-bold"><i class="ti ti-broadcast me-2"></i>Cascade Institutional Targets</h5>
+                            <h5 class="modal-title fw-bold" id="cascadeConfirmModalLabel"><i class="ti ti-broadcast me-2"></i>Cascade Institutional Targets</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
@@ -314,49 +315,6 @@
     </div>
 </div>
 
-<!-- Phase 2: IPCR Commitment Verification -->
-<div id="nav-phase2" class="dashboard-section">
-    <div class="page-header">
-        <h2>Phase 2: Commitment Verification (Digital Handshake)</h2>
-        <p>Review your faculty's proposed targets and
-            lock them for the semester.</p>
-    </div>
-
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Faculty Name</th>
-                            <th>Rank</th>
-                            <th>Proposed Targets</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="fw-bold">Chester Developer</td>
-                            <td>Instructor I</td>
-                            <td><span class="badge bg-secondary">10 Selected</span> + <span
-                                    class="badge bg-info text-dark">1 Custom</span></td>
-                            <td><span class="badge bg-warning text-dark"><i class="ti ti-hourglass"></i>
-                                    Awaiting Review</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-dark me-1"><i class="ti ti-eye"></i> View
-                                    IPCR</button>
-                                <button class="btn btn-sm btn-success"><i class="ti ti-lock"></i> Lock
-                                    Commitment</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Phase 6: Final Digital Batch Approvals -->
 
 <!-- ──────────────────────────────────────────────
@@ -386,13 +344,13 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Name</th>
-                            <th>Academic Rank</th>
-                            <th>Designation</th>
-                            <th>Assigned Program</th>
-                            <th class="text-center">Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Name</th>
+                            <th scope="col">Academic Rank</th>
+                            <th scope="col">Designation</th>
+                            <th scope="col">Assigned Program</th>
+                            <th scope="col" class="text-center">Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -446,13 +404,13 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Name</th>
-                            <th>Academic Rank</th>
-                            <th>Designation</th>
-                            <th>Assigned Program</th>
-                            <th class="text-center">Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Name</th>
+                            <th scope="col">Academic Rank</th>
+                            <th scope="col">Designation</th>
+                            <th scope="col">Assigned Program</th>
+                            <th scope="col" class="text-center">Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -536,11 +494,11 @@
                             <table class="table table-hover align-middle mb-0" id="reviewCoreItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="ps-4">Indicator / IPCR Target Description</th>
-                                        <th class="text-center" width="110">Orig Qty</th>
-                                        <th class="text-center" width="120">Reviewed Qty</th>
-                                        <th class="text-center" width="130">Deadline</th>
-                                        <th width="28%">Dean Remarks / Notes</th>
+                                        <th scope="col" class="ps-4">Indicator / IPCR Target Description</th>
+                                        <th scope="col" class="text-center" width="110">Orig Qty</th>
+                                        <th scope="col" class="text-center" width="120">Reviewed Qty</th>
+                                        <th scope="col" class="text-center" width="130">Deadline</th>
+                                        <th scope="col" width="28%">Dean Remarks / Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody id="reviewCoreItemsBody">
@@ -562,11 +520,11 @@
                             <table class="table table-hover align-middle mb-0" id="reviewStrategicItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="ps-4">Indicator / IPCR Target Description</th>
-                                        <th class="text-center" width="110">Orig Qty</th>
-                                        <th class="text-center" width="120">Reviewed Qty</th>
-                                        <th class="text-center" width="130">Deadline</th>
-                                        <th width="28%">Dean Remarks / Notes</th>
+                                        <th scope="col" class="ps-4">Indicator / IPCR Target Description</th>
+                                        <th scope="col" class="text-center" width="110">Orig Qty</th>
+                                        <th scope="col" class="text-center" width="120">Reviewed Qty</th>
+                                        <th scope="col" class="text-center" width="130">Deadline</th>
+                                        <th scope="col" width="28%">Dean Remarks / Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody id="reviewStrategicItemsBody">
@@ -590,9 +548,9 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th width="20%">Category</th>
-                                        <th width="65%">Indicator Description</th>
-                                        <th class="text-center" width="15%">Action</th>
+                                        <th scope="col" width="20%">Category</th>
+                                        <th scope="col" width="65%">Indicator Description</th>
+                                        <th scope="col" class="text-center" width="15%">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="unpickedItemsBody">
@@ -616,10 +574,10 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th width="20%">Category</th>
-                                        <th width="55%">Indicator Description</th>
-                                        <th class="text-center" width="12%">Quota</th>
-                                        <th class="text-center" width="13%">Action</th>
+                                        <th scope="col" width="20%">Category</th>
+                                        <th scope="col" width="55%">Indicator Description</th>
+                                        <th scope="col" class="text-center" width="12%">Quota</th>
+                                        <th scope="col" class="text-center" width="13%">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="collegeWideItemsBody">
@@ -666,7 +624,7 @@
 <!-- ═══════════════════════════════════════════ -->
 <!-- CONFIRMATION MODAL for Approve/Reject       -->
 <!-- ═══════════════════════════════════════════ -->
-<div class="modal fade" id="confirmDeanModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="confirmDeanModal" tabindex="-1" aria-hidden="true" aria-labelledby="confirmModalTitle">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 py-3"
@@ -719,9 +677,9 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Indicator</th>
-                            <th>Category</th>
-                            <th class="text-center">College-Wide Quota</th>
+                            <th scope="col">Indicator</th>
+                            <th scope="col">Category</th>
+                            <th scope="col" class="text-center">College-Wide Quota</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -753,7 +711,8 @@
             <div class="d-flex align-items-center gap-2">
                 <i class="ti ti-search text-muted"></i>
                 <input type="text" id="assignDesignatedSearch" class="form-control form-control-sm"
-                       placeholder="Search faculty or chair..." style="width: 240px;" onkeyup="filterDesignatedFacultyTable()">
+                       placeholder="Search faculty or chair..." style="width: 240px;" onkeyup="filterDesignatedFacultyTable()"
+                       aria-label="Search designated faculty by name">
             </div>
         </div>
         <div class="card-body p-0">
@@ -761,12 +720,12 @@
                 <table class="table table-hover align-middle mb-0" id="assignDesignatedTable">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4">Faculty / Chairperson</th>
-                            <th>Designation</th>
-                            <th>Program / Specialization</th>
-                            <th>Academic Rank</th>
-                            <th class="text-center" style="width: 170px;">College-Wide Assigned</th>
-                            <th class="text-end pe-4" style="width: 150px;">Action</th>
+                            <th scope="col" class="ps-4">Faculty / Chairperson</th>
+                            <th scope="col">Designation</th>
+                            <th scope="col">Program / Specialization</th>
+                            <th scope="col">Academic Rank</th>
+                            <th scope="col" class="text-center" style="width: 170px;">College-Wide Assigned</th>
+                            <th scope="col" class="text-end pe-4" style="width: 150px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -813,13 +772,13 @@
     </div>
 
     <!-- Modal for College-Wide Target Assignment to Designated Faculty -->
-    <div class="modal fade" id="designatedAssignmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="designatedAssignmentModal" tabindex="-1" aria-hidden="true" aria-labelledby="designatedAssignmentModalLabel">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form action="{{ url_for('dean.save_designated_assignments') }}" method="POST">
                     <input type="hidden" name="emp_id" id="designatedAssignEmpId">
                     <div class="modal-header bg-light">
-                        <h5 class="modal-title fw-bold text-dark">
+                        <h5 class="modal-title fw-bold text-dark" id="designatedAssignmentModalLabel">
                             <i class="ti ti-user-plus text-primary me-2"></i>Assign College-Wide Targets
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -957,6 +916,7 @@
             data.targets.forEach(it => {
                 const qty = it.assigned_quantity != null ? it.assigned_quantity : 1;
                 const desc = (it.custom_description || it.indicator_description || '').replace(/"/g, '&quot;');
+                const ariaDesc = escapeHtml(it.custom_description || it.indicator_description || 'this target');
                 const durVal = it.target_duration_value != null ? it.target_duration_value : 6;
                 const durUnit = it.target_duration_unit || 'months';
                 const checked = it.is_assigned ? 'checked' : '';
@@ -981,20 +941,23 @@
                       '<span class="badge bg-light text-dark border small">Quota: ' + it.total_quota + '</span>' +
                       '<span class="text-muted small ms-2">Qty:</span>' +
                       '<input type="number" min="1" class="form-control form-control-sm text-center dean-assign-input-' + it.indicator_id + '" style="width:80px;" ' +
-                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + '>' +
+                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + ' ' +
+                             'aria-label="Quantity for ' + ariaDesc + '">' +
                     '</div>' +
                     '<div class="row g-2 mt-2 ps-4">' +
                       '<div class="col-md-7">' +
                         '<input type="text" class="form-control form-control-sm dean-assign-input-' + it.indicator_id + '" ' +
                                'name="assign_description_' + it.indicator_id + '" ' +
                                'placeholder="IPCR target description" ' +
-                               'value="' + desc + '" ' + disabledAttr + '>' +
+                               'value="' + desc + '" ' + disabledAttr + ' ' +
+                               'aria-label="Description for ' + ariaDesc + '">' +
                       '</div>' +
                       '<div class="col-md-5">' +
                         '<div class="d-flex gap-1">' +
                           '<input type="number" min="1" class="form-control form-control-sm text-center dean-assign-input-' + it.indicator_id + '" ' +
                                  'name="assign_dur_value_' + it.indicator_id + '" placeholder="Duration" ' +
-                                 'value="' + durVal + '" ' + disabledAttr + '>' +
+                                 'value="' + durVal + '" ' + disabledAttr + ' ' +
+                                 'aria-label="Duration value for ' + ariaDesc + '">' +
                           '<select class="form-select form-select-sm dean-assign-input-' + it.indicator_id + '" ' +
                                   'name="assign_dur_unit_' + it.indicator_id + '" ' + disabledAttr + '>' +
                             unitOptions +
@@ -1071,10 +1034,10 @@
                     <table class="table table-sm table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Faculty Member</th>
-                                <th>Program</th>
-                                <th class="text-center" width="150">Allocated Qty</th>
-                                <th class="text-center" width="150">Review Status</th>
+                                <th scope="col">Faculty Member</th>
+                                <th scope="col">Program</th>
+                                <th scope="col" class="text-center" width="150">Allocated Qty</th>
+                                <th scope="col" class="text-center" width="150">Review Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1167,11 +1130,11 @@
                 <table class="table table-hover align-middle mb-0 text-start">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Name</th>
-                            <th class="text-center">Designation</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Evidence Status</th>
-                            <th class="text-center pe-4">Action</th>
+                            <th scope="col" class="ps-4 py-3">Name</th>
+                            <th scope="col" class="text-center">Designation</th>
+                            <th scope="col" class="text-center">Committed Targets</th>
+                            <th scope="col" class="text-center">Evidence Status</th>
+                            <th scope="col" class="text-center pe-4">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1242,12 +1205,12 @@
                 <table class="table table-hover align-middle mb-0 text-start">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Member</th>
-                            <th class="text-center">Academic Rank</th>
-                            <th class="text-center">Program / Dept</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Action</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Member</th>
+                            <th scope="col" class="text-center">Academic Rank</th>
+                            <th scope="col" class="text-center">Program / Dept</th>
+                            <th scope="col" class="text-center">Committed Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1304,12 +1267,12 @@
                 <table class="table table-hover align-middle mb-0 text-start">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Member</th>
-                            <th class="text-center">Academic Rank</th>
-                            <th class="text-center">Program / Dept</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Member</th>
+                            <th scope="col" class="text-center">Academic Rank</th>
+                            <th scope="col" class="text-center">Program / Dept</th>
+                            <th scope="col" class="text-center">Committed Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1365,12 +1328,12 @@
                 <table class="table table-hover align-middle mb-0 text-start">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Member</th>
-                            <th class="text-center">Academic Rank</th>
-                            <th class="text-center">Program / Dept</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Member</th>
+                            <th scope="col" class="text-center">Academic Rank</th>
+                            <th scope="col" class="text-center">Program / Dept</th>
+                            <th scope="col" class="text-center">Committed Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1412,11 +1375,11 @@
 <!-- ──────────────────────────────────────────────
      Dean Evidence Verification Modals
      ────────────────────────────────────────────── -->
-<div class="modal fade" id="deanEvidenceModal" tabindex="-1" aria-hidden="true" style="z-index: 1055;">
+<div class="modal fade" id="deanEvidenceModal" tabindex="-1" aria-hidden="true" aria-labelledby="deanEvidenceModalLabel" style="z-index: 1055;">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-primary text-white border-0 py-3 d-flex align-items-center" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold fs-6 mb-0">
+                <h5 class="modal-title fw-bold fs-6 mb-0" id="deanEvidenceModalLabel">
                     <i class="ti ti-file-text me-2"></i>Official IPCR Review: <span id="deanEvidenceModalFacultyName"></span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
@@ -1441,11 +1404,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="deanReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+<div class="modal fade" id="deanReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" aria-labelledby="deanReturnEvidenceReasonModalLabel" style="z-index: 1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-arrow-back-up me-2"></i>Reject &amp; Return IPCR to Faculty</h5>
+                <h5 class="modal-title fw-bold fs-6" id="deanReturnEvidenceReasonModalLabel"><i class="ti ti-arrow-back-up me-2"></i>Reject &amp; Return IPCR to Faculty</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 text-start">
@@ -1462,7 +1425,7 @@
 </div>
 
 <!-- Chair/Dean Evidence Verification Modal -->
-<div class="modal fade" id="designatedEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="designatedEvidenceVerificationModal" tabindex="-1" aria-hidden="true" aria-labelledby="designatedEvidenceModalTitle">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
@@ -1484,12 +1447,12 @@
                     <table class="table align-middle border mb-0" style="border-radius: 10px; overflow: hidden;">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3" width="26%">Target Indicator</th>
-                                <th class="text-center" width="8%">Target Qty</th>
-                                <th class="text-center" width="10%">Accomplished Qty</th>
-                                <th width="22%">Reported &amp; Rating</th>
-                                <th class="text-center" width="12%">Status</th>
-                                <th class="ps-3" width="22%">Uploaded Evidences</th>
+                                <th scope="col" class="ps-3" width="26%">Target Indicator</th>
+                                <th scope="col" class="text-center" width="8%">Target Qty</th>
+                                <th scope="col" class="text-center" width="10%">Accomplished Qty</th>
+                                <th scope="col" width="22%">Reported &amp; Rating</th>
+                                <th scope="col" class="text-center" width="12%">Status</th>
+                                <th scope="col" class="ps-3" width="22%">Uploaded Evidences</th>
                             </tr>
                         </thead>
                         <tbody id="designatedModalEvidenceTableBody">
@@ -1505,12 +1468,12 @@
     </div>
 </div>
 
-<div class="modal fade" id="designatedEvidenceViewerModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="designatedEvidenceViewerModal" tabindex="-1" aria-hidden="true" aria-labelledby="designatedEvidenceViewerModalLabel">
     <!-- Full-width so PDF/image evidence is actually readable while verifying. -->
     <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white border-0 py-3" style="background: var(--c-accent);">
-                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
+                <h5 class="modal-title fw-bold fs-6" id="designatedEvidenceViewerModalLabel"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="designatedEvidenceViewerBody"></div>
@@ -1521,11 +1484,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="designatedReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+<div class="modal fade" id="designatedReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" aria-labelledby="designatedReturnEvidenceReasonModalLabel" style="z-index: 1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence</h5>
+                <h5 class="modal-title fw-bold" id="designatedReturnEvidenceReasonModalLabel"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 text-start">
@@ -1542,6 +1505,11 @@
 </div>
 
 <script>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     let deanCurrentPendingEmpId = null;
 
     window.openDeanEvidenceModal = function(empId, facultyName, isPending, isChairDeanRow, isFullyReviewed) {
@@ -1765,9 +1733,9 @@
 
                         tr.innerHTML = `
                             <td class="ps-3 py-3">
-                                <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Standard'}</span>
-                                <p class="mb-1 small fw-semibold text-dark">${t.indicator_description}</p>
-                                ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${t.actual_accomplishment}</p>` : ''}
+                                <span class="badge bg-light text-dark border mb-1">${escapeHtml(t.category_name || 'Standard')}</span>
+                                <p class="mb-1 small fw-semibold text-dark">${escapeHtml(t.indicator_description)}</p>
+                                ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${escapeHtml(t.actual_accomplishment)}</p>` : ''}
                             </td>
                             <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                             <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
@@ -1796,7 +1764,7 @@
             let html = '';
             evidenceList.forEach((ev) => {
                 const fileUrl = `/evidence_uploads/${ev.evidence_id}`;
-                const fileName = ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, '');
+                const fileName = escapeHtml(ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, ''));
                 const ext = ev.file_path.split('.').pop().toLowerCase();
                 const isImage = ext.match(/^(jpg|jpeg|png|gif|webp)$/i);
                 const isPdf = ext === 'pdf';
@@ -1827,7 +1795,7 @@
 
                 const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
                 const commentHtml = ev.supervisor_comment
-                    ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                    ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${escapeHtml(ev.supervisor_comment)}</div>`
                     : '';
 
                 html += `
@@ -1839,7 +1807,7 @@
                             </div>
                             <div class="small text-muted flex-shrink-0">
                                 <span><i class="ti ti-circle-check me-1"></i>Qty: ${ev.actual_qty_Q}</span>
-                                ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
+                                ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${escapeHtml(ev.uploaded_by || 'Co-author')}</span>` : ''}
                             </div>
                         </div>
                         ${commentHtml}
@@ -2435,13 +2403,14 @@
                 <tr class="table-active-row" style="background-color: rgba(13, 110, 253, 0.04);">
                     <td class="py-3 ps-4">
                         ${badgeHtml}
-                        <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
+                        <p class="mb-1 small text-secondary fw-semibold">${escapeHtml(item.indicator_description)}</p>
                         ${item.original_quantity === -1 && !isLocked ? `
                         <input type="text" class="form-control form-control-sm review-desc mt-1"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                               value="${(item.target_description && item.target_description !== item.indicator_description) ? item.target_description.replace(/"/g, '&quot;') : ''}"
-                               placeholder="IPCR target description">
-                        ` : `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>`}
+                               value="${(item.target_description && item.target_description !== item.indicator_description) ? escapeHtml(item.target_description) : ''}"
+                               placeholder="IPCR target description"
+                               aria-label="Target description for ${escapeHtml(item.indicator_description)}">
+                        ` : `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${escapeHtml(descText)}</p>`}
                     </td>
                     <td class="text-center">
                         <span class="fw-bold fs-5 text-primary">${origQtyDisplay}</span>
@@ -2450,6 +2419,7 @@
                         <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" data-original="${item.original_quantity}"
                                value="${item.reviewed_quantity}" min="0"
+                               aria-label="Reviewed quantity for ${escapeHtml(item.indicator_description)}"
                                ${isLocked ? 'disabled' : ''}>
                     </td>
                     <td class="text-center">
@@ -2457,9 +2427,11 @@
                         <div class="d-flex gap-1 justify-content-center">
                             <input type="number" min="1" class="form-control form-control-sm text-center review-dur-value"
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;">
+                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;"
+                                   aria-label="Duration value for ${escapeHtml(item.indicator_description)}">
                             <select class="form-select form-select-sm review-dur-unit"
-                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;">
+                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;"
+                                    aria-label="Duration unit for ${escapeHtml(item.indicator_description)}">
                                 ${['days', 'weeks', 'months', 'semesters'].map(u => `<option value="${u}" ${(item.target_duration_unit || 'semesters') === u ? 'selected' : ''}>${u}</option>`).join('')}
                             </select>
                         </div>
@@ -2469,7 +2441,8 @@
                         <div class="d-flex align-items-center gap-2">
                             <input type="text" class="form-control form-control-sm review-remark shadow-sm"
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                                   value="${item.item_remarks || ''}"
+                                   value="${escapeHtml(item.item_remarks || '')}"
+                                   aria-label="Remarks for ${escapeHtml(item.indicator_description)}"
                                    placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
                             ${!isLocked ? `
                             <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn"
@@ -2511,13 +2484,14 @@
                 <tr>
                     <td class="py-3 ps-4">
                         ${badgeHtml}
-                        <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
+                        <p class="mb-1 small text-secondary fw-semibold">${escapeHtml(item.indicator_description)}</p>
                         ${item.original_quantity === -1 && !isLocked ? `
                         <input type="text" class="form-control form-control-sm review-desc mt-1"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                               value="${(item.target_description && item.target_description !== item.indicator_description) ? item.target_description.replace(/"/g, '&quot;') : ''}"
-                               placeholder="IPCR target description">
-                        ` : (descText !== item.indicator_description ? `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>` : '')}
+                               value="${(item.target_description && item.target_description !== item.indicator_description) ? escapeHtml(item.target_description) : ''}"
+                               placeholder="IPCR target description"
+                               aria-label="Target description for ${escapeHtml(item.indicator_description)}">
+                        ` : (descText !== item.indicator_description ? `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${escapeHtml(descText)}</p>` : '')}
                     </td>
                     <td class="text-center">
                         <span class="fw-bold fs-5 text-warning">${origQtyDisplay}</span>
@@ -2526,6 +2500,7 @@
                         <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" data-original="${item.original_quantity}"
                                value="${item.reviewed_quantity}" min="0"
+                               aria-label="Reviewed quantity for ${escapeHtml(item.indicator_description)}"
                                ${isLocked ? 'disabled' : ''}>
                     </td>
                     <td class="text-center">
@@ -2533,9 +2508,11 @@
                         <div class="d-flex gap-1 justify-content-center">
                             <input type="number" min="1" class="form-control form-control-sm text-center review-dur-value"
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;">
+                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;"
+                                   aria-label="Duration value for ${escapeHtml(item.indicator_description)}">
                             <select class="form-select form-select-sm review-dur-unit"
-                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;">
+                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;"
+                                    aria-label="Duration unit for ${escapeHtml(item.indicator_description)}">
                                 ${['days', 'weeks', 'months', 'semesters'].map(u => `<option value="${u}" ${(item.target_duration_unit || 'semesters') === u ? 'selected' : ''}>${u}</option>`).join('')}
                             </select>
                         </div>
@@ -2545,7 +2522,8 @@
                         <div class="d-flex align-items-center gap-2">
                             <input type="text" class="form-control form-control-sm review-remark shadow-sm"
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                                   value="${item.item_remarks || ''}"
+                                   value="${escapeHtml(item.item_remarks || '')}"
+                                   aria-label="Remarks for ${escapeHtml(item.indicator_description)}"
                                    placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
                             ${!isLocked ? `
                             <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn"
@@ -2573,12 +2551,12 @@
         items.forEach(ind => {
             if (ind.category_name !== currentCat) {
                 currentCat = ind.category_name;
-                tbody.innerHTML += `<tr class="table-secondary"><td colspan="3" class="fw-bold text-uppercase text-dark small py-2">${currentCat}</td></tr>`;
+                tbody.innerHTML += `<tr class="table-secondary"><td colspan="3" class="fw-bold text-uppercase text-dark small py-2">${escapeHtml(currentCat)}</td></tr>`;
             }
             tbody.innerHTML += `
             <tr class="table-warning">
-                <td class="small text-muted">${ind.category_name || ''}</td>
-                <td>${ind.indicator_description}</td>
+                <td class="small text-muted">${escapeHtml(ind.category_name || '')}</td>
+                <td>${escapeHtml(ind.indicator_description)}</td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-unpicked-btn fw-bold"
                             data-indicator-id="${ind.indicator_id}">
@@ -2601,12 +2579,12 @@
         items.forEach(ind => {
             if (ind.category_name !== currentCat) {
                 currentCat = ind.category_name;
-                tbody.innerHTML += `<tr class="table-secondary"><td colspan="4" class="fw-bold text-uppercase text-dark small py-2">${currentCat}</td></tr>`;
+                tbody.innerHTML += `<tr class="table-secondary"><td colspan="4" class="fw-bold text-uppercase text-dark small py-2">${escapeHtml(currentCat)}</td></tr>`;
             }
             tbody.innerHTML += `
             <tr class="table-info">
-                <td class="small text-muted">${ind.category_name || ''}</td>
-                <td>${ind.indicator_description}</td>
+                <td class="small text-muted">${escapeHtml(ind.category_name || '')}</td>
+                <td>${escapeHtml(ind.indicator_description)}</td>
                 <td class="text-center"><span class="badge bg-success">${ind.total_target_value}</span></td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-college-wide-btn fw-bold"
@@ -2836,6 +2814,7 @@
         if (!container) return;
         const div = document.createElement('div');
         div.className = `alert alert-${type} alert-dismissible fade show shadow-sm`;
+        div.setAttribute('role', 'alert');
         div.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
         container.prepend(div);
         setTimeout(() => div.remove(), 5000);
@@ -2845,7 +2824,7 @@
     window.showCustomConfirm = function ({ title, mainText, subText, confirmText, confirmClass, iconClass, onConfirm }) {
         const modal = new bootstrap.Modal(document.getElementById('customConfirmModal'));
 
-        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('customConfirmModalTitle').textContent = title;
         document.getElementById('confirmModalTextMain').innerHTML = mainText;
         document.getElementById('confirmModalTextSub').textContent = subText;
 
@@ -2884,7 +2863,7 @@
 </script>
 
 <!-- Custom Confirmation Modal -->
-<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="customConfirmModalTitle" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
@@ -2892,7 +2871,7 @@
                     style="font-size: 0.85rem; opacity: 0.6;"></button>
             </div>
             <div class="modal-body text-center px-4 pb-4 pt-1">
-                <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle"
+                <h5 class="modal-title fw-bold text-dark mb-3" id="customConfirmModalTitle"
                     style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
                 <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain"
                     style="font-size: 0.95rem; line-height: 1.5; color: var(--c-text-sub) !important;">Main message</p>

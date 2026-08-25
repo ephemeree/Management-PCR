@@ -6,8 +6,6 @@
     <title>D-IPCR: Digital IPCR System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons kept during the icon-set migration: dashboards not yet converted still use bi- classes -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -384,13 +382,18 @@
             --c-accent:       #3E5C82;
             --c-accent-dark:  #2F4767;
             --c-accent-glow:  rgba(62,92,130,0.14);
+            --c-accent-tint:  rgba(62,92,130,0.06);
             --c-success:      #3F7D58;
+            --c-success-glow: rgba(63,125,88,0.06);
             --c-warning:      #B8842E;
+            --c-warning-glow: rgba(184,132,46,0.08);
             --c-danger:       #B0453D;
+            --c-danger-glow:  rgba(176,69,61,0.06);
             --c-indigo:       #5B5A8C;
             --c-text:         #2B2822;
             --c-text-sub:     #6B6459;
             --c-text-muted:   #A39D8F;
+            --c-text-glow:    rgba(43,40,34,.08);
             --c-surface:      #FFFFFF;
             --c-surface-alt:  #F7F6F3;
             --c-border:       #E7E4DD;
@@ -840,7 +843,7 @@
 <body>
 
     <!-- Mobile hamburger -->
-    <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation">
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation" aria-expanded="false">
         <i class="ti ti-menu-2"></i>
     </button>
 
@@ -879,12 +882,13 @@
     </aside>
 
     <!-- Collapse toggle (desktop) -->
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
         <i class="ti ti-chevron-left"></i>
     </button>
 
     <!-- Main content -->
     <main class="dipcr-main" id="mainContent">
+        <h1 class="visually-hidden">{{ self.role_display() }}</h1>
         <div class="flash-container">
             {% block flash_messages %}
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -916,13 +920,16 @@
             sidebar.classList.add('collapsed');
             toggleBtn.classList.add('collapsed');
             mainContent.classList.add('expanded');
+            toggleBtn.setAttribute('aria-expanded', 'false');
         }
 
         toggleBtn.addEventListener('click', () => {
             sidebar.classList.toggle('collapsed');
             toggleBtn.classList.toggle('collapsed');
             mainContent.classList.toggle('expanded');
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            const collapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', collapsed);
+            toggleBtn.setAttribute('aria-expanded', String(!collapsed));
         });
 
         // Mobile toggle
@@ -932,11 +939,13 @@
         mobileToggle.addEventListener('click', () => {
             sidebar.classList.toggle('mobile-open');
             overlay.classList.toggle('visible');
+            mobileToggle.setAttribute('aria-expanded', String(sidebar.classList.contains('mobile-open')));
         });
 
         overlay.addEventListener('click', () => {
             sidebar.classList.remove('mobile-open');
             overlay.classList.remove('visible');
+            mobileToggle.setAttribute('aria-expanded', 'false');
         });
 
         // Section switching
@@ -955,6 +964,7 @@
             // Close mobile sidebar if open
             sidebar.classList.remove('mobile-open');
             overlay.classList.remove('visible');
+            mobileToggle.setAttribute('aria-expanded', 'false');
 
             // Store active section
             localStorage.setItem('activeSection_' + (window.dashboardRole || 'default'), sectionId);
@@ -979,13 +989,21 @@
                 showSection(firstNav.dataset.section);
             }
 
-            // Auto-populate data-tooltip for all nav items
+            // Auto-populate data-tooltip for all nav items, and give every nav item an
+            // aria-label so its name survives when .nav-text is display:none'd in the
+            // collapsed sidebar state (display:none removes text from the a11y tree too,
+            // not just visually — aria-label doesn't depend on that span being visible).
             document.querySelectorAll('.dipcr-sidebar .nav-item').forEach(item => {
-                if (!item.getAttribute('data-tooltip')) {
+                let label = item.getAttribute('data-tooltip');
+                if (!label) {
                     const textEl = item.querySelector('.nav-text');
                     if (textEl) {
-                        item.setAttribute('data-tooltip', textEl.textContent.trim());
+                        label = textEl.textContent.trim();
+                        item.setAttribute('data-tooltip', label);
                     }
+                }
+                if (label && !item.getAttribute('aria-label')) {
+                    item.setAttribute('aria-label', label);
                 }
             });
         });
@@ -1037,7 +1055,7 @@
 
             titleText.textContent = title || 'Validation Notice';
             heading.textContent = title || 'Action Required';
-            messageEl.innerHTML = message || '';
+            messageEl.textContent = message || '';
 
             if (type === 'danger' || type === 'error') {
                 header.style.backgroundColor = 'var(--bs-danger, #dc3545)';

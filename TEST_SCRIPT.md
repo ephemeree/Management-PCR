@@ -40,7 +40,9 @@ permission checks in Phase M, and ideally a **second Program Chair** in another 
 | Phase | What it covers |
 |---|---|
 | **0** | Login, logout, registration, bad credentials |
+
 | **A** | Admin: term, departments, teaching load, printed-IPCR config, criteria, categories, weights, indicators |
+
 | **B** | Dean: cascade quotas to departments / RET / College-Wide (with permanent lock & warning) |
 | **C** | Program Chair: distribute to faculty **and to chairs/Dean** |
 | **D** | RET Chair: research menu, direct assignment (with desc/duration), extension distribution |
@@ -48,8 +50,11 @@ permission checks in Phase M, and ideally a **second Program Chair** in another 
 | **F** | RET review → PC review → return/resubmit → lock |
 | **G** | Evidence upload, accomplishment reporting, Q/E/T scoring |
 | **H** | Verification by Program Chair, RET Chair and Dean (official printable IPCR document review) |
+
 | **I** | Designated Faculty: full cycle including custom targets & Program Chair allocated instruction |
-| **J** | Program Chair / RET Chair / Dean own IPCR & Dean College-Wide target assignments |
+| **J** | Program Chair / RET Chair / Dean own IPCR & Dean College-Wide target assignments | 
+
+
 | **K** | Print IPCR, both variants |
 | **L** | Admin maintenance: roster, CSV import, backup, accounts |
 | **M** | Permissions and security |

@@ -187,14 +187,6 @@
     <form id="dpcrForm" action="{{ url_for('designated.submit_designated_ipcr_route') }}" method="POST">
         <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
 
-        {% set categories = [
-        {'id': 'instructions', 'name': 'A. Instructions', 'display_name': 'Strategic Priorities', 'icon':
-        'bi-star-fill',
-        'subtitle': 'Assigned teaching and instructional workloads'},
-        {'id': 'support', 'name': 'Support Functions', 'display_name': 'Support Functions', 'icon': 'bi-tools',
-        'subtitle': 'Assigned administrative and support workloads'}
-        ] %}
-
         {# Table 1: Core Functions (Mandatory 10hrs Teaching Load + Cascaded Instruction from Program Chair) #}
         <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
             <div class="card-header border-0 py-3 bg-light">
@@ -225,7 +217,7 @@
                             <tr class="table-active-row" style="background-color: rgba(13, 110, 253, 0.04);">
                                 {% if can_edit %}
                                 <td class="text-center">
-                                    <input type="checkbox" class="form-check-input" checked disabled style="transform: scale(1.3);">
+                                    <input type="checkbox" class="form-check-input" checked disabled style="width: 1.3em; height: 1.3em;">
                                     <input type="hidden" name="selected_indicators[]" value="{{ target.indicator_id }}">
                                 </td>
                                 {% endif %}
@@ -324,7 +316,7 @@
                                 <td class="text-center">
                                     <input type="checkbox" name="selected_indicators[]"
                                         class="form-check-input strategic-checkbox" value="{{ target.indicator_id }}"
-                                        style="transform: scale(1.3);" {% if target.is_selected %}checked{% endif %}>
+                                        style="width: 1.3em; height: 1.3em;" {% if target.is_selected %}checked{% endif %}>
                                     {% if target.is_oversight_cascade %}
                                     <input type="hidden" name="admin_indicator_ids[]" value="{{ target.indicator_id }}">
                                     {% endif %}
@@ -486,18 +478,18 @@
     {% endif %}
 </div>
 
-<div class="modal fade" id="addTargetModal" tabindex="-1">
+<div class="modal fade" id="addTargetModal" tabindex="-1" aria-hidden="true" aria-labelledby="addTargetModalLabel">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="ti ti-circle-plus me-2"></i> Add Custom Target</h5>
+                <h5 class="modal-title fw-bold" id="addTargetModalLabel"><i class="ti ti-circle-plus me-2"></i> Add Custom Target</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <form id="addTargetForm">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Target Type</label>
-                        <select class="form-select" name="Indicator" required>
+                        <label class="form-label small fw-bold" for="targetType">Target Type</label>
+                        <select class="form-select" id="targetType" name="Indicator" required>
                             <option value="Support">Support Functions</option>
                             <option value="Instructions">Instruction</option>
                         </select>
@@ -546,22 +538,6 @@
         </div>
     </div>
 </div>
-
-<style>
-    .strategic-checkbox {
-        cursor: pointer;
-    }
-
-    .strategic-checkbox:checked {
-        background-color: var(--c-accent);
-        border-color: var(--c-accent);
-    }
-
-    .form-control-sm:focus {
-        border-color: var(--c-accent);
-        box-shadow: 0 0 0 0.2rem var(--c-accent-glow);
-    }
-</style>
 
 {% if is_committed %}
 <div id="nav-evidence" class="dashboard-section">
@@ -961,7 +937,7 @@
                 customRow.className = 'custom-target-row';
                 customRow.innerHTML = `
                     <td class="text-center">
-                        <input type="checkbox" class="form-check-input" checked disabled style="transform: scale(1.3);">
+                        <input type="checkbox" class="form-check-input" checked disabled style="width: 1.3em; height: 1.3em;">
                     </td>
                     <td class="py-3">
                         <div class="d-flex justify-content-between align-items-start">
@@ -973,7 +949,7 @@
                                 <input type="hidden" name="custom_duration_values[]" value="${durValue}">
                                 <input type="hidden" name="custom_duration_units[]" value="${durUnit}">
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('tr').remove(); checkEmptyTable('support');">
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0" style="padding: 0.5rem;" aria-label="Remove this custom target" onclick="this.closest('tr').remove(); checkEmptyTable('support');">
                                 <i class="ti ti-trash"></i>
                             </button>
                         </div>
@@ -1248,7 +1224,8 @@
         const effRow = document.getElementById('efficiencyRow');
         const effSelect = document.getElementById('evidenceEfficiency');
         const effErr = document.getElementById('efficiencyErrorMsg');
-        
+        const msg = document.getElementById('accomplishmentSaveMsg');
+
         if (effRow && effRow.style.display !== 'none' && !effRaw) {
             if (effSelect) effSelect.classList.add('is-invalid');
             if (effErr) effErr.style.display = 'block';
@@ -1261,7 +1238,6 @@
         if (effSelect) effSelect.classList.remove('is-invalid');
         if (effErr) effErr.style.display = 'none';
 
-        const msg = document.getElementById('accomplishmentSaveMsg');
         if (msg) {
             msg.className = 'small me-2 text-muted';
             msg.textContent = 'Saving...';
@@ -1449,7 +1425,7 @@
                             let actionHtml = '';
                             if (ev.verification_status !== 'Approved' && !HAS_FINAL_IPCR) {
                                 actionHtml = `
-                                    <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
+                                    <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger border-0 align-middle" style="padding: 0.5rem;" title="Delete evidence file" aria-label="Delete evidence file">
                                         <i class="ti ti-trash"></i>
                                     </button>
                                 `;
@@ -1582,12 +1558,12 @@
 </script>
 
 <!-- Unified Evidence Gathering Modal -->
-<div class="modal fade" id="evidenceGatheringModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="evidenceGatheringModal" tabindex="-1" aria-hidden="true" aria-labelledby="evidenceGatheringModalLabel">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3"
                 style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
-                <h5 class="modal-title fw-bold"><i class="ti ti-file-check me-2"></i>Evidence Gathering
+                <h5 class="modal-title fw-bold" id="evidenceGatheringModalLabel"><i class="ti ti-file-check me-2"></i>Evidence Gathering
                     Checklist</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
@@ -1769,7 +1745,7 @@
 </div>
 
 <!-- Custom Confirmation Modal -->
-<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="confirmModalTitle" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">

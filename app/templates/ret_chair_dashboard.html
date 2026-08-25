@@ -164,6 +164,7 @@ function openAssignmentEditor(empId) {
             items.forEach(it => {
                 const qty = it.assigned_quantity != null ? it.assigned_quantity : it.default_quantity;
                 const desc = escapeHtml(it.target_description || '');
+                const ariaDesc = escapeHtml(it.indicator_description || '');
                 const durVal = it.target_duration_value != null ? it.target_duration_value : '';
                 const durUnit = it.target_duration_unit || 'months';
                 const checked = it.is_assigned ? 'checked' : '';
@@ -182,22 +183,24 @@ function openAssignmentEditor(empId) {
                       '<span class="flex-grow-1 fw-semibold small text-dark">' + escapeHtml(it.indicator_description) + '</span>' +
                       '<span class="text-muted small">Qty:</span>' +
                       '<input type="number" min="1" class="form-control form-control-sm text-center assign-input-' + it.indicator_id + '" style="width:80px;" ' +
-                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + '>' +
+                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" aria-label="Quantity for ' + ariaDesc + '" ' + disabledAttr + '>' +
                     '</div>' +
                     '<div class="row g-2 mt-2 ps-4">' +
                       '<div class="col-md-7">' +
                         '<input type="text" class="form-control form-control-sm assign-input-' + it.indicator_id + '" ' +
                                'name="assign_description_' + it.indicator_id + '" ' +
                                'placeholder="IPCR target description" ' +
+                               'aria-label="IPCR target description for ' + ariaDesc + '" ' +
                                'value="' + desc + '" ' + disabledAttr + '>' +
                       '</div>' +
                       '<div class="col-md-5">' +
                         '<div class="d-flex gap-1">' +
                           '<input type="number" min="1" class="form-control form-control-sm text-center assign-input-' + it.indicator_id + '" ' +
                                  'name="assign_dur_value_' + it.indicator_id + '" placeholder="Duration" ' +
+                                 'aria-label="Deadline duration for ' + ariaDesc + '" ' +
                                  'value="' + durVal + '" ' + disabledAttr + '>' +
                           '<select class="form-select form-select-sm assign-input-' + it.indicator_id + '" ' +
-                                  'name="assign_dur_unit_' + it.indicator_id + '" ' + disabledAttr + '>' +
+                                  'name="assign_dur_unit_' + it.indicator_id + '" aria-label="Deadline duration unit for ' + ariaDesc + '" ' + disabledAttr + '>' +
                             unitOptions +
                           '</select>' +
                         '</div>' +
@@ -320,6 +323,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (firstInvalid) firstInvalid.focus();
                     alert(errorMsg || 'Please specify a valid deadline duration and target description for all selected research targets.');
                 }
+                return;
+            }
+
+            // Saving replaces the selected rank's entire existing rule (delete-and-rewrite,
+            // not a merge) — confirm before committing to that.
+            const rankSelect = saveRuleForm.querySelector('#academic_rank');
+            const rankLabel = rankSelect && rankSelect.selectedOptions.length ? rankSelect.selectedOptions[0].text : 'this rank';
+            if (!confirm(`Save the Research menu rule for ${rankLabel}? This replaces the rank's entire existing rule — any previously configured indicators not checked here will be removed.`)) {
+                e.preventDefault();
             }
         });
     }
@@ -327,13 +339,13 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Assignment Editor Modal (Dual Assignment Workflow) -->
-<div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true" aria-labelledby="assignmentEditorModalLabel">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form action="{{ url_for('ret_chair.save_assignments') }}" method="POST">
                 <input type="hidden" name="emp_id" id="assignmentEditorEmpId">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="ti ti-list-check me-2"></i>Assign Research Targets</h5>
+                    <h5 class="modal-title" id="assignmentEditorModalLabel"><i class="ti ti-list-check me-2"></i>Assign Research Targets</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -759,10 +771,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
-                <div class="text-end border-top pt-3">
-                    <button type="submit" id="save_rule_btn" class="btn btn-primary fw-bold px-4 shadow-sm"><i
-                            class="ti ti-device-floppy"></i>
-                        Save Menu Rules</button>
+                <div class="border-top pt-3">
+                    <div class="alert alert-warning small py-2 px-3 mb-3">
+                        <i class="ti ti-alert-triangle me-1"></i>
+                        Saving <strong>replaces</strong> the selected rank's entire existing rule. Any
+                        indicators from a previous rule that aren't checked here will be removed.
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" id="save_rule_btn" class="btn btn-primary fw-bold px-4 shadow-sm"><i
+                                class="ti ti-device-floppy"></i>
+                            Save Menu Rules</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -907,11 +926,11 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 
     <!-- Confirm Extension Distribution Modal -->
-    <div class="modal fade" id="confirmExtDistModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="confirmExtDistModal" tabindex="-1" aria-hidden="true" aria-labelledby="confirmExtDistModalLabel">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
                 <div class="modal-header bg-warning text-dark border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                    <h5 class="modal-title fw-bold"><i class="ti ti-alert-triangle me-2"></i>Confirm Extension Distribution</h5>
+                    <h5 class="modal-title fw-bold" id="confirmExtDistModalLabel"><i class="ti ti-alert-triangle me-2"></i>Confirm Extension Distribution</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4 text-center">
@@ -1415,18 +1434,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    console.log("[DEBUG] RET script loaded.");
-
     document.addEventListener('DOMContentLoaded', function () {
-        console.log("[DEBUG] DOMContentLoaded in RET logic. Attaching listeners...");
         // Open modal and fetch review data
         const buttons = document.querySelectorAll('.open-ret-review-modal');
-        console.log("[DEBUG] Found " + buttons.length + " buttons with class .open-ret-review-modal");
         buttons.forEach(function (btn) {
-            console.log("[DEBUG] Attaching click listener to button for empId:", btn.dataset.empId);
             btn.addEventListener('click', function () {
                 const empId = this.dataset.empId;
-                console.log("[DEBUG] Review RET button clicked! empId:", empId);
                 loadRetReviewModal(empId);
             });
         });
@@ -1467,7 +1480,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function loadRetReviewModal(empId) {
-        console.log("[DEBUG] loadRetReviewModal called with empId:", empId);
         // Reset modal to loading state
         document.getElementById('retModalLoader').style.display = 'block';
         document.getElementById('retModalBody').style.display = 'none';
@@ -1480,15 +1492,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('retUnpickedItemsBody').innerHTML = '';
 
         const url = `/ret_chair/review_ipcr/${empId}`;
-        console.log("[DEBUG] Fetching URL:", url);
 
         fetch(url)
             .then(function (res) {
-                console.log("[DEBUG] Fetch response status:", res.status);
                 return res.json();
             })
             .then(function (data) {
-                console.log("[DEBUG] Fetch response data parsed:", data);
                 if (data.error) {
                     document.getElementById('retModalLoader').style.display = 'none';
                     alert('Error loading IPCR RET choices: ' + data.error);
@@ -1499,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 populateRetModal(data);
             })
             .catch(function (err) {
-                console.error("[DEBUG] Fetch caught error:", err);
+                console.error("Failed to load RET review data:", err);
                 document.getElementById('retModalLoader').style.display = 'none';
                 alert('Network error: ' + err);
             });
@@ -1605,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tr.innerHTML = `
                 <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
                 <td>
-                    <div class="small fw-semibold">${item.indicator_description}</div>
+                    <div class="small fw-semibold">${escapeHtml(item.indicator_description)}</div>
                     ${item.original_quantity === -1 ? '<span class="badge bg-info text-dark mt-1" style="font-size: 0.75rem; width: fit-content; display: block;">Added by RET</span>' : ''}
                 </td>
                 <td class="text-center text-muted">${origQtyDisplay}</td>
@@ -1614,14 +1623,16 @@ document.addEventListener('DOMContentLoaded', function() {
                            value="${item.reviewed_quantity}"
                            min="1"
                            data-indicator-id="${item.indicator_id}"
+                           aria-label="Reviewed quantity for ${escapeHtml(item.indicator_description)}"
                            ${isDecided ? 'disabled' : ''}>
                 </td>
                 <td>
                     <div class="d-flex align-items-center gap-2">
                         <input type="text" class="form-control form-control-sm ret-item-remarks-input"
-                               value="${item.item_remarks || ''}"
+                               value="${escapeHtml(item.item_remarks || '')}"
                                placeholder="Optional note..."
                                data-indicator-id="${item.indicator_id}" style="flex:1;"
+                               aria-label="Remarks for ${escapeHtml(item.indicator_description)}"
                                ${isDecided ? 'disabled' : ''}>
                         <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-ret-item-btn"
                                 data-indicator-id="${item.indicator_id}" title="Remove selection"
@@ -1654,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tr.innerHTML = `
                 <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
                 <td>
-                    <div class="small fw-semibold">${ext.indicator_description}</div>
+                    <div class="small fw-semibold">${escapeHtml(ext.indicator_description)}</div>
                     <span class="badge bg-warning bg-opacity-10 text-warning mt-1" style="font-size: 0.75rem; width: fit-content; display: block;"><i class="ti ti-broadcast me-1"></i>Distributed to all faculty</span>
                 </td>
                 <td class="text-center text-muted">${ext.reviewed_quantity}</td>
@@ -1897,7 +1908,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Custom Confirmation Modal for RET Chair (z-index 1060 to overlay on top of review modal) -->
-<div class="modal fade" id="customRetConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="customRetConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="retConfirmModalTitle" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
@@ -2057,7 +2068,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- RET Faculty Evidence Verification Modal -->
-<div class="modal fade" id="retFacultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="retFacultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true" aria-labelledby="retEvidenceModalTitle">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
@@ -2201,8 +2212,8 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
 
                     tr.innerHTML = `
                         <td class="ps-3 py-3">
-                            <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Research & Extension'}</span>
-                            <p class="mb-0 small fw-semibold text-dark">${t.indicator_description}</p>
+                            <span class="badge bg-light text-dark border mb-1">${escapeHtml(t.category_name || 'Research & Extension')}</span>
+                            <p class="mb-0 small fw-semibold text-dark">${escapeHtml(t.indicator_description)}</p>
                         </td>
                         <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                         <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
@@ -2232,7 +2243,7 @@ function openEvidenceViewer(evidenceList) {
         let html = '';
         evidenceList.forEach((ev) => {
             const fileUrl = `/evidence_uploads/${ev.evidence_id}`;
-            const fileName = ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, '');
+            const fileName = escapeHtml(ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, ''));
             const ext = ev.file_path.split('.').pop().toLowerCase();
             const isImage = ext.match(/^(jpg|jpeg|png|gif|webp)$/i);
             const isPdf = ext === 'pdf';
@@ -2263,7 +2274,7 @@ function openEvidenceViewer(evidenceList) {
 
             const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
             const commentHtml = ev.supervisor_comment
-                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${escapeHtml(ev.supervisor_comment)}</div>`
                 : '';
 
             html += `
@@ -2275,7 +2286,7 @@ function openEvidenceViewer(evidenceList) {
                         </div>
                         <div class="small text-muted flex-shrink-0">
                             <span><i class="ti ti-circle-check me-1"></i>Qty: ${ev.actual_qty_Q}</span>
-                            ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
+                            ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${escapeHtml(ev.uploaded_by || 'Co-author')}</span>` : ''}
                         </div>
                     </div>
                     ${commentHtml}
@@ -2404,12 +2415,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<div class="modal fade" id="evidenceViewerModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="evidenceViewerModal" tabindex="-1" aria-hidden="true" aria-labelledby="evidenceViewerModalLabel">
     <!-- Full-width so PDF/image evidence is readable while verifying. -->
     <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white border-0 py-3" style="background: var(--c-accent);">
-                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
+                <h5 class="modal-title fw-bold fs-6" id="evidenceViewerModalLabel"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="evidenceViewerBody"></div>
@@ -2421,11 +2432,11 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- Return Evidence Reason Modal -->
-<div class="modal fade" id="returnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+<div class="modal fade" id="returnEvidenceReasonModal" tabindex="-1" aria-hidden="true" aria-labelledby="returnEvidenceReasonModalLabel" style="z-index: 1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence to Faculty</h5>
+                <h5 class="modal-title fw-bold" id="returnEvidenceReasonModalLabel"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence to Faculty</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 text-start">
@@ -2492,13 +2503,17 @@ document.addEventListener('DOMContentLoaded', function() {
         border-radius: 0 !important;
     }
 
+    :root {
+        --evidence-bg: #2B2822;
+    }
+
     /* Portrait container — tall narrow display area */
     .evidence-portrait-container {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: var(--c-text);
+        background: var(--evidence-bg, #2B2822);
         border-radius: 8px;
         padding: 8px;
         min-height: 40vh;
