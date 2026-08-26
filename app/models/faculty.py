@@ -980,7 +980,8 @@ def enrich_faculty_verification_status(cursor, faculty_dict, term_id):
       - evidence_status: Human-readable status label
       - is_both_approved: True if both Program Chair and RET Chair have approved all respective evidence items
       - chair_finished: True if Program Chair target evidences are all approved (or no Chair targets exist)
-      - ret_finished: True if RET target evidences are all approved (or no RET targets exist)
+      - ret_finished: True if RET target evidences are all approved, or there are no RET targets /
+        no RET evidence was uploaded (nothing for the RET Chair to verify)
     """
     emp_id = faculty_dict['emp_id']
     cursor.execute("""
@@ -1029,8 +1030,10 @@ def enrich_faculty_verification_status(cursor, faculty_dict, term_id):
 
     if not ret_has_targets:
         ret_finished = True
+    elif not ret_targets_has_ev:
+        ret_finished = True
     else:
-        ret_finished = ret_targets_has_ev and ret_all_approved
+        ret_finished = ret_all_approved
 
     is_both_approved = chair_finished and ret_finished and (chair_has_targets or ret_has_targets)
 
