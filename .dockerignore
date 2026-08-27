@@ -1,0 +1,21 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.vscode/
+.github/
+.git/
+.gitignore
+README.md
+TODO.md
+*.deb
+old MDS/
+SETUP.md
+TEST_SCRIPT.md
+NOTES
+*.xlsx
+*.png
+image.png
+docker-compose-example.yml
+# db/ is its own image (built with context ./db), not needed in the web image
+db/
