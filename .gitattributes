@@ -1,0 +1,4 @@
+# Force LF line endings for SQL files in this repo.
+# Prevents the CRLF-vs-LF "Can't initialize batch_readline" MySQL errors
+# when files created on Windows are used in Linux containers.
+*.sql text eol=lf
