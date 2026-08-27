@@ -6,6 +6,18 @@ D-IPCR digitizes the faculty performance cycle; from target cascading through mu
 
 ---
 
+## Table of Contents
+
+- [What It Does](#what-it-does)
+  - [Key Features](#key-features)
+- [Installation](#installation)
+  - [Method A: Docker](#method-a-docker)
+  - [Building & Publishing Images (Developer)](#building--publishing-images-developer)
+  - [Method B: Local Development](#method-b-local-development)
+- [Environment Variables](#environment-variables)
+- [Project Structure](#project-structure)
+- [License](#license)
+
 ## What It Does
 
 The system routes faculty performance targets through a **multi-role cascade**:
