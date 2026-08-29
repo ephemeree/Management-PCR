@@ -1,0 +1,66 @@
+services:
+  db:
+    image: nightingzine/dipcr-db:latest
+    container_name: dipcr-db
+    command: --log-bin-trust-function-creators=1
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - dipcr
+    healthcheck:
+      # Real query against a table — confirms MySQL is up AND the schema was applied
+      test: ["CMD", "mysql", "-u${DB_USER}", "-p${DB_PASSWORD}", "-D", "${DB_NAME}", "-e", "SELECT 1 FROM tbl_employee_profiles LIMIT 1;"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  web:
+    image: nightingzine/dipcr-web:latest
+    container_name: dipcr-web
+    restart: unless-stopped
+    ports:
+      # HOST:CONTAINER only change the LEFT side (host port) to avoid conflicts.
+      - "5005:5000"
+    environment:
+      DB_HOST: db
+      #! DO NOT change this. 3306 is MySQL's port INSIDE the db container.
+      # The db service exposes no port to the host, so host port conflicts don't apply.
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY}
+      FLASK_DEBUG: ${FLASK_DEBUG:-false}
+      # Mail — leave SMTP_HOST empty to log emails to console instead of sending
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
+      MAIL_DEFAULT_SENDER: ${MAIL_DEFAULT_SENDER:-D-IPCR System <no-reply@cict.edu.ph>}
+      MAIL_SUPPRESS_SEND: ${MAIL_SUPPRESS_SEND:-false}
+      APP_BASE_URL: ${APP_BASE_URL:-http://127.0.0.1:5000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - evidence_data:/app/app/uploads/evidence
+    networks:
+      - dipcr
+
+volumes:
+  mysql_data:
+  evidence_data:
+
+networks:
+  dipcr:
+    driver: bridge
