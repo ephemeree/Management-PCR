@@ -58,7 +58,7 @@
         <div class="col-md-6">
             <div class="card card-elevated p-4">
                 <div class="card-body p-0">
-                    <h6 class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">ROSTER ADOPTION RATE</h6>
+                    <h6 role="heading" aria-level="4" class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">ROSTER ADOPTION RATE</h6>
                     <h3 class="text-dark fw-bold mb-0" style="font-size: 2rem;">{{ kpis.adoption_rate }}%
                         <span class="fs-6 text-muted ps-2 fw-normal">{{ kpis.claimed_accounts }} / {{ kpis.total_roster }} Accounts Claimed</span>
                     </h3>
@@ -68,7 +68,7 @@
         <div class="col-md-6">
             <div class="card card-elevated p-4">
                 <div class="card-body p-0">
-                    <h6 class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">TERM DEADLINE</h6>
+                    <h6 role="heading" aria-level="4" class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">TERM DEADLINE</h6>
                     <h3 class="text-dark fw-bold mb-0" style="font-size: 2rem;">{{ kpis.term_status }}</h3>
                 </div>
             </div>
@@ -186,7 +186,7 @@
         <div class="col-md-5">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-2">
-                    <h5 class="fw-bold text-dark mb-0">Open New Term</h5>
+                    <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Open New Term</h5>
                 </div>
                 <div class="card-body">
                     <form action="{{ url_for('admin.admin_open_term') }}" method="POST">
@@ -228,7 +228,7 @@
         <div class="col-md-7">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-2">
-                    <h5 class="fw-bold text-dark mb-0">Term History</h5>
+                    <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Term History</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -284,7 +284,7 @@
         <div class="col-md-4">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-2">
-                    <h5 class="fw-bold text-dark mb-0">Add Criterion</h5>
+                    <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Add Criterion</h5>
                 </div>
                 <div class="card-body">
                     <form action="{{ url_for('admin.admin_add_criteria') }}" method="POST">
@@ -387,14 +387,14 @@
     <!-- Category Management: the weighted IPCR categories per designation type -->
     <div class="card shadow-sm border-0 mb-4" id="nav-categories">
         <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0">Category Management</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Category Management</h5>
             <small class="text-muted">The categories that appear on the printed IPCR and carry the
                 weight (e.g. Strategic Priorities, Core Functions). Each one groups the target types
                 above — and the grouping differs per designation type.</small>
         </div>
         <div class="card-body">
             {% for dt in designation_types %}
-            <h6 class="fw-bold text-dark mt-2 mb-2">{{ dt }}</h6>
+            <h6 role="heading" aria-level="4" class="fw-bold text-dark mt-2 mb-2">{{ dt }}</h6>
             <div class="table-responsive mb-3">
                 <table class="table table-sm align-middle mb-0">
                     <thead class="table-light">
@@ -532,7 +532,7 @@
     <!-- Weight Allocation by Rank -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0">Weight Allocation by Rank</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Weight Allocation by Rank</h5>
             <small class="text-muted">Percentage each criterion group contributes to the final score, per
                 academic rank band, for the active term. Each configured row must total 100%. Regular and
                 Designated faculty are configured independently — the same criterion can carry a different
@@ -841,17 +841,24 @@
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="fw-bold text-dark mb-0">Departments / Programs</h5>
+                <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Departments / Programs</h5>
                 <small class="text-muted">Drives the Dean's cascade columns and the faculty roster's
                     specialization. Renaming one updates the faculty and quota rows that reference it.</small>
             </div>
-            <button type="button" class="btn btn-sm btn-primary" onclick="newDepartment()">
-                <i class="ti ti-plus me-1"></i>Add Department
-            </button>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-search text-muted"></i>
+                    <input type="text" id="departmentSearchInput" class="form-control form-control-sm"
+                           placeholder="Search departments..." style="width: 220px;" onkeyup="filterDepartmentsTable()">
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="newDepartment()">
+                    <i class="ti ti-plus me-1"></i>Add Department
+                </button>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0" id="departmentsTable">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Department</th>
@@ -905,7 +912,7 @@
     <!-- Teaching load -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0">Teaching Load</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Teaching Load</h5>
             <small class="text-muted">The mandatory teaching load target added to every IPCR. The duration
                 drives its Timeliness rating. Configured per designation type, either the same for all ranks
                 or per academic rank band.</small>
@@ -1036,7 +1043,7 @@
     <!-- Printed IPCR: institution text + who signs each block -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0">Printed IPCR</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Printed IPCR</h5>
             <small class="text-muted">The header text and signature blocks on the generated
                 IPCR form. Two blocks follow the org chart automatically; the rest are people
                 you name here.</small>
@@ -1178,6 +1185,13 @@
         document.getElementById('deptOrder').value = btn.dataset.order;
         new bootstrap.Modal(document.getElementById('departmentModal')).show();
     }
+    function filterDepartmentsTable() {
+        const input = document.getElementById('departmentSearchInput').value.toLowerCase();
+        document.querySelectorAll('#departmentsTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // "No departments defined yet." row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
     function showTlTab(slug) {
         document.querySelectorAll('.tl-tab-panel').forEach(p => { p.style.display = 'none'; });
         document.querySelectorAll('.tl-tab-btn').forEach(b => {
@@ -1231,14 +1245,21 @@
                 way the DPCR is structured. Categories are configured under
                 <strong>Criteria &rarr; Category Management</strong>.</p>
         </div>
-        {% if active_term and not indicators %}
-        <form action="{{ url_for('admin.admin_import_indicators') }}" method="POST">
-            <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-            <button type="submit" class="btn btn-outline-secondary btn-sm">
-                <i class="ti ti-cloud-download me-1"></i> Import from Previous Term
-            </button>
-        </form>
-        {% endif %}
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="indicatorSearchInput" class="form-control form-control-sm"
+                       placeholder="Search indicators..." style="width: 240px;" onkeyup="filterMasterIndicators()">
+            </div>
+            {% if active_term and not indicators %}
+            <form action="{{ url_for('admin.admin_import_indicators') }}" method="POST">
+                <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-cloud-download me-1"></i> Import from Previous Term
+                </button>
+            </form>
+            {% endif %}
+        </div>
     </div>
 
     {% if not active_term %}
@@ -1268,9 +1289,9 @@
     {% set cat_types = criteria | selectattr('category_id', 'in', cat_type_ids) | list %}
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2"
-             style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-accent) !important;">
+             style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
             <div>
-                <h5 class="fw-bold text-primary mb-0">{{ cat.category_name }}</h5>
+                <h5 role="heading" aria-level="3" class="fw-bold text-primary mb-0">{{ cat.category_name }}</h5>
                 <div class="text-muted small">
                     {% for t in cat_types %}
                     <span class="badge bg-light text-dark border me-1">{{ t.category_name }}</span>
@@ -1289,7 +1310,7 @@
         <div class="card-body p-0">
             {% for t in cat_types %}
             <div class="px-3 pt-3">
-                <h6 class="fw-bold text-dark small mb-2"><i class="ti ti-point-filled"></i>{{ t.category_name }}</h6>
+                <h6 role="heading" aria-level="4" class="fw-bold text-dark small mb-2"><i class="ti ti-point-filled"></i>{{ t.category_name }}</h6>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -1304,7 +1325,7 @@
                         {% set ns = namespace(found=false) %}
                         {% for ind in indicators if ind.category_name == t.category_name %}
                         {% set ns.found = true %}
-                        <tr>
+                        <tr class="indicator-row">
                             <td class="small ps-3">{{ ind.indicator_description }}</td>
                             <td class="text-center"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
                             <td class="text-center">
@@ -1347,15 +1368,15 @@
     {% if other_types %}
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header border-0 py-3"
-             style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-text-muted) !important;">
-            <h5 class="fw-bold text-secondary mb-0">Other Target Types</h5>
+             style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-text-muted) 55%, var(--c-border)) !important;">
+            <h5 role="heading" aria-level="3" class="fw-bold text-secondary mb-0">Other Target Types</h5>
             <div class="text-muted small">Not part of the DPCR category structure — used by Designated Faculty
                 or not yet assigned to a category.</div>
         </div>
         <div class="card-body p-0">
             {% for t in other_types %}
             <div class="px-3 pt-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold text-dark small mb-2"><i class="ti ti-point-filled"></i>{{ t.category_name }}</h6>
+                <h6 role="heading" aria-level="4" class="fw-bold text-dark small mb-2"><i class="ti ti-point-filled"></i>{{ t.category_name }}</h6>
                 <button type="button" class="btn btn-sm btn-outline-secondary mb-2"
                         onclick='openAddIndicator({{ t.category_name | tojson }}, {{ [t.category_name] | tojson }})'>
                     <i class="ti ti-plus me-1"></i>Add Target
@@ -1374,7 +1395,7 @@
                         {% set ns2 = namespace(found=false) %}
                         {% for ind in indicators if ind.category_name == t.category_name %}
                         {% set ns2.found = true %}
-                        <tr>
+                        <tr class="indicator-row">
                             <td class="small ps-3">{{ ind.indicator_description }}</td>
                             <td class="text-center"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
                             <td class="text-center">
@@ -1411,6 +1432,15 @@
     {% endif %}
     {% endif %}
 </div>
+
+<script>
+function filterMasterIndicators() {
+    const input = document.getElementById('indicatorSearchInput').value.toLowerCase();
+    document.querySelectorAll('#nav-indicators tr.indicator-row').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+    });
+}
+</script>
 
 <!-- Add Master Indicator Modal (opened from a category header) -->
 <div class="modal fade" id="addIndicatorModal" tabindex="-1" aria-hidden="true">
@@ -1477,7 +1507,7 @@ function openAddIndicator(categoryName, targetTypes) {
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="fw-bold text-dark mb-0"><i class="ti ti-user-shield me-2 text-danger"></i>Emergency
+                <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0"><i class="ti ti-user-shield me-2 text-danger"></i>Emergency
                     Access Controls</h5>
                 <p class="text-muted small mb-0">Use with caution. All actions below are permanently
                     recorded in the audit log.</p>
@@ -1557,14 +1587,21 @@ function openAddIndicator(categoryName, targetTypes) {
 
     <!-- Section 2: Activity Audit Log -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0"><i class="ti ti-notes me-2 text-secondary"></i>Activity Audit Log
-            </h5>
-            <p class="text-muted small mb-0">Last 50 system actions, most recent first. Read-only.</p>
+        <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0"><i class="ti ti-notes me-2 text-secondary"></i>Activity Audit Log
+                </h5>
+                <p class="text-muted small mb-0">Last 50 system actions, most recent first. Read-only.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="auditLogSearchInput" class="form-control form-control-sm"
+                       placeholder="Search audit log..." style="width: 220px;" onkeyup="filterAuditLogTable()">
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle">
+                <table class="table table-sm table-hover align-middle" id="auditLogTable">
                     <thead class="table-light">
                         <tr>
                             <th>Timestamp</th>
@@ -1841,6 +1878,15 @@ function openAddIndicator(categoryName, targetTypes) {
 
     document.getElementById('securitySearch').addEventListener('keyup', filterSecurity);
     document.getElementById('securityStatusFilter').addEventListener('change', filterSecurity);
+
+    // Live Search - Audit Log
+    function filterAuditLogTable() {
+        const input = document.getElementById('auditLogSearchInput').value.toLowerCase();
+        document.querySelectorAll('#auditLogTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // "No audit log entries yet." row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
 
     // Populate Indicator Edit Modal
     function fillEditModal(btn) {

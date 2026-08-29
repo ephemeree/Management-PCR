@@ -239,7 +239,7 @@
             <!-- Left Column: Core Assigned Targets -->
             <div class="col-lg-{% if is_ret_eligible or extension_targets %}7{% else %}12{% endif %}">
                 <!-- Instructions Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                     <div class="card-header border-0 py-3">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-star-filled me-2" aria-hidden="true"></i>Strategic Priorities
                         </h5>
@@ -270,7 +270,7 @@
                                             {% if chair_review and chair_review.overall_status == 'Rejected' and
                                             target.chair_item_remarks %}
                                             <div class="mt-1 p-2 rounded"
-                                                style="background: var(--c-warning-glow); border-left: 3px solid var(--c-warning);">
+                                                style="background: var(--c-warning-glow); border-left: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border));">
                                                 <small class="text-dark"><i
                                                         class="ti ti-message text-warning me-1" aria-hidden="true"></i><strong>Chair
                                                         Note:</strong> {{ target.chair_item_remarks }}</small>
@@ -297,7 +297,7 @@
                 </div>
 
                 <!-- Support Functions Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                     <div class="card-header border-0 py-3">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools me-2" aria-hidden="true"></i>Support Functions</h5>
                         <p class="small mb-0 text-muted">Assigned administrative and support workloads</p>
@@ -324,7 +324,7 @@
                                             {% if chair_review and chair_review.overall_status == 'Rejected' and
                                             target.chair_item_remarks %}
                                             <div class="mt-1 p-2 rounded"
-                                                style="background: var(--c-warning-glow); border-left: 3px solid var(--c-warning);">
+                                                style="background: var(--c-warning-glow); border-left: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border));">
                                                 <small class="text-dark"><i
                                                         class="ti ti-message text-warning me-1" aria-hidden="true"></i><strong>Chair
                                                         Note:</strong> {{ target.chair_item_remarks }}</small>
@@ -356,7 +356,7 @@
             <div class="col-lg-5">
                 {% if is_ret_eligible %}
                 <!-- Research Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                     <div class="card-header border-0 py-3">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-star-filled me-2" aria-hidden="true"></i>Research Menu</h5>
                         <p class="small mb-0 text-muted">Select based on your academic rank ({{ academic_rank }})</p>
@@ -371,7 +371,7 @@
                         </div>
 
                         {% if ret_menu.research_indicators|length > 0 %}
-                        <div class="ret-options-container" style="max-height: 250px; overflow-y: auto;">
+                        <div class="ret-options-container scroll-box-sm">
                             {% for ind in ret_menu.research_indicators %}
                             {% set ns = namespace(is_selected=false, quantity=ind.target_quantity, is_assigned=false) %}
                             {% if ind.indicator_id in ret_assigned_ids %}
@@ -420,14 +420,14 @@
                 {% endif %}
 
                 <!-- Extension Card (read-only — distributed by RET Chair to all faculty) -->
-                <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm card-rounded-clip">
                     <div class="card-header border-0 py-3">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools me-2" aria-hidden="true"></i>Extension Targets</h5>
                         <p class="small mb-0 text-muted">Distributed by the RET Chair to all faculty (not selectable).</p>
                     </div>
                     <div class="card-body bg-light">
                         {% if extension_targets %}
-                        <div class="ret-options-container" style="max-height: 250px; overflow-y: auto;">
+                        <div class="ret-options-container scroll-box-sm">
                             {% for ext in extension_targets %}
                             <div class="d-block p-3 mb-2 bg-white rounded shadow-sm border border-light">
                                 <div class="d-flex align-items-start gap-2">
@@ -538,7 +538,7 @@
     <div class="row g-4">
         <!-- Accomplishments Column -->
         <div class="col-lg-12">
-            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+            <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                 <div
                     class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="mb-0 fw-bold"><i class="ti ti-file-check me-2" aria-hidden="true"></i>My Evidence Submission Checklist</h5>
@@ -621,7 +621,7 @@
 
             <!-- IPCR Summary of Ratings (mirrors the printed form's Final Average Rating table) -->
             {% if ipcr_score %}
-            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+            <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                 <div class="card-header bg-white border-0 py-3">
                     <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-calculator me-2 text-primary" aria-hidden="true"></i>Summary of Ratings</h5>
                     <small class="text-muted">Live preview — updates as you report accomplishments.</small>
@@ -1523,8 +1523,7 @@
                     <!-- Left Column: Actions (Upload & Claims) -->
                     <div class="col-lg-6">
                         <!-- Upload Form -->
-                        <div class="card border border-light shadow-xs mb-0 h-100"
-                            style="border-radius: 12px; overflow: hidden;">
+                        <div class="card border border-light shadow-xs mb-0 h-100 card-rounded-clip">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i
                                         class="ti ti-cloud-upload me-2 text-primary" aria-hidden="true"></i>Upload New Evidence</h6>
@@ -1566,8 +1565,7 @@
 
                     <!-- Right Column: Submissions View -->
                     <div class="col-lg-6">
-                        <div class="card border border-light shadow-xs h-100"
-                            style="border-radius: 12px; overflow: hidden;">
+                        <div class="card border border-light shadow-xs h-100 card-rounded-clip">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i class="ti ti-files me-2 text-success" aria-hidden="true"></i>Current
                                     Submissions</h6>

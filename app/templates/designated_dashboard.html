@@ -149,7 +149,7 @@
     </div>
     {% elif dean_review and dean_review.overall_status == 'Approved' %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
-        style="background: rgba(63,125,88,0.06); border-left: 4px solid var(--c-success) !important; border-radius: 10px;">
+        style="background: var(--c-success-glow); border-left: 4px solid var(--c-success) !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
             <i class="ti ti-circle-check text-success fs-4 mt-1"></i>
             <div>
@@ -164,7 +164,7 @@
     </div>
     {% elif dean_review and dean_review.overall_status == 'Rejected' %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
-        style="background: rgba(184,132,46,0.08); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
+        style="background: var(--c-warning-glow); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
             <i class="ti ti-alert-circle text-warning fs-4 mt-1" style="color: var(--c-warning) !important;"></i>
             <div>
@@ -179,7 +179,7 @@
     </div>
     {% elif has_submitted %}
     <div class="alert border-0 shadow-sm mb-4 text-center fw-bold"
-        style="background: rgba(184,132,46,0.08); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
+        style="background: var(--c-warning-glow); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
         <i class="ti ti-hourglass me-2"></i> Submitted — awaiting review by the Dean.
     </div>
     {% endif %}
@@ -188,7 +188,7 @@
         <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
 
         {# Table 1: Core Functions (Mandatory 10hrs Teaching Load + Cascaded Instruction from Program Chair) #}
-        <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+        <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
             <div class="card-header border-0 py-3 bg-light">
                 <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-star-filled text-warning me-2"></i>1. Core Functions</h5>
                 <p class="small mb-0 text-muted">Mandatory teaching load target (10 hrs) and cascaded instruction targets assigned by Program Chair (Locked)</p>
@@ -214,7 +214,7 @@
                             {% for target in dpcr_targets %}
                             {% if target.is_core %}
                             {% set ns_core.count = ns_core.count + 1 %}
-                            <tr class="table-active-row" style="background-color: rgba(13, 110, 253, 0.04);">
+                            <tr class="table-active-row" style="background-color: var(--c-accent-tint);">
                                 {% if can_edit %}
                                 <td class="text-center">
                                     <input type="checkbox" class="form-check-input" checked disabled style="width: 1.3em; height: 1.3em;">
@@ -234,7 +234,7 @@
 
                                     {# Show Dean's per-item remark if present #}
                                     {% if target.dean_remarks %}
-                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 3px solid var(--c-indigo);">
+                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 2px solid color-mix(in srgb, var(--c-indigo) 55%, var(--c-border));">
                                         <small class="text-dark"><i class="ti ti-message me-1" style="color: var(--c-indigo);"></i><strong>Dean's note:</strong> {{ target.dean_remarks }}</small>
                                     </div>
                                     {% endif %}
@@ -284,7 +284,7 @@
         </div>
 
         {# Table 2: Strategic Priorities & Support Functions (Uncascaded Instruction Targets, Support Functions & Custom Items) #}
-        <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+        <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
             <div class="card-header border-0 py-3 bg-light">
                 <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
                 <p class="small mb-0 text-muted">Uncascaded instructional options, support functions, and custom DPCR target items</p>
@@ -311,7 +311,7 @@
                             {% if not target.is_core %}
                             {% if can_edit or target.is_selected %}
                             {% set ns_strat.count = ns_strat.count + 1 %}
-                            <tr {% if target.is_selected and can_edit %}class="table-active-row" style="background-color: rgba(13, 110, 253, 0.05);" {% endif %}>
+                            <tr {% if target.is_selected and can_edit %}class="table-active-row" style="background-color: var(--c-accent-tint);" {% endif %}>
                                 {% if can_edit %}
                                 <td class="text-center">
                                     <input type="checkbox" name="selected_indicators[]"
@@ -350,7 +350,7 @@
 
                                     {# Show Dean's per-item remark if present #}
                                     {% if target.dean_remarks %}
-                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 3px solid var(--c-indigo);">
+                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 2px solid color-mix(in srgb, var(--c-indigo) 55%, var(--c-border));">
                                         <small class="text-dark"><i class="ti ti-message me-1" style="color: var(--c-indigo);"></i><strong>Dean's note:</strong> {{ target.dean_remarks }}</small>
                                     </div>
                                     {% endif %}
@@ -554,7 +554,7 @@
     <div class="row g-4">
         <!-- Accomplishments Column -->
         <div class="col-lg-12">
-            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+            <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                 <div
                     class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="mb-0 fw-bold"><i class="ti ti-file-check me-2"></i>My Evidence Submission Checklist</h5>
@@ -615,7 +615,12 @@
                                     <td class="text-center pe-4 py-4">
                                         <button type="button"
                                             class="btn {% if has_final_ipcr %}btn-outline-secondary{% elif evidence_readiness and evidence_readiness.evidence_submitted %}btn-secondary{% else %}btn-primary{% endif %} btn-sm px-4 py-2 fw-bold shadow-sm transition-all hover-shadow"
-                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.total_target_value or 0 }}', '{{ target.actual_quantity or 0 }}')">
+                                            data-target-id="{{ target.target_id }}"
+                                            data-indicator-id="{{ target.indicator_id }}"
+                                            data-desc="{{ target.indicator_description }}"
+                                            data-target-qty="{{ target.total_target_value or 0 }}"
+                                            data-actual-qty="{{ target.actual_quantity or 0 }}"
+                                            onclick="openEvidenceModal(this.dataset.targetId, this.dataset.indicatorId, this.dataset.desc, this.dataset.targetQty, this.dataset.actualQty)">
                                             {% if has_final_ipcr %}
                                             <i class="ti ti-eye me-1"></i>View Evidences (Approved)
                                             {% elif evidence_readiness and evidence_readiness.evidence_submitted %}
@@ -636,7 +641,7 @@
 
             <!-- IPCR Summary of Ratings (uses the Designated Faculty weight table) -->
             {% if ipcr_score %}
-            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+            <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                 <div class="card-header bg-white border-0 py-3">
                     <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-calculator me-2 text-primary"></i>Summary of Ratings</h5>
                     <small class="text-muted">Live preview — updates as you report accomplishments.</small>
@@ -810,7 +815,7 @@
                                 <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-text);">Final Weighted Rating</td>
                                 <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">{{ ipcr_score.final_weighted_rating if ipcr_score.final_weighted_rating is not none else '-' }}</td>
                             </tr>
-                            <tr style="background-color: rgba(63,125,88,0.08);">
+                            <tr style="background-color: var(--c-success-glow);">
                                 <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-success);">Adjectival Rating</td>
                                 <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: var(--c-success);">{{ ipcr_score.adjectival_rating or '-' }}</td>
                             </tr>
@@ -845,9 +850,9 @@
             if (qtyInput) {
                 if (cb.checked) {
                     row.classList.add('table-active-row');
-                    row.style.backgroundColor = 'rgba(62, 92, 130, 0.06)';
+                    row.style.backgroundColor = 'var(--c-accent-tint)';
                     qtyInput.classList.add('border-primary');
-                    qtyInput.style.backgroundColor = 'rgba(62, 92, 130, 0.14)';
+                    qtyInput.style.backgroundColor = 'var(--c-accent-glow)';
                 } else {
                     row.classList.remove('table-active-row');
                     row.style.backgroundColor = '';
@@ -1596,8 +1601,7 @@
                     <!-- Left Column: Actions (Upload) -->
                     <div class="col-lg-6">
                         <!-- Upload Form -->
-                        <div class="card border border-light shadow-xs mb-0 h-100"
-                            style="border-radius: 12px; overflow: hidden;">
+                        <div class="card border border-light shadow-xs mb-0 h-100 card-rounded-clip">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i
                                         class="ti ti-cloud-upload me-2 text-primary"></i>Upload New Evidence</h6>
@@ -1632,8 +1636,7 @@
 
                     <!-- Right Column: Submissions View -->
                     <div class="col-lg-6">
-                        <div class="card border border-light shadow-xs h-100"
-                            style="border-radius: 12px; overflow: hidden;">
+                        <div class="card border border-light shadow-xs h-100 card-rounded-clip">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i class="ti ti-files me-2 text-success"></i>Current
                                     Submissions</h6>

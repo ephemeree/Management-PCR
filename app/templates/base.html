@@ -34,7 +34,7 @@
             font-family: var(--font-body);
             background-color: var(--content-bg);
             overflow-x: hidden;
-            color: #2B2822;
+            color: var(--c-text);
         }
 
         h1, h2, h3, h4, h5, h6 {
@@ -105,7 +105,7 @@
             font-size: 15px;
             font-weight: 700;
             font-family: var(--font-heading);
-            color: #2B2822;
+            color: var(--c-text);
             letter-spacing: 0;
         }
 
@@ -214,7 +214,7 @@
 
         .sidebar-nav .nav-item:hover {
             background: var(--sidebar-hover);
-            color: #2B2822;
+            color: var(--c-text);
         }
 
         .sidebar-nav .nav-item.active {
@@ -470,21 +470,48 @@
             font-size: 12px;
             color: var(--c-text-sub);
         }
-        /* Accent bars, flattened */
-        .border-start.border-primary { border-left-width: 3px !important; border-left-color: var(--c-accent) !important; }
-        .border-start.border-success { border-left-width: 3px !important; border-left-color: var(--c-success) !important; }
-        .border-start.border-warning { border-left-width: 3px !important; border-left-color: var(--c-warning) !important; }
-        .border-start.border-danger  { border-left-width: 3px !important; border-left-color: var(--c-danger)  !important; }
-        .border-start.border-info    { border-left-width: 3px !important; border-left-color: var(--c-accent)  !important; }
-        .border-top.border-info      { border-top-width: 3px !important;  border-top-color: var(--c-accent)   !important; }
-        .border-top.border-primary   { border-top-width: 3px !important;  border-top-color: var(--c-accent)   !important; }
-        .border-top.border-success   { border-top-width: 3px !important;  border-top-color: var(--c-success)  !important; }
-        .border-top.border-4         { border-top-width: 3px !important; }
+        /* Accent bars: thinned and desaturated toward the card's own neutral border
+           color, rather than a full-saturation 3px stripe — the "side-tab" pattern
+           reads as templated/AI-generated at full strength; blending it down keeps
+           the at-a-glance color coding without the isolated, high-contrast tab look. */
+        .border-start.border-primary { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important; }
+        .border-start.border-success { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important; }
+        .border-start.border-warning { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important; }
+        .border-start.border-danger  { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-danger)  55%, var(--c-border)) !important; }
+        .border-start.border-info    { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-accent)  55%, var(--c-border)) !important; }
+        .border-top.border-info      { border-top-width: 2px !important;  border-top-color: color-mix(in srgb, var(--c-accent)  55%, var(--c-border)) !important; }
+        .border-top.border-primary   { border-top-width: 2px !important;  border-top-color: color-mix(in srgb, var(--c-accent)  55%, var(--c-border)) !important; }
+        .border-top.border-success   { border-top-width: 2px !important;  border-top-color: color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important; }
+        .border-top.border-4         { border-top-width: 2px !important; }
 
         /* ── Tables ── */
         .table-responsive {
             border-radius: 8px;
-            overflow: hidden;
+            /* `overflow: hidden` here would silently override Bootstrap's own
+               `overflow-x: auto`, disabling horizontal scroll on every wide table
+               app-wide (content past the container width becomes unreachable, not
+               just visually clipped). Keep the rounded-corner clipping on the
+               vertical axis only. */
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        /* Sticky first column for wide matrix tables (e.g. a quota-cascading grid
+           with one column per department) — keeps the row's label readable while
+           scrolling through many data columns. Needs a solid background per row
+           context so scrolled-past cells don't show through underneath it. */
+        .table-responsive th.sticky-col,
+        .table-responsive td.sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            box-shadow: 2px 0 4px rgba(43,40,34,0.06);
+        }
+        .table-responsive thead th.sticky-col {
+            z-index: 3;
+            background: var(--c-surface-alt) !important;
+        }
+        .table-responsive tbody td.sticky-col {
+            background: var(--c-surface) !important;
         }
         .table {
             margin-bottom: 0;
@@ -631,6 +658,22 @@
             box-shadow: 0 0 0 3px var(--c-accent-glow) !important;
             outline: none !important;
         }
+        /* Invalid state — the design system had a focus state but nothing for
+           validation errors, so error fields fell back to raw Bootstrap red. */
+        .form-control.is-invalid, .form-select.is-invalid,
+        .form-control:invalid, .form-select:invalid {
+            border-color: var(--c-danger) !important;
+            background-image: none !important;
+        }
+        .form-control.is-invalid:focus, .form-select.is-invalid:focus,
+        .form-control:invalid:focus, .form-select:invalid:focus {
+            border-color: var(--c-danger) !important;
+            box-shadow: 0 0 0 3px var(--c-danger-glow) !important;
+        }
+        .invalid-feedback {
+            color: var(--c-danger) !important;
+            font-size: 12px !important;
+        }
         .form-label {
             font-size: 12px !important;
             font-weight: 600 !important;
@@ -650,12 +693,15 @@
             font-size: 13px !important;
             padding: 12px 16px !important;
         }
-        .alert-info    { background: rgba(62,92,130,0.07)  !important; border-left: 3px solid var(--c-accent)   !important; color: #2F4767 !important; }
-        .alert-success { background: rgba(63,125,88,0.08)  !important; border-left: 3px solid var(--c-success)  !important; color: #2E5F42 !important; }
-        .alert-warning { background: rgba(184,132,46,0.1)  !important; border-left: 3px solid var(--c-warning)  !important; color: #8F6421 !important; }
-        .alert-danger  { background: rgba(176,69,61,0.08)  !important; border-left: 3px solid var(--c-danger)   !important; color: #8F372F !important; }
-        .alert-primary { background: rgba(62,92,130,0.07)  !important; border-left: 3px solid var(--c-accent)   !important; color: #2F4767 !important; }
-        .alert i { opacity: 0.85; }
+        /* No left-border stripe: the tinted background plus the alert's own icon
+           already carry the status color, so the stripe was a redundant, more
+           template-looking signal on top of two that already work. */
+        .alert-info    { background: rgba(62,92,130,0.07)  !important; color: #2F4767 !important; }
+        .alert-success { background: rgba(63,125,88,0.08)  !important; color: #2E5F42 !important; }
+        .alert-warning { background: rgba(184,132,46,0.1)  !important; color: #8F6421 !important; }
+        .alert-danger  { background: rgba(176,69,61,0.08)  !important; color: #8F372F !important; }
+        .alert-primary { background: rgba(62,92,130,0.07)  !important; color: #2F4767 !important; }
+        .alert i { opacity: 0.9; }
 
         /* ── Modals ── */
         .modal-content {
@@ -770,7 +816,7 @@
             left: calc(100% + 12px);
             top: 50%;
             transform: translateY(-50%);
-            background: #2B2822;
+            background: var(--c-text);
             color: white;
             padding: 6px 12px;
             border-radius: 6px;
@@ -801,6 +847,26 @@
         .btn-outline-dark-navy:hover {
             background-color: var(--c-accent) !important;
             color: #ffffff !important;
+        }
+        /* Skip-to-content: visually hidden until focused, so keyboard users don't
+           have to tab through the entire sidebar nav on every page load. */
+        .skip-to-content {
+            position: absolute;
+            top: -100px;
+            left: 12px;
+            z-index: 2000;
+            background: var(--c-accent);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+            transition: top 0.15s ease;
+        }
+        .skip-to-content:focus {
+            top: 12px;
+            color: #fff;
         }
         .badge-status-active {
             background-color: rgba(63,125,88,0.12) !important;
@@ -837,10 +903,23 @@
         .shadow-xs {
             box-shadow: 0 1px 3px rgba(43,40,34,0.05) !important;
         }
+        /* Two patterns repeated many times as inline styles across the dashboards
+           (card corners clipped to a rounded border, small scrollable list boxes) —
+           extracted here so a future radius/height change is one edit, not dozens. */
+        .card-rounded-clip {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .scroll-box-sm {
+            max-height: 250px;
+            overflow-y: auto;
+        }
     </style>
     {% block extra_styles %}{% endblock %}
 </head>
 <body>
+
+    <a href="#mainContent" class="skip-to-content">Skip to main content</a>
 
     <!-- Mobile hamburger -->
     <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation" aria-expanded="false">

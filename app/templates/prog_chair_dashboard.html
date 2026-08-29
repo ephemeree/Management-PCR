@@ -72,7 +72,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-0 h-100 border-start border-info border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Active Faculty</h6>
+                    <h6 class="text-muted text-uppercase fw-bold" role="heading" aria-level="4">Active Faculty</h6>
                     <h2 class="display-6 fw-bold text-info">{{ faculty_count }}</h2>
                     <span class="small text-muted">Under {{ specialization }}</span>
                 </div>
@@ -81,7 +81,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-0 h-100 border-start border-primary border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Target Allocation</h6>
+                    <h6 class="text-muted text-uppercase fw-bold" role="heading" aria-level="4">Target Allocation</h6>
                     <h2 class="display-6 fw-bold text-primary">100%</h2>
                     <span class="small text-muted">All quotas distributed</span>
                 </div>
@@ -90,7 +90,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-0 h-100 border-start border-warning border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Pending Drafts</h6>
+                    <h6 class="text-muted text-uppercase fw-bold" role="heading" aria-level="4">Pending Drafts</h6>
                     <h2 class="display-6 fw-bold text-warning">{{ pending_drafts_count }}</h2>
                     <span class="small text-muted">Awaiting Your Review</span>
                 </div>
@@ -99,7 +99,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-0 h-100 border-start border-success border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Approved IPCRs</h6>
+                    <h6 class="text-muted text-uppercase fw-bold" role="heading" aria-level="4">Approved IPCRs</h6>
                     <h2 class="display-6 fw-bold text-success">
                         {% set approved_count = pending_drafts | selectattr('review_status', 'equalto', 'Approved') |
                         list | length %}
@@ -140,7 +140,7 @@
     <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center" style="border-radius: 10px;">
         <i class="ti ti-shield-lock fs-4 me-3 text-info"></i>
         <div>
-            <h6 class="fw-bold mb-0">Baseline Target Allocations Finalized</h6>
+            <h6 class="fw-bold mb-0" role="heading" aria-level="4">Baseline Target Allocations Finalized</h6>
             <small>Target allocations for <strong>{{ specialization }}</strong> have been saved and finalized for this term. Inputs cannot be modified.</small>
         </div>
     </div>
@@ -152,8 +152,8 @@
         <!-- Instructions Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
-                style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-accent) !important;">
-                <h5 class="fw-bold text-primary mb-0"><i class="ti ti-star-filled me-2"></i>Strategic Priorities</h5>
+                style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
+                <h5 class="fw-bold text-primary mb-0" role="heading" aria-level="3"><i class="ti ti-star-filled me-2"></i>Strategic Priorities</h5>
                 <div class="d-flex align-items-center gap-2">
                     {% if not targets_saved %}
                     <button type="button" class="btn btn-sm btn-outline-primary shadow-sm fw-semibold btn-auto-divide-card" data-card="instructions" title="Auto divide Strategic Priorities quotas by faculty count">
@@ -240,8 +240,8 @@
         <!-- Support Functions Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
-                style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-warning) !important;">
-                <h5 class="fw-bold text-warning mb-0"><i class="ti ti-tools me-2"></i>Support Functions</h5>
+                style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important;">
+                <h5 class="fw-bold text-warning mb-0" role="heading" aria-level="3"><i class="ti ti-tools me-2"></i>Support Functions</h5>
                 <div class="d-flex align-items-center gap-2">
                     {% if not targets_saved %}
                     <button type="button" class="btn btn-sm btn-outline-warning text-dark shadow-sm fw-semibold btn-auto-divide-card" data-card="support" title="Auto divide Support Functions quotas by regular faculty count">
@@ -361,7 +361,15 @@
         </span>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark" role="heading" aria-level="3"><i class="ti ti-user-check me-2 text-warning"></i>Pending Draft Submissions</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="commitmentsSearchInput" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterCommitmentsTable()">
+            </div>
+        </div>
         <div class="card-body p-0">
             {% if pending_drafts %}
             <div class="table-responsive">
@@ -450,7 +458,7 @@
             {% else %}
             <div class="text-center py-5 text-muted">
                 <i class="ti ti-inbox fs-1 d-block mb-3 text-secondary opacity-50"></i>
-                <h5 class="fw-semibold">No Draft IPCRs Submitted</h5>
+                <h5 class="fw-semibold" role="heading" aria-level="3">No Draft IPCRs Submitted</h5>
                 <p class="small">Faculty members under <strong>{{ specialization }}</strong> have not submitted their
                     Draft IPCRs yet.</p>
             </div>
@@ -466,7 +474,15 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-success" role="heading" aria-level="3"><i class="ti ti-lock me-2"></i>Approved &amp; Locked IPCRs</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="lockedSearchInput" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterLockedTable()">
+            </div>
+        </div>
         <div class="card-body p-0">
             {% if locked_drafts %}
             <div class="table-responsive">
@@ -518,7 +534,7 @@
             {% else %}
             <div class="text-center py-5 text-muted">
                 <i class="ti ti-lock fs-1 d-block mb-3 text-secondary opacity-50"></i>
-                <h5 class="fw-semibold">No Locked IPCRs Yet</h5>
+                <h5 class="fw-semibold" role="heading" aria-level="3">No Locked IPCRs Yet</h5>
                 <p class="small">No faculty members under <strong>{{ specialization }}</strong> have locked their
                     approved IPCRs yet.</p>
             </div>
@@ -754,6 +770,38 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function filterCommitmentsTable() {
+        const input = document.getElementById('commitmentsSearchInput').value.toLowerCase();
+        document.querySelectorAll('#commitmentsTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // Skip empty message row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
+    function filterLockedTable() {
+        const input = document.getElementById('lockedSearchInput').value.toLowerCase();
+        document.querySelectorAll('#lockedTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // Skip empty message row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
+    function filterEvidencePendingTable() {
+        const input = document.getElementById('evidencePendingSearchInput').value.toLowerCase();
+        document.querySelectorAll('#evidencePendingTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // Skip empty message row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
+    function filterEvidenceApprovedTable() {
+        const input = document.getElementById('evidenceApprovedSearchInput').value.toLowerCase();
+        document.querySelectorAll('#evidenceApprovedTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // Skip empty message row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
 
         // ── Phase 1: Auto Divide / Auto Distribute & Save Logic ────
@@ -976,13 +1024,13 @@
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.error) {
-                        alert('Error loading IPCR: ' + data.error);
+                        showCustomAlert('Error', 'Error loading IPCR: ' + data.error, 'danger');
                         return;
                     }
                     populateModal(data);
                 })
                 .catch(function (err) {
-                    alert('Network error: ' + err);
+                    showCustomAlert('Error', 'Network error: ' + err, 'danger');
                 });
         }
 
@@ -998,13 +1046,13 @@
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.error) {
-                        alert('Error loading IPCR: ' + data.error);
+                        showCustomAlert('Error', 'Error loading IPCR: ' + data.error, 'danger');
                         return;
                     }
                     populateLockedModal(data);
                 })
                 .catch(function (err) {
-                    alert('Network error: ' + err);
+                    showCustomAlert('Error', 'Network error: ' + err, 'danger');
                 });
         }
 
@@ -1539,13 +1587,18 @@
         </span>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-clipboard-check me-2 text-primary"></i>Faculty Evidence Submissions</h5>
+            <h5 class="mb-0 fw-bold text-dark" role="heading" aria-level="3"><i class="ti ti-clipboard-check me-2 text-primary"></i>Faculty Evidence Submissions</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="evidencePendingSearchInput" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterEvidencePendingTable()">
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0" id="evidencePendingTable">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Faculty Member</th>
@@ -1598,13 +1651,18 @@
     </div>
 
     <!-- Approved Regular Faculty Evidences Table -->
-    <div class="card border-0 shadow-sm" style="border-top: 3px solid var(--c-accent) !important; border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-primary"><i class="ti ti-circle-check me-2 text-primary"></i>Approved Regular Faculty Evidences</h5>
+            <h5 class="mb-0 fw-bold text-primary" role="heading" aria-level="3"><i class="ti ti-circle-check me-2 text-primary"></i>Approved Regular Faculty Evidences</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="evidenceApprovedSearchInput" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterEvidenceApprovedTable()">
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0" id="evidenceApprovedTable">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Faculty Member</th>
@@ -1978,7 +2036,7 @@ function returnEvidence(evidenceId) {
         const list = EVIDENCE_BY_TARGET[tid] || [];
         const item = list.find(e => String(e.evidence_id) === String(evidenceId));
         if (item && item.verification_status === 'Approved') {
-            alert('Approved evidence cannot be returned.');
+            showCustomAlert('Cannot Return', 'Approved evidence cannot be returned.', 'warning');
             return;
         }
     }
@@ -2031,7 +2089,7 @@ function verifyEvidence(evidenceId, status, comment) {
     })
     .then(r => r.json())
     .then(data => {
-        if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+        if (!data.success) { showCustomAlert('Error', data.message || 'Failed to update evidence.', 'danger'); return; }
         evidenceVerificationChanged = true;
         const badge = document.getElementById('evidence-status-' + evidenceId);
         const actions = document.getElementById('evidence-actions-' + evidenceId);
@@ -2062,7 +2120,7 @@ function verifyEvidence(evidenceId, status, comment) {
             updateTargetStatusBadge(targetIdFound);
         }
     })
-    .catch(err => alert('Error: ' + err));
+    .catch(err => showCustomAlert('Error', 'Error: ' + err, 'danger'));
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -2095,10 +2153,10 @@ window.submitFacultyEvidenceToDean = function(empId, facultyName) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert(data.message);
+                        showCustomAlert('Error', data.message, 'danger');
                     }
                 })
-                .catch(err => alert('Error submitting to Dean: ' + err));
+                .catch(err => showCustomAlert('Error', 'Error submitting to Dean: ' + err, 'danger'));
             }
         });
     };

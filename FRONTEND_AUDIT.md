@@ -68,7 +68,7 @@ recurs identically across all five status colors (info/success/warning/danger, t
   migration in one pass; drop the Bootstrap Icons `<link>` once done.
 - **Suggested command**: `$impeccable optimize`
 
-**[P2] Repeated "side-tab" accent-border pattern (detector-flagged)**
+**[P2] Repeated "side-tab" accent-border pattern (detector-flagged)** — ✅ Fixed app-wide: thinned 3px→2px and desaturated via `color-mix()` toward the neutral `--c-border` for card accents (26 inline occurrences across 6 dashboards + the shared `base.html` utility classes); removed the border stripe entirely from `.alert-*` classes, which already carry the status color via tint + icon. Re-ran the mechanical detector — the antipattern no longer fires. Verified visually via a side-by-side mockup using the real CSS.
 - **Location**: `app/templates/base.html:471-479, 650-654` (`.border-start.border-*`, `.alert-*`)
 - **Category**: Implementation Integrity (visual)
 - **Impact**: A thick colored left-border accent on cards/alerts, repeated identically across all five
@@ -100,7 +100,7 @@ recurs identically across all five status colors (info/success/warning/danger, t
   naming the current dashboard/section in the shell template.
 - **Suggested command**: `$impeccable harden`
 
-**[P3] Hard-coded color literals duplicate design tokens instead of referencing them**
+**[P3] Hard-coded color literals duplicate design tokens instead of referencing them** — ✅ Fixed (body text, tooltip background)
 - **Location**: `app/templates/base.html:39` (`color: #2B2822;` on `body`, before `--c-text` is even
   defined later in the file), `:764-780` (tooltip `background: #2B2822`)
 - **Category**: Theming
@@ -109,7 +109,7 @@ recurs identically across all five status colors (info/success/warning/danger, t
 - **Recommendation**: Replace with `var(--c-text)`.
 - **Suggested command**: `$impeccable polish`
 
-**[P3] No styled invalid/error state for form fields**
+**[P3] No styled invalid/error state for form fields** — ✅ Fixed (`.is-invalid`/`:invalid` + `.invalid-feedback` styled with `--c-danger`/`--c-danger-glow`, verified live)
 - **Location**: `app/templates/base.html:617-641` (`.form-control`, `.form-select` rules)
 - **Category**: Theming / Forms
 - **Impact**: Focus state is designed (custom glow using `--c-accent-glow`), but there's no
@@ -118,14 +118,14 @@ recurs identically across all five status colors (info/success/warning/danger, t
 - **Recommendation**: Add an invalid-state block using `--c-danger` to match the rest of the palette.
 - **Suggested command**: `$impeccable harden`
 
-**[P3] A few touch targets under the 44px recommendation**
+**[P3] A few touch targets under the 44px recommendation** — ✅ Fixed (password-toggle button, verified live at 46×46px)
 - **Location**: `app/templates/auth_layout.html:174-190` (`.toggle-password-btn`, ~24-32px)
 - **Category**: Responsive Design
 - **Impact**: Minor tap-precision friction on touch devices for the password-visibility toggle.
 - **Recommendation**: Increase the button's hit area via padding without growing the visible icon.
 - **Suggested command**: `$impeccable adapt`
 
-**[P3] No skip-to-content link**
+**[P3] No skip-to-content link** — ✅ Fixed, verified the CSS rule and hidden/visible states directly
 - **Location**: `app/templates/base.html` (top of `<body>`)
 - **Category**: Accessibility
 - **Impact**: Keyboard users must tab through the entire sidebar nav before reaching main content on
@@ -245,7 +245,7 @@ Its lens does apply lightly to `auth_layout.html`'s hero panel, the one landing-
 - **Recommendation**: Surface these errors through the same modal/toast mechanism already built for confirmations, or a lightweight inline error banner in the modal.
 - **Suggested command**: `$impeccable polish`
 
-**[P3] 104 inline `style="..."` attributes**
+**[P3] 104 inline `style="..."` attributes** — ✅ Fixed the two genuinely-repeated patterns named in the original recommendation (card-radius/overflow clipping, scroll-box lists) by extracting `.card-rounded-clip`/`.scroll-box-sm` utilities into `base.html`. Turned out to be an app-wide pattern, not Faculty-specific — also applied across Dean, Designated, Program Chair, and RET Chair once the utilities existed, rather than leaving them half-adopted. Left the remaining one-off inline styles alone (font-sizes, one-time widths) — not clearly repeated enough to warrant a named class.
 - **Location**: file-wide (confirmed count matches the top of the 75-104 per-dashboard range found across the app)
 - **Category**: Theming / Implementation Integrity
 - **Impact**: Many are one-off, repeated values (`border-radius: 12px; overflow: hidden;` appears on nearly every card; `max-height: 250px; overflow-y: auto;` on every RET list) that could be shared utility classes, making a future radius/spacing change require editing dozens of individual attributes instead of one rule.
@@ -347,21 +347,21 @@ Out of scope (dashboard UI), consistent with the shared shell finding. No except
 - **Recommendation**: Delete the unused `categories` namespace block.
 - **Suggested command**: `$impeccable distill`
 
-**[P3] Category-type detection duplicated with inconsistent string-matching styles**
+**[P3] Category-type detection duplicated with inconsistent string-matching styles** — ⏸ Deferred: the two occurrences render in different tables with already-different fallback behavior (one has no fallback for an unrecognized category, the other has a generic one); unifying them risks changing visible output in an edge case I can't verify without live data/DB access. Left as-is rather than guess.
 - **Location**: app/templates/designated_dashboard.html:337 (`{% if 'Instruction' in target.category_name %}`, substring match) vs. :614-616 (`{% if target.category_name == 'A. Instructions' %}`, exact match) — same underlying question ("is this row an Instruction target?") answered two different ways in two different tables in the same file
 - **Category**: Implementation Integrity
 - **Impact**: Both happen to agree for the current category-name values, but the inconsistency is fragile: a future rename of the category label (e.g. dropping the "A. " prefix per CLAUDE.md's category-slug guidance) would silently break the exact-match branch while the substring branch kept working, producing a badge mismatch between the "My IPCR" table and the "Evidence Gathering" table for the same underlying target.
 - **Recommendation**: Match on the stable `slug`/`is_admin_function` flag mentioned in CLAUDE.md rather than free-text `category_name`, and use one comparison style consistently.
 - **Suggested command**: `$impeccable harden`
 
-**[P3] Hand-rolled JS-string escaping in an inline `onclick` handler**
+**[P3] Hand-rolled JS-string escaping in an inline `onclick` handler** — ✅ Fixed via `data-*` attributes read through `this.dataset`, eliminating the whole class of fragility rather than patching the escaping
 - **Location**: app/templates/designated_dashboard.html:642
 - **Category**: Implementation Integrity
 - **Impact**: `openEvidenceModal('{{ target.target_id }}', ..., '{{ target.indicator_description|replace('\'', '\\\'')|replace('"', '\\"') }}', ...)` manually escapes quotes but not backslashes. A faculty-authored custom-target description containing a literal backslash (e.g., copy-pasted Windows path text) would corrupt the resulting JS string literal, likely breaking the modal open call rather than causing an XSS issue (Jinja's autoescape still protects the HTML-attribute boundary).
 - **Recommendation**: Pass data via `data-*` attributes read in JS, or `| tojson` into a `<script>`-embedded object, rather than string-interpolating into an inline event handler.
 - **Suggested command**: `$impeccable harden`
 
-**[P3] Hardcoded `rgba()` literals stand in for token-based tint backgrounds**
+**[P3] Hardcoded `rgba()` literals stand in for token-based tint backgrounds** — ✅ Fixed (7 occurrences, including two that turned out to be literal Bootstrap-blue `rgba(13,110,253,...)` rather than the app's own accent color — the same drift bug independently found and fixed in Dean's dashboard)
 - **Location**: app/templates/designated_dashboard.html:152, 167, 182 (`rgba(63,125,88,0.06)`, `rgba(184,132,46,0.08)` x2), 225, 322 (`rgba(13,110,253,0.0x)`), 837 (`rgba(63,125,88,0.08)`), and JS-injected at 872/874 (`rgba(62,92,130,...)`)
 - **Category**: Theming
 - **Impact**: These are literal RGB triples approximating the success/warning/primary hues, used only for alert/row background tints. The file already has the right pattern available (`var(--c-accent-glow)`, used correctly at lines 245, 361, 562, 1589) but doesn't apply it to success/warning/primary. If the token values are ever adjusted for contrast or a real dark theme, these six-plus literals will silently drift out of sync with the badges/icons/text sitting on top of them.
@@ -426,7 +426,7 @@ design-taste-frontend: out of scope (dashboard UI), consistent with shared shell
 - **Recommendation**: Add `aria-label` (e.g. `aria-label="Assigned per faculty for {{ ind.indicator_description }}"`) to each bare input, or `aria-labelledby` pointing at the column header cell
 - **Suggested command**: `$impeccable harden`
 
-**[P2] Skipped heading levels throughout the page**
+**[P2] Skipped heading levels throughout the page** — ✅ Fixed (via `role="heading" aria-level`, not tag swaps, since `base.html` has tag-coupled CSS like `.card-header h5`)
 - **Location**: e.g. `<h2>Program Chair Dashboard</h2>` (line 61) followed directly by `<h6>Active Faculty</h6>` (line 75) inside the same KPI card row; this h2→h6 jump (no h3/h4 anywhere) repeats across every section (9× `<h2>`, 14× `<h5>`, 9× `<h6>`, zero `<h3>`/`<h4>`)
 - **Category**: Accessibility
 - **Impact**: Assistive-tech users who navigate by heading outline get a document structure that jumps two levels at a time, obscuring the actual section/subsection relationship
@@ -442,7 +442,7 @@ design-taste-frontend: out of scope (dashboard UI), consistent with shared shell
 - **Recommendation**: When adding `.is-invalid`, also set `aria-invalid="true"` and `aria-describedby` pointing at the associated feedback text
 - **Suggested command**: `$impeccable harden`
 
-**[P2] No pagination, search, or filter on any of this dashboard's five data tables**
+**[P2] No pagination, search, or filter on any of this dashboard's five data tables** — ✅ Fixed for the 4 faculty-roster tables (pending drafts, locked drafts, pending evidence, approved evidence), mirroring RET Chair's existing `filterAssignFacultyTable()` pattern. The modal-internal per-faculty item-review tables were left out of scope (small, bounded lists, not rosters).
 - **Location**: `#commitmentsTable` (pending drafts, lines 362-446), `#lockedTable` (locked drafts, lines 471-514), evidence-pending faculty table (lines 1530-1577), approved-evidence faculty table (lines 1589-1646), and the JS-built target-review tables inside modals
 - **Category**: Responsive Design / Implementation Integrity
 - **Impact**: Per CLAUDE.md this role distributes quotas and reviews submissions for an entire specialization/program — as faculty count grows past a screenful, chairs must scroll a single flat table with no way to search by name, sort, or filter by status
@@ -471,7 +471,7 @@ design-taste-frontend: out of scope (dashboard UI), consistent with shared shell
 - **Recommendation**: Replace with `data-emp-id`/`data-name` attributes read by the click handler, avoiding string interpolation into JS source entirely
 - **Suggested command**: `$impeccable harden`
 
-**[P3] Inconsistent error UX: native `alert()` alongside a purpose-built custom modal system**
+**[P3] Inconsistent error UX: native `alert()` alongside a purpose-built custom modal system**  — ✅ Fixed: all 8 AJAX-result/validation `alert()` calls routed through the file's existing `showCustomAlert()`, mirroring the same consolidation already done for Faculty and Dean. Only the standard `if (window.showCustomAlert) {...} else { alert(...) }` fallback branches remain.
 - **Location**: `loadReviewModal`/`loadViewLockedModal` (lines 965, 987, 993), `openFacultyEvidenceVerificationModal` catch (line 1870), `returnEvidence` (line 1963), `verifyEvidence` (lines 2016, 2047), `submitFacultyEvidenceToDean` (line 2080)
 - **Category**: Implementation Integrity
 - **Impact**: This file already built `showCustomConfirm` for a polished confirmation UX, yet every network/error path falls back to a blocking native `alert()` — jarring and inconsistent within the same page
@@ -549,7 +549,7 @@ design-taste-frontend: out of scope (dashboard UI), consistent with shared shell
 - **Recommendation**: Add inline warning text near the Save button when editing an existing rank (mirroring the Extension Distribution pattern), and/or a lightweight confirm step before submit.
 - **Suggested command**: `$impeccable clarify`
 
-**[P2] Heading hierarchy skips h3 and h4 throughout the file**
+**[P2] Heading hierarchy skips h3 and h4 throughout the file** — ✅ Fixed (via `role="heading" aria-level`, not tag swaps)
 - **Location**: Representative: `app/templates/ret_chair_dashboard.html:68` (`<h2>`) directly followed by `:374` (`<h5>`) with no `<h3>`/`<h4>` in between; pattern repeats at every section (10× `<h2>`, 16× `<h5>`, 12× `<h6>`, zero `<h3>`/`<h4>`)
 - **Category**: Accessibility
 - **Impact**: Screen reader users navigating by heading level get a broken outline — every section jumps two or three levels. This is consistent enough (every single section) to be a structural pattern, not a one-off typo.
@@ -557,14 +557,14 @@ design-taste-frontend: out of scope (dashboard UI), consistent with shared shell
 - **Recommendation**: Promote section/card headers to `<h3>` and sub-groupings to `<h4>`, reserving `<h5>`/`<h6>` for genuinely nested content.
 - **Suggested command**: `$impeccable harden`
 
-**[P2] Four different confirmation-dialog implementations coexist in this one file**
+**[P2] Four different confirmation-dialog implementations coexist in this one file** — ✅ Fixed, consolidated to two: kept `showCustomRetConfirm()` (already a well-built, generic, parameterized confirm modal) as the canonical yes/no confirm for this file, and migrated the other two onto it — the native `confirm()` on the delete-rule form (now names the specific rank being deleted) and `showConfirmExtDistModal()`'s bespoke `#confirmExtDistModal` (deleted entirely, ~20 lines of duplicate modal markup removed). Left `returnEvidenceReasonModal` as its own separate component deliberately — it collects a required text reason with its own validation, a genuinely different interaction from a plain confirm, not just a cosmetic variant. Verified: no leftover native `confirm()` or dangling references to the removed modal; all inline JS in the file re-checked as syntactically valid after the edits.
 - **Location**: native `confirm()` at `app/templates/ret_chair_dashboard.html:807` (delete rule); `showCustomRetConfirm()` at `:1838-1869` + modal at `:1900-1929`; `showConfirmExtDistModal()` at `:930-987` + modal at `:910-928`; `returnEvidenceReasonModal` flow at `:2303-2330` + `:2424-2442`
 - **Category**: Implementation Integrity
 - **Impact**: Three separate bespoke "are you sure" modal components were built instead of reusing one, plus a plain browser `confirm()` for the fourth case. Visually and behaviorally inconsistent for the same job, and triples the maintenance surface for a single UI pattern.
 - **Recommendation**: Consolidate into one reusable confirm-modal component/function; retire the raw `confirm()` call to match.
 - **Suggested command**: `$impeccable harden`
 
-**[P2] No search, filter, or pagination on most long lists**
+**[P2] No search, filter, or pagination on most long lists** — ✅ Fixed for the 4 tables that actually scale with faculty count (Commitment Verification, Approved RET Choices, pending/approved RET Evidence), using the same pattern as the file's own pre-existing `filterAssignFacultyTable()`. The Active Research Rules table was deliberately left out of scope — it's bounded to ~11 academic ranks and doesn't benefit from search.
 - **Location**: `app/templates/ret_chair_dashboard.html:772-822` (Active Rules table), `:571-629` (per-indicator faculty distribution tables), `:1011-1075` and `:1090-1132` (Commitment Verification / Approved RET Choices), `:1950-1999` and `:2011-2053` (Evidence Verification tables). Only the Target Assignment faculty table (`:462-463`, `filterAssignFacultyTable()`) has client-side search.
 - **Category**: Implementation Integrity / Usability
 - **Impact**: Every other long list in a dashboard whose whole purpose is to manage rank rules and review dozens of faculty submissions has no way to narrow results — a chair with a large department has to scroll through everything.
@@ -585,21 +585,21 @@ design-taste-frontend: out of scope (dashboard UI), consistent with shared shell
 - **Recommendation**: Strip the `[DEBUG]` console statements now that the RET review modal wiring is verified working.
 - **Suggested command**: `$impeccable polish`
 
-**[P3] 22 `!important` declarations fighting Bootstrap specificity**
+**[P3] 22 `!important` declarations fighting Bootstrap specificity** — ⏸ Deferred: this is the app's whole styling architecture (`base.html` itself is built almost entirely on `!important` to override Bootstrap), not something fixable in one file in isolation. Would need a deliberate specificity strategy applied app-wide, out of scope for a polish pass.
 - **Location**: e.g. `app/templates/ret_chair_dashboard.html:56-62` (disabled-button override block), `:373`, `:404` (card-header side-tab borders)
 - **Category**: Theming / Implementation Integrity
 - **Impact**: Functions correctly today but is brittle — every one of these is a sign the cascade is being fought rather than composed. The two at lines 373/404 also duplicate, via inline `style`, a visual effect (colored left-accent) that base.html already expresses reusably through `.border-start.border-info`/`.border-warning` utility classes (used correctly elsewhere in this same file, e.g. line 74) — same motif, two different implementations in one file.
 - **Recommendation**: Replace the inline `border-left: ... !important` pairs with the existing `.border-start.border-*` utility classes already used elsewhere in this file.
 - **Suggested command**: `$impeccable polish`
 
-**[P3] Small touch targets on primary review actions**
+**[P3] Small touch targets on primary review actions** — ⏸ Deferred: fixing this properly means resizing buttons off `btn-sm` across a dense, high-traffic review UI, which is a real visual change I can't verify without live browser testing against real data — better done as a deliberate visual pass than a blind edit.
 - **Location**: `btn btn-sm` used for nearly every action button, e.g. `app/templates/ret_chair_dashboard.html:485-491`, `:802-811`, `:1116-1120`, `:1984-1987`, `:2283-2290`
 - **Category**: Responsive Design
 - **Impact**: Approve/Return/Assign/Delete are the core verbs of this dashboard's job, and they're all rendered at the smallest Bootstrap button size — tight on a tablet, which is a plausible device for a department chair reviewing evidence between meetings.
 - **Recommendation**: Bump primary decision actions (Approve, Return, Assign) to default button size; reserve `btn-sm` for secondary/repeated row actions.
 - **Suggested command**: `$impeccable adapt`
 
-**[P3] Dense 6-7 column tables rely solely on horizontal scroll on narrow viewports**
+**[P3] Dense 6-7 column tables rely solely on horizontal scroll on narrow viewports** — 🟡 Partially addressed as a side effect of the sticky-quota-column work: horizontal scroll on these tables now actually *works* (it silently didn't, app-wide, before that fix). The suggested further step — a stacked/card layout as an alternative to scrolling on narrow viewports — is real feature work, not polish, and stays deferred.
 - **Location**: `app/templates/ret_chair_dashboard.html:1011-1020` (6 columns), `:1950-1961` and `:2011-2021` (7 columns each)
 - **Category**: Responsive Design
 - **Impact**: `.table-responsive` correctly contains the overflow (no page-level horizontal scroll, which is good), but reading a 7-column table by side-scrolling on a phone is still a genuinely worse experience than a stacked-card layout would be.
@@ -671,7 +671,7 @@ Out of scope (dashboard UI), consistent with the shared shell finding. Nothing i
 - **Recommendation**: Give each modal's header title an `id` and reference it via `aria-labelledby` on the `.modal` container, following the one correct example already in this file.
 - **Suggested command**: `$impeccable harden`
 
-**[P2] No sticky/frozen label column on the quota-cascading matrix**
+**[P2] No sticky/frozen label column on the quota-cascading matrix** — ✅ Fixed, plus a real bug found and fixed along the way: `base.html`'s `.table-responsive { overflow: hidden; }` was silently overriding Bootstrap's own `overflow-x: auto`, which meant **every wide table app-wide had horizontal scrolling completely disabled** — content past the container width wasn't scrollable, it was just invisible. Fixed to `overflow-x: auto; overflow-y: hidden;` (preserves the rounded-corner clipping, restores scroll). Added a reusable `.sticky-col` utility (`position: sticky; left: 0` + row-context background + edge shadow) to `base.html` and applied it to the quota matrix's indicator-label column (header `<th>` and each data row's `<td>`, not the full-width category banner rows). Verified both fixes together in a live browser mockup: scrolling to the rightmost column keeps the indicator label pinned and readable.
 - **Location**: `app/templates/dean_dashboard.html:152-198` (table with one `<th>`/`<td>` column per department plus special roles, columns generated dynamically from `departments`/`special_roles`)
 - **Category**: Responsive Design
 - **Impact**: This is the densest data-entry surface in the app — every master indicator row against every department/role column, disabled/locked once cascaded. On any viewport narrower than the total column count requires, `.table-responsive` correctly prevents page-level overflow, but scrolling right to reach a department column scrolls the indicator-description column out of view too, so the Dean loses track of which row they're editing while filling in quotas.
@@ -701,7 +701,7 @@ Out of scope (dashboard UI), consistent with the shared shell finding. Nothing i
 - **Recommendation**: Delete the section, or if a real "Phase 2" is still planned, replace the mock row with the empty-state pattern used consistently elsewhere in this file.
 - **Suggested command**: `$impeccable distill`
 
-**[P2] Three different, inconsistently-applied error/feedback mechanisms**
+**[P2] Three different, inconsistently-applied error/feedback mechanisms** — ✅ Fixed by aligning each raw `alert()` with whichever mechanism is already the app-wide convention for that *category* of message, rather than picking one mechanism arbitrarily: AJAX success/failure results now go through the file's own `showToast()` (7 call sites), and pre-submit validation checks that block a form/action now go through the shared `showCustomAlert()` (3 call sites, one reusing its `focusEl` param to refocus the invalid field) — matching how Faculty/Program Chair/RET Chair/Designated already handle their own validation. Kept the existing `if (window.showCustomAlert) {...} else { alert(...) }` defensive-fallback pattern used everywhere else in the codebase rather than removing it. Verified: no unaddressed raw `alert()` calls remain (only the four intentional fallback branches), all templates parse, and the file's JS re-checked as syntactically valid.
 - **Location**: native `alert()` at e.g. `:943,1011,1613,1616,1642,1644,1980,2310,2406`; custom `showCustomAlert()` (base.html, used at `:921`); `showToast()` defined locally at `:2834-2842` and used for save/decision results
 - **Category**: Implementation Integrity
 - **Impact**: Within the same file, some failures pop a native unstyled browser `alert()`, others use the app's own styled toast, and one uses the shared `showCustomAlert`. This produces an inconsistent, jarring experience depending on which action failed — e.g. a network error saving quota values shows a native `alert()` while a network error saving review items shows a styled `showToast`.
@@ -716,28 +716,28 @@ Out of scope (dashboard UI), consistent with the shared shell finding. Nothing i
 - **Recommendation**: Add `role="alert"` (or wrap in a persistent `aria-live="polite"` region) to the generated toast element.
 - **Suggested command**: `$impeccable harden`
 
-**[P3] Whole-dashboard DOM render instead of per-tab loading**
+**[P3] Whole-dashboard DOM render instead of per-tab loading** — ⏸ Deferred: a real architecture change (lazy per-tab fetching would need route/JS restructuring), not a polish-pass edit.
 - **Location**: all six `.dashboard-section` blocks (`:68`, `:117`, `:318`, `:365`, `:1148`, `:1219`) are rendered server-side unconditionally, toggled only by a CSS class
 - **Category**: Performance
 - **Impact**: Every faculty row, evidence record, and draft submission across all tabs is present in the initial page payload even though only one tab is visible at a time. As faculty/evidence counts grow across a real term, this scales the page weight regardless of which tab the Dean actually opens.
 - **Recommendation**: Lazy-fetch a tab's table content on first `showSection()` activation instead of rendering everything up front, or at minimum paginate the largest lists (draft approvals, evidence verification).
 - **Suggested command**: `$impeccable optimize`
 
-**[P3] Full-page `location.reload()` after every AJAX decision**
+**[P3] Full-page `location.reload()` after every AJAX decision** — ⏸ Deferred: replacing reloads with in-place DOM updates is a real behavior change to the approve/reject flow that needs live QA to verify every affected badge/row actually updates correctly — too risky to do blind.
 - **Location**: `:1611,1639,1817` region and `:2817` (`submitDeanDecision`)
 - **Category**: Performance
 - **Impact**: Approving/returning an IPCR or evidence package reloads the entire page rather than patching the affected row, discarding scroll position and requiring the whole DOM (see above) to be rebuilt for a single status change.
 - **Recommendation**: Update the affected row/badge in place (the code already does this for `submitDeanDecision`'s status badge before the reload) and drop the reload.
 - **Suggested command**: `$impeccable optimize`
 
-**[P3] Minor token-system drift**
+**[P3] Minor token-system drift** — ✅ Fixed (`var(--bs-secondary)` → `var(--c-text-sub)`, a generic `rgba(0,0,0,0.1)` divider → `var(--c-border)`), plus a real color-identity bug found in the process: a "highlighted row" background was literal Bootstrap blue `rgba(13,110,253,...)`, not the app's own navy accent — now `var(--c-accent-tint)`.
 - **Location**: `var(--bs-secondary)` at `:2905` (should be a `--c-*` token); raw `rgba()` colors at `:2435`, `:2925`, `:2950`
 - **Category**: Theming
 - **Impact**: Small, low-risk inconsistency against an otherwise well-disciplined token system (74/75 inline styles correctly use `var(--c-*)`).
 - **Recommendation**: Replace with the matching `--c-*` token for consistency, in case theming/colors are ever revisited.
 - **Suggested command**: `$impeccable colorize`
 
-**[P3] Near-duplicate logic pairs**
+**[P3] Near-duplicate logic pairs** — ⏸ Deferred: extracting shared helpers from `populateReviewItems`'s Core/Strategic blocks and `saveThenDecide`/`saveDeanReviewItems` is a correctness-sensitive JS refactor on the review page's core logic — real risk of a subtle behavioral break without live QA, not appropriate for a blind polish pass.
 - **Location**: `populateReviewItems`'s Core-Functions block (`:2422-2485`) vs. its Strategic-Priorities block (`:2487-2561`) are ~95% identical markup-generation code; `saveThenDecide` (`:2622-2689`) and `saveDeanReviewItems` (`:2691-2765`) duplicate the entire item-collection loop
 - **Category**: Implementation Integrity
 - **Impact**: Not a functional bug today, but the duplication already caused one documented micro-bug class in this file (the `_key` vs `indicator_id` comments at `:2147-2158`, `:2247-2250` describe fixes that had to be applied twice because of exactly this kind of duplication) and will keep costing double edits on the next fix.
@@ -833,7 +833,7 @@ Out of scope (dashboard UI), consistent with the shared shell finding.
 - **Recommendation**: Bump action-column buttons to at least `btn-sm` with `py-1.5`/normal padding, or increase tap spacing between adjacent Edit/Delete pairs.
 - **Suggested command**: `$impeccable adapt`
 
-**[P2] Heading hierarchy skips levels throughout**
+**[P2] Heading hierarchy skips levels throughout** — ✅ Fixed (via `role="heading" aria-level`, not tag swaps)
 - **Location**: Systemic — every section goes `<h2>` (section title, e.g. `:95`, `:182`, `:277`) directly to `<h5>` (card headers, e.g. `:189`, `:231`, `:287`) to `<h6>` (sub-labels, e.g. `:397`, `:1282`), with no `<h3>`/`<h4>` anywhere in the file
 - **Category**: Accessibility
 - **Impact**: Screen reader users navigating by heading level get a jarring, unpredictable outline; this is consistent enough across all six sections that it reads as a template convention rather than a mistake, making it cheap to fix everywhere at once.
@@ -841,14 +841,14 @@ Out of scope (dashboard UI), consistent with the shared shell finding.
 - **Recommendation**: Shift card headers to `<h3>` and sub-labels to `<h4>` (or renumber consistently), independent of the current visual size, which can stay controlled by class.
 - **Suggested command**: `$impeccable harden`
 
-**[P3] Side-tab accent border (detector-confirmed, 2 instances, isolated to this file)**
+**[P3] Side-tab accent border (detector-confirmed, 2 instances, isolated to this file)** — ✅ Already fixed as part of the shell-wide side-tab redesign (these 2 instances were caught by that pass's codebase-wide script, not just the ones the audit had sampled)
 - **Location**: `:1261` (`border-left: 3px solid var(--c-accent) !important`), `:1340` (`border-left: 3px solid var(--c-text-muted) !important`) — both on Master Indicators category-group headers
 - **Category**: Implementation Integrity (design-system drift flag)
 - **Impact**: Matches the shared shell's documented "side-tab" AI-tell pattern, but only 2 occurrences in ~1880 lines and both correctly reference design tokens (no hardcoded hex) — minor, not systemic for this file specifically.
 - **Recommendation**: Low priority; if addressed shell-wide, fold these two in at the same time rather than treating as a separate pass.
 - **Suggested command**: `$impeccable polish`
 
-**[P3] No search/filter for Master Indicators, Term History, Departments, Criteria, or Audit Log**
+**[P3] No search/filter for Master Indicators, Term History, Departments, Criteria, or Audit Log** — ✅ Fixed for the 3 tables that genuinely benefit: **Master Indicators** (a single search box filters across all the per-category/per-type sub-tables at once via a shared `.indicator-row` class, since this section renders as many separate `<table>`s, not one), **Departments**, and **Audit Log** — all using the same `filterRoster()`-style pattern already established elsewhere in this file. **Term History** and **Criteria** were deliberately left out of scope: both are bounded to a handful of rows in practice (terms open a few times a year; criteria/target-categories are ~6 built-in slugs per CLAUDE.md), the same reasoning already applied to skip RET Chair's Active Rules table.
 - **Location**: Only HR Roster (`:112`) and Security Users (`:1479`) have a search input + status filter; Master Indicators (`:1216+`), Term History (`:234-266`), Criteria (`:330-384`), Departments (`:843-892`), and Audit Log (explicitly capped "Last 50", `:1553`) render every row with no client-side filtering
 - **Category**: Performance / Responsive Design (data-dump risk)
 - **Impact**: Low risk today (these are admin-configured, typically small lists), but Master Indicators in particular grows with every term and every category, and is already split into many separate per-category tables with no way to jump to or search a specific indicator.
@@ -924,7 +924,7 @@ Out of scope (dashboard UI), consistent with the shared shell finding.
 - **Recommendation**: Wrap the sheet in `<main>`, promote `.title` to an `<h1>`, add a `<caption class="visually-hidden">` to each table describing its purpose, and add `scope="col"` to the `<th>` cells in the main rating table header (lines 133-144). This is a low-cost, high-value change since it doesn't touch the visual/print layout at all.
 - **Suggested command**: `$impeccable harden`
 
-**[P3] Dead CSS: `.page-break` is defined but never used**
+**[P3] Dead CSS: `.page-break` is defined but never used** — ✅ Fixed (confirmed unused, removed rather than guessing where to wire it up without a way to test print output)
 - **Location**: ipcr_print.html:77 (`.page-break { page-break-before: always; }`), never applied to any element in the body (lines 83-280)
 - **Category**: Implementation Integrity
 - **Impact**: No functional impact today, but it's a maintenance trap — a future editor may assume forcing a page break "already works" via this class and be surprised when nothing happens, or may not realize large forms currently rely entirely on the browser's natural (row-level) pagination.
@@ -1006,14 +1006,14 @@ Not applicable — this is a fixed government form replica, not a designed marke
 - **Recommendation**: Add `aria-live="polite"` to `#confirmPasswordError` and `#passwordPolicyBox` (or an `aria-live` summary region announcing count of unmet requirements).
 - **Suggested command**: `$impeccable harden`
 
-**[P3] Inline hardcoded colors bypass the auth layout's own token system**
+**[P3] Inline hardcoded colors bypass the auth layout's own token system** — ✅ Fixed (heading color now `var(--c-text)`; the HR-notice's one-off yellow replaced with new `--c-warning-bg`/`--c-warning-text` tokens reusing the app's actual warning hue from `base.html`, not an unrelated color)
 - **Location**: login.html:6 (`style="color: #0f172a; ..."`), register.html:6 (`background-color: #fef9c3; color: #854d0e;`) and :11 (`color: #0f172a`)
 - **Category**: Theming
 - **Impact**: `auth_layout.html` defines `--c-text: #2B2822` (a warm near-black) and uses it consistently for body copy, but the page-title heading on both login and register hardcodes a different, cooler near-black (`#0f172a`) inline instead of the token — a subtle but visible mismatch within the same viewport. The HR-notice alert box on register.html introduces a third one-off color pair with no corresponding variable anywhere else in the app.
 - **Recommendation**: Replace the inline `style="color: #0f172a"` with `var(--c-text)` (or a dedicated `--c-heading` token if a deliberate distinction from body text is wanted), and give the HR-notice its own named token if this warning pattern will recur.
 - **Suggested command**: `$impeccable polish`
 
-**[P3] Heavy shared asset payload for two lightweight forms**
+**[P3] Heavy shared asset payload for two lightweight forms** — ⏸ Deferred: trimming this means subsetting the icon font or self-hosting fonts, which is build/infra tooling work, not a template edit.
 - **Location**: auth_layout.html:8-13 (full Bootstrap 5 CSS, full Tabler icon webfont, two Google Font families/multiple weights) — loaded by every visit to login.html and register.html
 - **Category**: Performance
 - **Impact**: These two pages use roughly six icon glyphs (eye, eye-off, alert-triangle, alert-circle, shield-check, check) and a handful of Bootstrap components, yet pull the entire icon webfont and CSS framework from CDN on every unauthenticated page load — the highest-traffic, first-impression pages in the app.

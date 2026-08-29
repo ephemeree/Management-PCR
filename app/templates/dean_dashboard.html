@@ -153,7 +153,7 @@
                     <table class="table table-hover align-middle shadow-sm">
                         <thead class="table-light">
                             <tr>
-                                <th scope="col">Master Indicator</th>
+                                <th scope="col" class="sticky-col">Master Indicator</th>
                                 {# Columns come from the managed department list plus the
                                    non-department cascade roles. #}
                                 {% for d in departments %}
@@ -176,7 +176,7 @@
                             </tr>
                             {% endif %}
                             <tr>
-                                <td class="ps-4">
+                                <td class="ps-4 sticky-col">
                                     <input type="hidden" name="indicator_id[]" value="{{ indicator.indicator_id }}">
                                     {{ indicator.indicator_description }}
                                     <span class="badge bg-dark ms-2">{{ indicator.efficiency_type }}</span>
@@ -333,7 +333,7 @@
     {% set approved_drafts = draft_submissions | selectattr('review_status', 'equalto', 'Approved') | list if draft_submissions else [] %}
 
     <!-- Table 1: Pending Draft Submissions -->
-    <div class="card shadow-sm border-0 mb-5" style="border-top: 3px solid var(--c-warning) !important; border-radius: 14px; overflow: hidden;">
+    <div class="card shadow-sm border-0 mb-5" style="border-top: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important; border-radius: 14px; overflow: hidden;">
         <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
             <h5 class="fw-bold text-dark mb-0"><i class="ti ti-hourglass text-warning me-2"></i>Pending Draft Submissions</h5>
             <small class="text-muted">Draft IPCRs submitted by Designated Faculty awaiting review or returned for revisions.</small>
@@ -393,7 +393,7 @@
     </div>
 
     <!-- Table 2: Approved IPCRs -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important; border-radius: 14px; overflow: hidden;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important; border-radius: 14px; overflow: hidden;">
         <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
             <h5 class="fw-bold text-success mb-0"><i class="ti ti-circle-check me-2"></i>Approved IPCR Drafts</h5>
             <small class="text-muted">Draft IPCRs that have been verified and approved by the Dean.</small>
@@ -484,7 +484,7 @@
             <div class="modal-body p-4" id="modalBody" style="display:none; background-color: var(--c-surface-alt);">
 
                 <!-- Section 1: Core Functions Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                     <div class="card-header border-0 py-3 bg-light">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-star-filled text-warning me-2"></i>1. Core Functions</h5>
                         <p class="small mb-0 text-muted">Mandatory teaching load target (10 hrs) and cascaded instruction targets assigned by Program Chair (Locked)</p>
@@ -510,7 +510,7 @@
                 </div>
 
                 <!-- Section 2: Strategic Priorities & Support Functions Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                     <div class="card-header border-0 py-3 bg-light">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
                         <p class="small mb-0 text-muted">Uncascaded instructional options, support functions, and custom DPCR target items</p>
@@ -536,7 +536,7 @@
                 </div>
 
                 <!-- Section 3: Unselected Indicators Card -->
-                <div class="card border-0 shadow-sm mb-4" id="unselectedIndicatorsCard" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip" id="unselectedIndicatorsCard">
                     <div class="card-header border-0 py-3 bg-light">
                         <h6 class="fw-bold text-secondary text-uppercase mb-0">
                             <i class="ti ti-alert-circle me-2"></i>Unselected Indicators
@@ -562,7 +562,7 @@
                 </div>
 
                 <!-- Section 4: College-Wide Targets Card -->
-                <div class="card border-0 shadow-sm mb-4" id="collegeWideTargetsCard" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip" id="collegeWideTargetsCard">
                     <div class="card-header border-0 py-3 bg-light">
                         <h6 class="fw-bold text-secondary text-uppercase mb-0">
                             <i class="ti ti-world me-2"></i>College-Wide Targets
@@ -664,7 +664,7 @@
     </div>
 
     {% if college_wide_quotas %}
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important;">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="fw-bold mb-0 text-success">
                 <i class="ti ti-world me-2"></i>College-Wide Targets with Quotas
@@ -700,7 +700,7 @@
 
     {% if designated_faculty_list %}
     <!-- Designated Faculty & Chairs Assignment Table -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-accent) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold mb-0 text-primary">
@@ -976,7 +976,7 @@
     }
     </script>
 
-    <div class="card shadow-sm border-0" style="border-top: 3px solid var(--c-accent) !important;">
+    <div class="card shadow-sm border-0" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="fw-bold mb-0 text-primary">
                 <i class="ti ti-chart-pie me-2"></i>College-Wide Distribution Tracker
@@ -1250,7 +1250,7 @@
     </div>
 
     <!-- Approved Designated Faculty & Chairs Final Verifications Table -->
-    <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid var(--c-success) !important; border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold text-success mb-0">
@@ -1311,7 +1311,7 @@
     </div>
 
     <!-- Approved Regular Faculty Final Verifications Table -->
-    <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid var(--c-accent) !important; border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold text-primary mb-0">
@@ -1578,10 +1578,10 @@
                 if (data.success) {
                     window.location.reload();
                 } else {
-                    alert(data.message);
+                    showToast('danger', data.message);
                 }
             })
-            .catch(err => alert('Error: ' + err));
+            .catch(err => showToast('danger', 'Error: ' + err));
         }
     };
 
@@ -1606,10 +1606,10 @@
                 if (data.success) {
                     window.location.reload();
                 } else {
-                    alert(data.message);
+                    showToast('danger', data.message);
                 }
             })
-            .catch(err => alert('Error: ' + err));
+            .catch(err => showToast('danger', 'Error: ' + err));
         }
     };
 
@@ -1837,7 +1837,7 @@
             const list = DESIGNATED_EVIDENCE_BY_TARGET[tid] || [];
             const item = list.find(e => String(e.evidence_id) === String(evidenceId));
             if (item && item.verification_status === 'Approved') {
-                alert('Approved evidence cannot be returned.');
+                showToast('warning', 'Approved evidence cannot be returned.');
                 return;
             }
         }
@@ -1886,7 +1886,7 @@
         })
         .then(r => r.json())
         .then(data => {
-            if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+            if (!data.success) { showToast('danger', data.message || 'Failed to update evidence.'); return; }
             designatedEvidenceVerificationChanged = true;
             const badge = document.getElementById('designated-evidence-status-' + evidenceId);
             const actions = document.getElementById('designated-evidence-actions-' + evidenceId);
@@ -1916,7 +1916,7 @@
                 updateDesignatedTargetStatusBadge(targetIdFound);
             }
         })
-        .catch(err => alert('Error: ' + err));
+        .catch(err => showToast('danger', 'Error: ' + err));
     };
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -1945,7 +1945,11 @@
         });
 
         if (!hasValue) {
-            alert('Please enter at least one quota value before cascading.');
+            if (window.showCustomAlert) {
+                showCustomAlert('No Quotas Entered', 'Please enter at least one quota value before cascading.', 'warning');
+            } else {
+                alert('Please enter at least one quota value before cascading.');
+            }
             return false;
         }
 
@@ -1983,10 +1987,15 @@
 
         // Reject button — show confirmation first
         document.getElementById('btnDeanReject')?.addEventListener('click', function () {
-            const remarks = document.getElementById('deanOverallRemarks').value.trim();
+            const remarksInput = document.getElementById('deanOverallRemarks');
+            const remarks = remarksInput.value.trim();
             if (!remarks) {
-                alert('Please provide overall remarks when rejecting.');
-                document.getElementById('deanOverallRemarks').focus();
+                if (window.showCustomAlert) {
+                    showCustomAlert('Remarks Required', 'Please provide overall remarks when rejecting.', 'warning', remarksInput);
+                } else {
+                    alert('Please provide overall remarks when rejecting.');
+                    remarksInput.focus();
+                }
                 return;
             }
             document.getElementById('confirmAction').value = 'Rejected';
@@ -2275,7 +2284,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    showToast('danger', data.error);
                     loader.style.display = 'none';
                     return;
                 }
@@ -2371,7 +2380,7 @@
             })
             .catch(err => {
                 console.error('Error:', err);
-                alert('Failed to load review data.');
+                showToast('danger', 'Failed to load review data.');
                 loader.style.display = 'none';
             });
     }
@@ -2400,7 +2409,7 @@
                 const descText = item.target_description || item.indicator_description;
 
                 coreBody.innerHTML += `
-                <tr class="table-active-row" style="background-color: rgba(13, 110, 253, 0.04);">
+                <tr class="table-active-row" style="background-color: var(--c-accent-tint);">
                     <td class="py-3 ps-4">
                         ${badgeHtml}
                         <p class="mb-1 small text-secondary fw-semibold">${escapeHtml(item.indicator_description)}</p>
@@ -2747,8 +2756,13 @@
         const remarks = document.getElementById('deanOverallRemarks').value.trim();
 
         if (action === 'Rejected' && !remarks) {
-            alert('Please provide overall remarks when rejecting.');
-            document.getElementById('deanOverallRemarks').focus();
+            const remarksInput = document.getElementById('deanOverallRemarks');
+            if (window.showCustomAlert) {
+                showCustomAlert('Remarks Required', 'Please provide overall remarks when rejecting.', 'warning', remarksInput);
+            } else {
+                alert('Please provide overall remarks when rejecting.');
+                remarksInput.focus();
+            }
 
             // Restore button state
             const btnApprove = document.getElementById('btnDeanApprove');
@@ -2851,7 +2865,7 @@
 
     function generateSummary() {
         // This would trigger PDF generation
-        alert('Generating Summary of Ratings for VPAA...');
+        showToast('info', 'Generating Summary of Ratings for VPAA...');
         // In production, this would call a backend endpoint
     }
 
@@ -2881,7 +2895,7 @@
             <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
                 <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
                     id="confirmModalCancelBtn"
-                    style="border-radius: 10px; background-color: var(--bs-secondary); font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                    style="border-radius: 10px; background-color: var(--c-text-sub); font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
                 <button type="button"
                     class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
                     id="confirmModalConfirmBtn"
@@ -2926,7 +2940,7 @@
         border-radius: 0;
         display: flex;
         flex-direction: column;
-        border-right: 1px solid rgba(0,0,0,0.1);
+        border-right: 1px solid var(--c-border);
     }
 
     #designatedEvidenceViewerModal .modal-body {
