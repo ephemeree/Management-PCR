@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\ACER\Documents\Management-PCR\Management-PCR\app\routes\dean.py", line 640, in export_dpcr
-    safe_write_cell(ws, block_start, DESC_COL, ind['indicator_description'])
-    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\ACER\Documents\Management-PCR\Management-PCR\app\routes\dean.py", line 421, in safe_write_cell
-    top_left.value = value
-    ^^^^^^^^^^^^^^
-AttributeError: 'MergedCell' object attribute 'value' is read-only
