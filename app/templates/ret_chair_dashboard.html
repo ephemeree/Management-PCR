@@ -914,6 +914,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </form>
             <form id="unlockExtensionForm" action="{{ url_for('ret_chair.ret_chair_unlock_extension_rule') }}" method="POST" class="d-none">
+                <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
                 <input type="hidden" name="academic_rank" id="unlockExtensionRank">
             </form>
         </div>
@@ -970,6 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </button>
                                     <form method="POST" action="{{ url_for('ret_chair.ret_chair_delete_rule') }}"
                                         class="m-0" onsubmit="confirmDeleteRetRule(this, '{{ rule.academic_rank | e }}'); return false;">
+                                        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
                                         <input type="hidden" name="rule_id" value="{{ rule.rule_id }}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger px-3"><i
                                                 class="ti ti-trash me-1"></i>Delete</button>

@@ -34,9 +34,13 @@ def get_ret_indicators(cursor, term_id):
 
 def save_ret_rule(conn, cursor, term_id, academic_rank, research_selections, extension_selections, research_indicators, extension_indicators):
     try:
-        # 1. Inspect existing rule rows for this rank, split by category (via their joined
-        # indicators) and lock status. Research is always freely rewritten; a locked Extension
-        # row is left untouched by this save (the RET Chair must unlock it first — see
+        # 1. Inspect existing rule rows for this rank IN THE CURRENT TERM, split by category
+        # (via their joined indicators) and lock status. Scoping by mi.term_id matters: without
+        # it, a locked Extension row from a past term matches purely on academic_rank and
+        # silently blocks every future term's save for that rank (get_ret_rules() already scopes
+        # by term for display, so such a stale lock wouldn't even show an "Unlock" button).
+        # Research is always freely rewritten; a locked Extension row in THIS term is left
+        # untouched by this save (the RET Chair must unlock it first — see
         # unlock_ret_extension_rule) so a saved/distributed Extension menu can't be silently
         # reshuffled once faculty may already be acting on it.
         cursor.execute("""
@@ -45,8 +49,8 @@ def save_ret_rule(conn, cursor, term_id, academic_rank, research_selections, ext
             JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
             JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
             JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-            WHERE r.academic_rank = %s
-        """, (academic_rank,))
+            WHERE r.academic_rank = %s AND mi.term_id = %s
+        """, (academic_rank, term_id))
         existing_rows = cursor.fetchall()
 
         research_rule_ids = [rid for rid, locked, slug in existing_rows if slug == SLUG_RESEARCH]
@@ -199,11 +203,13 @@ def get_ret_rules(cursor, term_id):
     return list(rules_dict.values())
 
 
-def delete_ret_rule(conn, cursor, rule_id, category_type=None):
+def delete_ret_rule(conn, cursor, term_id, rule_id, category_type=None):
     """
-    Deletes a rank band's rule row(s). `category_type` ('research'/'extension') optionally
-    scopes the delete to just that category; omitted, both are targeted. A locked Extension
-    row is refused (returns False) — unlock it first via unlock_ret_extension_rule.
+    Deletes a rank band's rule row(s) IN THE CURRENT TERM. `category_type` ('research'/'extension')
+    optionally scopes the delete to just that category; omitted, both are targeted. A locked
+    Extension row is refused (returns False) — unlock it first via unlock_ret_extension_rule.
+    Scoped by term_id so this can't reach into a past term's rows for the same rank (see the
+    matching note in save_ret_rule).
     """
     try:
         # Note: rule_id is passed as the academic_rank string from the frontend delete form
@@ -214,8 +220,8 @@ def delete_ret_rule(conn, cursor, rule_id, category_type=None):
             JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
             JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
             JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-            WHERE r.academic_rank = %s
-        """, (academic_rank,))
+            WHERE r.academic_rank = %s AND mi.term_id = %s
+        """, (academic_rank, term_id))
         rows = cursor.fetchall()
 
         target_ids = []
@@ -242,12 +248,13 @@ def delete_ret_rule(conn, cursor, rule_id, category_type=None):
         return False
 
 
-def unlock_ret_extension_rule(conn, cursor, academic_rank):
+def unlock_ret_extension_rule(conn, cursor, term_id, academic_rank):
     """
-    Unlocks a rank band's Extension configuration so the RET Chair can edit and re-save it.
-    Saving re-locks it (save_ret_rule always writes new Extension rows with is_locked = 1) —
-    this mirrors the original one-time "distribute, then locked" behavior while allowing a
-    deliberate, explicit correction.
+    Unlocks a rank band's Extension configuration IN THE CURRENT TERM so the RET Chair can edit
+    and re-save it. Saving re-locks it (save_ret_rule always writes new Extension rows with
+    is_locked = 1) — this mirrors the original one-time "distribute, then locked" behavior while
+    allowing a deliberate, explicit correction. Scoped by term_id so this can't reach into a past
+    term's rows for the same rank (see the matching note in save_ret_rule).
     """
     try:
         cursor.execute("""
@@ -256,8 +263,8 @@ def unlock_ret_extension_rule(conn, cursor, academic_rank):
             JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
             JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
             SET r.is_locked = 0
-            WHERE r.academic_rank = %s AND tc.slug = %s
-        """, (academic_rank, SLUG_EXTENSION))
+            WHERE r.academic_rank = %s AND tc.slug = %s AND mi.term_id = %s
+        """, (academic_rank, SLUG_EXTENSION, term_id))
         conn.commit()
         return True, "Extension configuration unlocked for editing."
     except Exception as e:

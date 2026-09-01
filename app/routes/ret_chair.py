@@ -376,14 +376,18 @@ def ret_chair_save_rule():
 @ret_chair_bp.route('/delete_rule', methods=['POST'])
 @role_required('RET_CHAIR')
 def ret_chair_delete_rule():
+    term_id = request.form.get('term_id')
     rule_id = request.form.get('rule_id')
     category_type = request.form.get('category_type')
+    if not term_id:
+        flash("Missing term.", "warning")
+        return redirect(url_for('ret_chair.ret_chair_dashboard'))
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        success = delete_ret_rule(conn, cursor, rule_id, category_type)
+        success = delete_ret_rule(conn, cursor, int(term_id), rule_id, category_type)
         if success:
             flash("Rule deleted successfully.", "success")
         else:
@@ -402,9 +406,10 @@ def ret_chair_delete_rule():
 @role_required('RET_CHAIR')
 def ret_chair_unlock_extension_rule():
     """Unlocks a rank band's Extension configuration so it can be edited and re-saved."""
+    term_id = request.form.get('term_id')
     academic_rank = request.form.get('academic_rank')
-    if not academic_rank:
-        flash("Missing rank band.", "warning")
+    if not academic_rank or not term_id:
+        flash("Missing rank band or term.", "warning")
         return redirect(url_for('ret_chair.ret_chair_dashboard'))
 
     conn = None
@@ -412,7 +417,7 @@ def ret_chair_unlock_extension_rule():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        success, msg = unlock_ret_extension_rule(conn, cursor, academic_rank)
+        success, msg = unlock_ret_extension_rule(conn, cursor, int(term_id), academic_rank)
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error unlocking Extension configuration: {str(e)}", "danger")

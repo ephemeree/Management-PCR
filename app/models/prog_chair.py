@@ -185,6 +185,25 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
                 """, faculty_ids)
                 target_emp_ids = [r[0] for r in cursor.fetchall()]
 
+            try:
+                assigned_quantity = int(assigned_quantity)
+            except (TypeError, ValueError):
+                assigned_quantity = 0
+
+            if assigned_quantity <= 0:
+                # A 0/blank quantity means the chair chose NOT to distribute this indicator
+                # (common for a College-Wide indicator that doesn't apply to their faculty,
+                # e.g. an admin-only Support item) — not "distribute a zero-quantity target."
+                # Clear any prior distribution instead of leaving/creating a phantom 0-qty row
+                # on every applicable faculty member's IPCR.
+                if target_emp_ids:
+                    del_placeholders = ','.join(['%s'] * len(target_emp_ids))
+                    cursor.execute(
+                        f"DELETE FROM tbl_draft_allocation WHERE indicator_id = %s AND emp_id IN ({del_placeholders})",
+                        [indicator_id] + target_emp_ids
+                    )
+                continue
+
             for emp_id in target_emp_ids:
                 # Check if an allocation record already exists in the draft staging table
                 check_query = """
