@@ -91,7 +91,7 @@ docker compose up -d
 
 The first start pulls the web + database images, applies the schema automatically, and creates the first admin account from env's `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
 
-**Step 4 — Access**
+**Step 4: Access**
 
 Open `http://localhost:5000` (or `http://<server-ip>:<port>` if you changed the port) and log in with the admin credentials.
 
