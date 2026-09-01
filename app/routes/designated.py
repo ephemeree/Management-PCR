@@ -38,6 +38,7 @@ def designated_dashboard():
     has_submitted = False
     can_edit = True
     dean_review = None
+    is_returned = False
 
     if active_term:
         term_id = active_term['term_id']
@@ -68,12 +69,21 @@ def designated_dashboard():
         if dr_result:
             dean_review = dr_result[0]
 
-        # Determine editability: allowed ONLY if not yet submitted. Once submitted (or returned), it is view-only.
-        can_edit = not has_submitted
+        # Determine editability. Editable before the first submit, and again after the Dean
+        # returns it — a returned IPCR is returned *because* something needs changing, so
+        # view-only plus a status-flipping "Re-submit" button left no way to act on the Dean's
+        # remarks (targets couldn't be re-picked, quantities/deadlines couldn't be corrected,
+        # and a custom target added on that screen was silently dropped, since the resubmit
+        # route only touches review_status). Re-submitting a returned IPCR now goes through the
+        # full submit path, which rebuilds tbl_draft_targets and resets the Dean review.
+        # Still view-only while awaiting review, once approved, and once committed.
+        is_returned = bool(dean_review and dean_review.get('overall_status') == 'Rejected')
+        can_edit = (not has_submitted) or is_returned
 
         evidence_readiness = None
         ipcr_score = None
         has_final_ipcr = False
+        ipcr_form_preview = None
         if is_committed:
             can_edit = False
             has_submitted = True
@@ -122,6 +132,13 @@ def designated_dashboard():
             # Live IPCR summary — uses the Designated Faculty weight table.
             from app.models.scoring import compute_ipcr_score
             ipcr_score = compute_ipcr_score(cursor, emp_id, term_id)
+            # The "Print IPCR" preview below has to show the same category grouping the
+            # actual printed form does (weighted category, not raw target type — an
+            # is_admin_function row can belong to a different weighted category than its
+            # own type, see ipcr_form.py), so it reuses the same builder as the real print
+            # rather than re-deriving the grouping a third time.
+            from app.models.ipcr_form import build_ipcr_form
+            ipcr_form_preview = build_ipcr_form(cursor, emp_id, term_id)
 
         elif can_edit:
             # Load standard selectable indicators and exclude 21 hours regular teaching load targets
@@ -149,6 +166,7 @@ def designated_dashboard():
             draft_targets = timed_query(cursor, """
                 SELECT dt.draft_id as target_id, dt.indicator_id, dt.proposed_quantity as total_target_value, dt.review_status as status,
                        dt.target_description, dt.target_deadline, dt.target_duration_value, dt.target_duration_unit,
+                       dt.is_auto_description,
                        mi.indicator_description, tc.category_name, mi.is_custom,
                        dri.item_remarks as dean_remarks, dri.original_quantity, dri.reviewed_quantity
                 FROM tbl_draft_targets dt
@@ -160,6 +178,10 @@ def designated_dashboard():
             """, (emp_id, term_id), label="designated_load_drafts")
 
             for d in draft_targets:
+                # Kept before the display remap below: a custom row re-submitted from this
+                # screen has to resolve back to the same tbl_target_categories row it was
+                # filed under, and the remapped display name would not find it.
+                d['custom_category_name'] = d['category_name']
                 if d['category_name'] == 'Custom Target Items':
                     d['category_name'] = 'Support Functions'
 
@@ -203,6 +225,7 @@ def designated_dashboard():
                     t['is_cascaded'] = True
                     t['is_core'] = is_chair_instruction
                     t['is_locked'] = is_chair_instruction
+                    t['is_auto_description'] = draft_map[ind_id].get('is_auto_description') if ind_id in draft_map else None
                 elif ind_id in draft_map:
                     t['total_target_value'] = draft_map[ind_id]['total_target_value']
                     t['target_description'] = draft_map[ind_id]['target_description'] or t['indicator_description']
@@ -214,6 +237,7 @@ def designated_dashboard():
                     t['is_selected'] = True
                     t['is_core'] = False
                     t['is_locked'] = False
+                    t['is_auto_description'] = draft_map[ind_id].get('is_auto_description')
                 else:
                     t['total_target_value'] = 0
                     t['target_description'] = t['indicator_description']
@@ -222,6 +246,7 @@ def designated_dashboard():
                     t['is_selected'] = False
                     t['is_core'] = False
                     t['is_locked'] = False
+                    t['is_auto_description'] = None
 
                 # Structured duration (drives Timeliness): prefer the faculty's own draft,
                 # else the Program Chair's cascaded allocation.
@@ -326,6 +351,7 @@ def designated_dashboard():
                 WHERE dt.emp_id = %s AND mi.term_id = %s
                 ORDER BY tc.category_name, mi.indicator_id
             """, (emp_id, term_id), label="designated_load_drafts")
+            from app.models.ipcr_description import format_ipcr_target_description
             for t in dpcr_targets:
                 t['is_selected'] = True
                 if t['category_name'] == 'Custom Target Items':
@@ -338,6 +364,15 @@ def designated_dashboard():
                     t['is_core'] = True
                     t['is_locked'] = True
                 t['is_oversight_cascade'] = bool(t.get('is_admin_function')) and t['indicator_id'] in oversight_ids
+                if t['is_oversight_cascade']:
+                    # Never trust the stored dt.target_description here — an oversight row has
+                    # no description input of its own (see get_oversight_targets), so it can
+                    # never legitimately hold customized text. Always regenerating means a
+                    # draft saved before this quantity/unit substitution existed (or before a
+                    # since-changed Dean quota) still renders correctly, with no backfill needed.
+                    t['target_description'] = format_ipcr_target_description(
+                        t['indicator_description'], t['total_target_value'],
+                        t.get('target_duration_value'), t.get('target_duration_unit'))
 
     cursor.close()
     conn.close()
@@ -351,12 +386,14 @@ def designated_dashboard():
                            dpcr_targets=dpcr_targets,
                            has_submitted=has_submitted,
                            can_edit=can_edit,
+                           is_returned=is_returned,
                            is_committed=is_committed,
                            is_locked=is_committed,
                            dean_review=dean_review,
                            evidence_readiness=evidence_readiness,
                            ipcr_score=ipcr_score,
-                           has_final_ipcr=has_final_ipcr)
+                           has_final_ipcr=has_final_ipcr,
+                           ipcr_form_preview=ipcr_form_preview)
 
 
 @designated_bp.route('/lock_ipcr', methods=['POST'])
@@ -530,6 +567,10 @@ def submit_designated_ipcr_route():
     for ind_id in selected_ids:
         qty_val = request.form.get(f'target_qty_{ind_id}', '0')
         desc_val = request.form.get(f'target_desc_{ind_id}', '')
+        # Explicit auto/customized flag from wireAutoDescription (base.html) — see Decision 1
+        # in target_desc.md. Absent (None) falls back to inferring from blank-ness.
+        raw_auto_flag = request.form.get(f'is_auto_description_{ind_id}')
+        is_auto_flag = (raw_auto_flag == '1') if raw_auto_flag is not None else None
         # Structured duration drives Timeliness; the text label is derived from it.
         dur_value, dur_unit, dead_label = parse_duration_fields(
             request.form, f'target_dur_value_{ind_id}', f'target_dur_unit_{ind_id}')
@@ -539,7 +580,8 @@ def submit_designated_ipcr_route():
             'target_description': desc_val.strip(),
             'target_deadline': dead_label,
             'target_duration_value': dur_value,
-            'target_duration_unit': dur_unit
+            'target_duration_unit': dur_unit,
+            'is_auto_description': is_auto_flag,
         })
 
     # Departmental Oversight deadlines — the chair's own input, kept in the `_adm`-suffixed

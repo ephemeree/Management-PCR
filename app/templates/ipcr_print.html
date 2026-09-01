@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPCR — {{ form.full_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
     <style>
         /* Short bond paper, 8.5 x 11 inches, landscape. The on-screen preview uses the same
            width so what is shown matches what comes out of the printer. */
@@ -46,6 +47,10 @@
         .rating-col { width: 32px; text-align: center; }
         .draft-notice {
             border: 1px solid #b00; background: #fff4f4; color: #b00;
+            padding: 8px 12px; margin-bottom: 12px; font-weight: bold;
+        }
+        .commitment-notice {
+            border: 1px solid #1a7a3c; background: #f0fbf4; color: #1a7a3c;
             padding: 8px 12px; margin-bottom: 12px; font-weight: bold;
         }
         .toolbar { max-width: 1100px; margin: 0 auto 12px; display: flex; gap: 8px; }
@@ -97,13 +102,15 @@
 </div>
 
 <main class="sheet">
-    {% if not form.is_final %}
-    <div class="draft-notice">
-        DRAFT — this IPCR has not been approved by the Dean yet. Figures may still change.
+    {% if form.form_stage == 'commitment' %}
+    <div class="commitment-notice">
+        <i class="ti ti-circle-check"></i>
+        Approved Performance Commitment — targets are locked and approved. Actual accomplishments
+        and Q/E/T ratings will be completed at the end of the rating period.
     </div>
     {% endif %}
 
-    <h1 class="title">INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR)</h1>
+    <h1 class="title">{{ form.stage_title }}</h1>
 
     <p class="commitment">{{ form.commitment }}</p>
 
@@ -169,12 +176,12 @@
                 {% if loop.first %}
                 <td rowspan="{{ sub.targets | length }}" class="bold">{{ sub.letter }}. {{ sub.label }}</td>
                 {% endif %}
-                <td>{{ t.target_description or t.indicator_description }}</td>
+                <td>{{ (t.target_description or t.indicator_description) | ipcr_preview }}</td>
                 <td>{{ t.actual_accomplishment or '' }}</td>
-                <td class="rating-col">{{ t.rating.q if t.rating and t.rating.q is not none else '' }}</td>
-                <td class="rating-col">{{ t.rating.e if t.rating and t.rating.e is not none else '' }}</td>
-                <td class="rating-col">{{ t.rating.t if t.rating and t.rating.t is not none else '' }}</td>
-                <td class="rating-col">{{ t.rating.average if t.rating and t.rating.average is not none else '' }}</td>
+                <td class="rating-col">{{ t.rating.q if form.is_final and t.rating and t.rating.q is not none else '' }}</td>
+                <td class="rating-col">{{ t.rating.e if form.is_final and t.rating and t.rating.e is not none else '' }}</td>
+                <td class="rating-col">{{ t.rating.t if form.is_final and t.rating and t.rating.t is not none else '' }}</td>
+                <td class="rating-col">{{ t.rating.average if form.is_final and t.rating and t.rating.average is not none else '' }}</td>
                 <td class="small">{{ t.print_remarks or '' }}</td>
             </tr>
             {% endfor %}
@@ -194,7 +201,7 @@
                 <td class="rating-col"></td>
                 <td class="rating-col"></td>
                 <td class="rating-col bold">
-                    {{ form.score.total_overall_rating if form.score.total_overall_rating is not none else '' }}
+                    {{ form.score.total_overall_rating if form.is_final and form.score.total_overall_rating is not none else '' }}
                 </td>
                 <td></td>
             </tr>
@@ -224,26 +231,26 @@
             <td>{{ form.sections[loop.index0].numeral if loop.index0 < (form.sections | length) else '' }}.
                 {{ b.category_name }}</td>
             <td class="center">{{ b.weight_pct | round(0) | int }}%</td>
-            <td class="center">{{ b.raw_avg if b.raw_avg is not none else '' }}</td>
-            <td class="center">{{ b.weighted_value if b.weighted_value is not none else '' }}</td>
+            <td class="center">{{ b.raw_avg if form.is_final and b.raw_avg is not none else '' }}</td>
+            <td class="center">{{ b.weighted_value if form.is_final and b.weighted_value is not none else '' }}</td>
         </tr>
         {% endfor %}
 
         <tr>
             <td colspan="2" class="center">Total Overall Rating</td>
             <td colspan="2" class="center bold">
-                {{ form.score.total_overall_rating if form.score.total_overall_rating is not none else '' }}
+                {{ form.score.total_overall_rating if form.is_final and form.score.total_overall_rating is not none else '' }}
             </td>
         </tr>
         <tr>
             <td colspan="2" class="center">Final Weighted Rating</td>
             <td colspan="2" class="center bold">
-                {{ form.score.final_weighted_rating if form.score.final_weighted_rating is not none else '' }}
+                {{ form.score.final_weighted_rating if form.is_final and form.score.final_weighted_rating is not none else '' }}
             </td>
         </tr>
         <tr>
             <td colspan="2" class="center">Adjectival Rating</td>
-            <td colspan="2" class="center bold">{{ form.score.adjectival_rating or '' }}</td>
+            <td colspan="2" class="center bold">{{ form.score.adjectival_rating if form.is_final else '' }}</td>
         </tr>
     </table>
 

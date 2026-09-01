@@ -183,18 +183,24 @@
                             {% for ind in indicators %}
                             {% if ind.category_name == 'A. Instructions' %}
                             {% set ns_inst.found = true %}
-                            <tr>
-                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description }}</td>
-                                <td class="text-center fw-bold text-primary dept-quota-cell">{{ ind.dept_quota }}</td>
+                            <tr data-indicator-text="{{ ind.indicator_description | e }}">
+                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description | ipcr_preview }}</td>
+                                <td class="text-center fw-bold text-primary dept-quota-cell">
+                                    {{ ind.dept_quota }}
+                                    {% if ind.quota_source == 'COLLEGE_WIDE' %}
+                                    <br><span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:0.65rem;" title="Cascaded College-Wide by the Dean — not a quota specific to your program.">College-Wide</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <input type="hidden" name="indicator_ids" value="{{ ind.indicator_id }}">
                                     <input type="number" name="assigned_quantities"
                                         class="form-control form-control-sm shadow-sm text-center assigned-qty-input"
                                         value="{{ ind.assigned_per_faculty }}" min="0"
                                         data-dept-quota="{{ ind.dept_quota }}"
+                                        data-quota-source="{{ ind.quota_source }}"
                                         data-category="instructions"
                                         data-faculty-count="{{ all_faculty_count|default(faculty_count) }}"
-                                        aria-label="Assigned per faculty for {{ ind.indicator_description | e }}"
+                                        aria-label="Assigned per faculty for {{ ind.indicator_description | ipcr_preview | e }}"
                                         {% if targets_saved %}disabled{% endif %}>
                                 </td>
                                 <td>
@@ -203,7 +209,7 @@
                                             class="form-control form-control-sm shadow-sm text-center target-deadline-input"
                                             placeholder="e.g. 6" min="1" style="max-width: 70px;"
                                             value="{{ ind.target_duration_value if ind.target_duration_value else '' }}"
-                                            aria-label="Deadline duration for {{ ind.indicator_description | e }}"
+                                            aria-label="Deadline duration for {{ ind.indicator_description | ipcr_preview | e }}"
                                             {% if targets_saved %}disabled{% endif %}>
                                         <select name="target_duration_units"
                                             class="form-select form-select-sm shadow-sm"
@@ -218,8 +224,16 @@
                                     <textarea name="custom_descriptions"
                                         class="form-control form-control-sm shadow-sm custom-desc-input"
                                         rows="2" placeholder="IPCR Target Description..."
-                                        aria-label="IPCR target description for {{ ind.indicator_description | e }}"
+                                        aria-label="IPCR target description for {{ ind.indicator_description | ipcr_preview | e }}"
                                         {% if targets_saved %}disabled{% endif %}>{{ ind.custom_description if ind.custom_description else '' }}</textarea>
+                                    {% if not targets_saved %}
+                                    {% set is_auto = (ind.is_auto_description is none) or (ind.is_auto_description == 1) %}
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="badge bg-light text-secondary auto-desc-badge" {% if not is_auto %}hidden{% endif %}><i class="ti ti-wand"></i> Auto</span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 auto-desc-reset" {% if is_auto %}hidden{% endif %}><i class="ti ti-rotate"></i> Reset to Auto</button>
+                                    </div>
+                                    <input type="hidden" name="is_auto_descriptions" value="{{ '1' if is_auto else '0' }}" class="auto-desc-flag">
+                                    {% endif %}
                                 </td>
                                 <td class="text-center text-success fw-bold total-distributed-cell" data-dept-quota="{{ ind.dept_quota }}">{{ ind.total_distributed }} / {{ ind.dept_quota }}</td>
                             </tr>
@@ -271,18 +285,24 @@
                             {% for ind in indicators %}
                             {% if ind.category_name == 'Support Functions' %}
                             {% set ns_supp.found = true %}
-                            <tr>
-                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description }}</td>
-                                <td class="text-center fw-bold text-primary dept-quota-cell">{{ ind.dept_quota }}</td>
+                            <tr data-indicator-text="{{ ind.indicator_description | e }}">
+                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description | ipcr_preview }}</td>
+                                <td class="text-center fw-bold text-primary dept-quota-cell">
+                                    {{ ind.dept_quota }}
+                                    {% if ind.quota_source == 'COLLEGE_WIDE' %}
+                                    <br><span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:0.65rem;" title="Cascaded College-Wide by the Dean — not a quota specific to your program. Decide your own per-faculty target rather than dividing this number.">College-Wide</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <input type="hidden" name="indicator_ids" value="{{ ind.indicator_id }}">
                                     <input type="number" name="assigned_quantities"
                                         class="form-control form-control-sm shadow-sm text-center assigned-qty-input"
                                         value="{{ ind.assigned_per_faculty }}" min="0"
                                         data-dept-quota="{{ ind.dept_quota }}"
+                                        data-quota-source="{{ ind.quota_source }}"
                                         data-category="support"
                                         data-faculty-count="{{ regular_faculty_count|default(faculty_count) }}"
-                                        aria-label="Assigned per faculty for {{ ind.indicator_description | e }}"
+                                        aria-label="Assigned per faculty for {{ ind.indicator_description | ipcr_preview | e }}"
                                         {% if targets_saved %}disabled{% endif %}>
                                 </td>
                                 <td>
@@ -291,7 +311,7 @@
                                             class="form-control form-control-sm shadow-sm text-center target-deadline-input"
                                             placeholder="e.g. 6" min="1" style="max-width: 70px;"
                                             value="{{ ind.target_duration_value if ind.target_duration_value else '' }}"
-                                            aria-label="Deadline duration for {{ ind.indicator_description | e }}"
+                                            aria-label="Deadline duration for {{ ind.indicator_description | ipcr_preview | e }}"
                                             {% if targets_saved %}disabled{% endif %}>
                                         <select name="target_duration_units"
                                             class="form-select form-select-sm shadow-sm"
@@ -306,8 +326,16 @@
                                     <textarea name="custom_descriptions"
                                         class="form-control form-control-sm shadow-sm custom-desc-input"
                                         rows="2" placeholder="IPCR Target Description..."
-                                        aria-label="IPCR target description for {{ ind.indicator_description | e }}"
+                                        aria-label="IPCR target description for {{ ind.indicator_description | ipcr_preview | e }}"
                                         {% if targets_saved %}disabled{% endif %}>{{ ind.custom_description if ind.custom_description else '' }}</textarea>
+                                    {% if not targets_saved %}
+                                    {% set is_auto = (ind.is_auto_description is none) or (ind.is_auto_description == 1) %}
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="badge bg-light text-secondary auto-desc-badge" {% if not is_auto %}hidden{% endif %}><i class="ti ti-wand"></i> Auto</span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 auto-desc-reset" {% if is_auto %}hidden{% endif %}><i class="ti ti-rotate"></i> Reset to Auto</button>
+                                    </div>
+                                    <input type="hidden" name="is_auto_descriptions" value="{{ '1' if is_auto else '0' }}" class="auto-desc-flag">
+                                    {% endif %}
                                 </td>
                                 <td class="text-center text-success fw-bold total-distributed-cell" data-dept-quota="{{ ind.dept_quota }}">{{ ind.total_distributed }} / {{ ind.dept_quota }}</td>
                             </tr>
@@ -804,6 +832,25 @@
 
     document.addEventListener('DOMContentLoaded', function () {
 
+        // ── Auto-generated IPCR target description (Instruction + Support tables) ──
+        if (window.wireAutoDescription) {
+            document.querySelectorAll('#targetAllocationForm tbody tr[data-indicator-text]').forEach(function (row) {
+                const descField = row.querySelector('.custom-desc-input');
+                const flagInput = row.querySelector('.auto-desc-flag');
+                if (!descField || !flagInput) return;
+                window.wireAutoDescription({
+                    indicatorText: row.dataset.indicatorText,
+                    qtyInput: row.querySelector('.assigned-qty-input'),
+                    durValueInput: row.querySelector('.target-deadline-input'),
+                    durUnitInput: row.querySelector('select[name="target_duration_units"]'),
+                    descField: descField,
+                    autoFlagInput: flagInput,
+                    badgeEl: row.querySelector('.auto-desc-badge'),
+                    resetBtn: row.querySelector('.auto-desc-reset')
+                });
+            });
+        }
+
         // ── Phase 1: Auto Divide / Auto Distribute & Save Logic ────
         const facultyCount = {{ faculty_count|default(0) }};
 
@@ -823,6 +870,13 @@
         }
 
         function autoDivideInput(inputEl) {
+            // A College-Wide quota is a whole-college figure, not this department's own pool —
+            // dividing it by just this department's faculty count would understate the number
+            // every other program's faculty are also expected to hit. Leave it for the chair
+            // to type their own flat per-faculty target instead.
+            if (inputEl.dataset.quotaSource === 'COLLEGE_WIDE') {
+                return;
+            }
             const deptQuota = parseFloat(inputEl.dataset.deptQuota) || 0;
             const fCount = parseInt(inputEl.dataset.facultyCount, 10) || facultyCount;
             const dividedVal = fCount > 0 ? Math.ceil(deptQuota / fCount) : 0;
@@ -921,18 +975,10 @@
                                 if (!firstInvalidInput) firstInvalidInput = unitSelect;
                             }
 
-                            // 3. Target Description Validation
-                            if (!descInput || !descInput.value.trim()) {
-                                isValid = false;
-                                if (descInput) {
-                                    descInput.classList.add('border-danger', 'is-invalid');
-                                    descInput.setAttribute('aria-invalid', 'true');
-                                    if (!firstInvalidInput) {
-                                        firstInvalidInput = descInput;
-                                        errorMsg = errorMsg || 'All allocated targets must have an IPCR target description.';
-                                    }
-                                }
-                            }
+                            // Description is no longer required client-side: it auto-mirrors
+                            // the indicator/quantity/duration (see wireAutoDescription in
+                            // base.html), and the backend auto-generates it too if it somehow
+                            // arrives blank (e.g. JS disabled) — see save_chair_allocations_batch.
                         }
                     }
                 });
@@ -1092,6 +1138,7 @@
                 data.items.forEach(function (item) {
                     const headerCat = getHeaderCategoryName(item.category_name);
                     const badgeCat = getBadgeCategoryName(item.category_name);
+                    const previewDesc = window.renderIndicatorPreview(item.indicator_description);
 
                     // Insert category banner row if category changes
                     if (headerCat !== lastCategory) {
@@ -1110,7 +1157,7 @@
                     tr.innerHTML = `
                     <td><span class="badge bg-light text-dark border small">${badgeCat}</span></td>
                     <td class="small fw-semibold">
-                        ${escapeHtml(item.indicator_description)}
+                        ${escapeHtml(window.renderIndicatorPreview(item.indicator_description))}
                         ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size: 0.7rem;"><i class="ti ti-clock me-1"></i>Deadline: ${escapeHtml(item.target_deadline)}</span>` : ''}
                     </td>
                     <td class="text-center text-muted">${item.original_quantity}</td>
@@ -1204,6 +1251,7 @@
 
                     const headerCat = getHeaderCategoryName(item.category_name);
                     const badgeCat = getBadgeCategoryName(item.category_name);
+                    const previewDesc = window.renderIndicatorPreview(item.indicator_description);
 
                     // Insert category banner row if category changes
                     if (headerCat !== lastCategory) {
@@ -1234,7 +1282,7 @@
                     <td><span class="badge bg-light text-dark border small">${badgeCat}</span></td>
                     <td>
                         <div class="small fw-semibold">
-                            ${escapeHtml(item.indicator_description)}
+                            ${escapeHtml(previewDesc)}
                             ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;"><i class="ti ti-clock me-1"></i>Deadline: ${escapeHtml(item.target_deadline)}</span>` : ''}
                         </div>
                         ${retTag}
@@ -1248,7 +1296,7 @@
                                data-item-id="${item.item_id}"
                                data-original="${item.original_quantity}"
                                data-initial-val="${item.reviewed_quantity}"
-                               aria-label="Reviewed quantity for ${escapeHtml(item.indicator_description)}"
+                               aria-label="Reviewed quantity for ${escapeHtml(previewDesc)}"
                                ${isInputDisabled ? 'disabled' : ''}>
                         ${qtyChanged ? `<small class="qty-edited-tag text-warning d-block mt-1"><i class="ti ti-pencil"></i> Edited</small>` : '<small class="qty-edited-tag" style="display:none"></small>'}
                     </td>
@@ -1259,7 +1307,7 @@
                                   placeholder="Optional note on this change..."
                                   data-item-id="${item.item_id}"
                                   data-initial-remarks="${(item.item_remarks || '').trim()}"
-                                  aria-label="Remarks on this change for ${escapeHtml(item.indicator_description)}"
+                                  aria-label="Remarks on this change for ${escapeHtml(previewDesc)}"
                                   ${isInputDisabled ? 'disabled' : ''}>${item.item_remarks || ''}</textarea>`}
                     </td>
                 `;
@@ -1929,7 +1977,7 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
                     tr.innerHTML = `
                         <td class="ps-3 py-3">
                             <span class="badge bg-light text-dark border mb-1">${escapeHtml(t.category_name || 'Standard')}</span>
-                            <p class="mb-1 small fw-semibold text-dark">${escapeHtml(t.indicator_description)}</p>
+                            <p class="mb-1 small fw-semibold text-dark">${escapeHtml(window.renderIndicatorPreview(t.indicator_description))}</p>
                             ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${escapeHtml(t.actual_accomplishment)}</p>` : ''}
                         </td>
                         <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>

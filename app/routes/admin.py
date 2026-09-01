@@ -18,8 +18,9 @@ def admin_dashboard():
         active_term = next((t for t in terms if t['is_active'] == 1), None)
         indicators = get_master_indicators(cursor, active_term['term_id']) if active_term else []
         criteria = get_all_criteria(cursor)
-        ipcr_categories = {dt: get_ipcr_categories(cursor, dt, active_only=False) for dt in DESIGNATION_TYPES}
-        category_types = {dt: get_category_type_map(cursor, dt) for dt in DESIGNATION_TYPES}
+        category_scopes = CATEGORY_SCOPES
+        ipcr_categories = {scope: get_ipcr_categories(cursor, scope, active_only=False) for scope in CATEGORY_SCOPES}
+        category_types = {scope: get_category_type_map(cursor, scope) for scope in CATEGORY_SCOPES}
         weights_grid = {
             dt: (get_criteria_weights_grid(cursor, active_term['term_id'], dt) if active_term else {})
             for dt in DESIGNATION_TYPES
@@ -45,6 +46,7 @@ def admin_dashboard():
         kpis = get_admin_kpis(cursor)
         return render_template('admin_dashboard.html', profiles=profiles, terms=terms, active_term=active_term,
                                indicators=indicators, criteria=criteria,
+                               category_scopes=category_scopes,
                                ipcr_categories=ipcr_categories, category_types=category_types,
                                weights_grid=weights_grid, weights_mode=weights_mode,
                                departments=departments, institution=institution,
@@ -368,8 +370,6 @@ def admin_add_criteria():
             request.form.get('name'),
             request.form.get('slug'),
             request.form.get('review_lane'),
-            request.form.get('is_core') == 'on',
-            request.form.get('display_order') or 100,
         )
         flash(msg, "success" if success else "danger")
     except Exception as e:
@@ -395,12 +395,32 @@ def admin_edit_criteria():
             request.form.get('category_id'),
             request.form.get('name'),
             request.form.get('review_lane'),
-            request.form.get('is_core') == 'on',
-            request.form.get('display_order') or 100,
         )
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error updating criterion: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+
+
+@admin_bp.route('/criteria/reorder', methods=['POST'])
+@role_required('ADMIN')
+def admin_reorder_criteria():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        success, msg = reorder_criteria(
+            conn, cursor, request.form.get('category_id'), request.form.get('direction'))
+        if not success:
+            flash(msg, "danger")
+    except Exception as e:
+        flash(f"Error reordering criterion: {str(e)}", "danger")
     finally:
         if cursor:
             cursor.close()
@@ -443,13 +463,34 @@ def admin_save_category():
             conn, cursor,
             request.form.get('designation_type'),
             request.form.get('category_name'),
-            request.form.get('display_order') or 100,
             request.form.getlist('type_ids[]'),
             request.form.get('ipcr_category_id') or None,
         )
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error saving category: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return redirect(url_for('admin.admin_dashboard') + '#nav-criteria')
+
+
+@admin_bp.route('/categories/reorder', methods=['POST'])
+@role_required('ADMIN')
+def admin_reorder_category():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        success, msg = reorder_ipcr_category(
+            conn, cursor, request.form.get('ipcr_category_id'), request.form.get('direction'))
+        if not success:
+            flash(msg, "danger")
+    except Exception as e:
+        flash(f"Error reordering category: {str(e)}", "danger")
     finally:
         if cursor:
             cursor.close()
@@ -552,12 +593,33 @@ def admin_save_department():
             conn, cursor,
             request.form.get('department_name'),
             request.form.get('department_code'),
-            request.form.get('display_order') or 100,
             request.form.get('department_id') or None,
         )
         flash(msg, "success" if success else "danger")
     except Exception as e:
         flash(f"Error saving department: {str(e)}", "danger")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return redirect(url_for('admin.admin_dashboard') + '#nav-institution')
+
+
+@admin_bp.route('/departments/reorder', methods=['POST'])
+@role_required('ADMIN')
+def admin_reorder_department():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        success, msg = reorder_department(
+            conn, cursor, request.form.get('department_id'), request.form.get('direction'))
+        if not success:
+            flash(msg, "danger")
+    except Exception as e:
+        flash(f"Error reordering department: {str(e)}", "danger")
     finally:
         if cursor:
             cursor.close()

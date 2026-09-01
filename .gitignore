@@ -7,3 +7,5 @@ __pycache__/
 *.deb
 TODO.md
 app/uploads/evidence/
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json

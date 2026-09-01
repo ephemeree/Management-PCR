@@ -192,6 +192,7 @@ def get_or_create_dean_review(conn, cursor, emp_id, term_id, dean_id):
 def get_dean_review_items(cursor, review_id):
     """Get all review items with indicator + category details, target description, deadline, and core flags."""
     from app.models.connection import timed_query
+    from app.models.ipcr_description import format_ipcr_target_description
     query = """
         SELECT
             dri.item_id,
@@ -209,6 +210,7 @@ def get_dean_review_items(cursor, review_id):
             dt.target_duration_value,
             dt.target_duration_unit,
             dt.is_admin_function,
+            dt.is_auto_description,
             CASE WHEN da.allocation_id IS NOT NULL THEN 1 ELSE 0 END as is_cascaded
         FROM tbl_ipcr_dean_review_items dri
         JOIN tbl_ipcr_dean_review dr ON dri.review_id = dr.review_id
@@ -244,6 +246,23 @@ def get_dean_review_items(cursor, review_id):
         item['is_core'] = (not is_admin_function) and (is_tl or is_cascaded)
         item['is_cascaded'] = is_cascaded
         item['is_admin_function'] = is_admin_function
+        # None (a plain cascaded/Core row with no is_auto_description of its own) and 1 both
+        # mean "still auto-mirroring" — only an explicit 0 means the Dean customized it.
+        item['is_auto_description'] = item.get('is_auto_description') is None or item.get('is_auto_description') == 1
+        # A custom ad-hoc item's indicator_description IS its user-typed text — it has no
+        # master indicator to mirror, so it must never be regenerated regardless of what its
+        # is_auto_description flag says. (Historically that flag defaulted to 1/auto for
+        # custom rows since the insert never set it explicitly — see submit_designated_ipcr.)
+        if item['is_auto_description'] and not item.get('is_custom'):
+            # Never trust the stored target_description for an auto row — regenerate from the
+            # indicator and the item's own committed quantity/duration every time this is read.
+            # Without this, a row saved before this substitution logic existed (or before a
+            # since-changed Dean quota) keeps showing stale text indefinitely; a departmental
+            # oversight row in particular has no description input of its own at all, so its
+            # stored value can only ever be regenerated, never legitimately customized.
+            item['target_description'] = format_ipcr_target_description(
+                item['indicator_description'], item.get('original_quantity'),
+                item.get('target_duration_value'), item.get('target_duration_unit'))
     return items
 
 
@@ -344,9 +363,17 @@ def save_dean_review_items(cursor, conn, review_id, items):
                 # if omitted — without it the target has no deadline at all, which
                 # Timeliness scoring needs.
                 from app.models.scoring import format_duration
+                from app.models.ipcr_description import format_ipcr_target_description, get_indicator_description
                 dur_value = item.get('target_duration_value') or 1
                 dur_unit = item.get('target_duration_unit') or 'semesters'
                 desc = item.get('target_description') or None
+                # is_auto_description True (explicit, from the frontend) always regenerates,
+                # even if non-blank text was submitted — protects against client-side drift
+                # (Decision 1). A blank description always regenerates too, regardless.
+                is_auto_description = 1 if (item.get('is_auto_description') is True or not desc) else 0
+                if is_auto_description:
+                    desc = format_ipcr_target_description(
+                        get_indicator_description(cursor, indicator_id), reviewed_qty, dur_value, dur_unit)
                 # Always Dean-added/oversight-originated -- never the designated faculty's
                 # own personal teaching allocation -- so this rolls into Strategic
                 # Priorities/Support like every other oversight row (get_oversight_targets,
@@ -354,9 +381,10 @@ def save_dean_review_items(cursor, conn, review_id, items):
                 cursor.execute("""
                     INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
                                                    target_description, target_duration_value, target_duration_unit,
-                                                   target_deadline, is_admin_function)
-                    VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1)
-                """, (emp_id, indicator_id, reviewed_qty, desc, dur_value, dur_unit, format_duration(dur_value, dur_unit)))
+                                                   target_deadline, is_admin_function, is_auto_description)
+                    VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1, %s)
+                """, (emp_id, indicator_id, reviewed_qty, desc, dur_value, dur_unit,
+                      format_duration(dur_value, dur_unit), is_auto_description))
                 new_draft_id = cursor.lastrowid
                 # Insert review item linked to new draft
                 cursor.execute("""
@@ -388,16 +416,32 @@ def save_dean_review_items(cursor, conn, review_id, items):
                 # edit to those too, or it silently gets dropped on the next save.
                 if item.get('target_duration_value') is not None or item.get('target_description') is not None:
                     from app.models.scoring import format_duration
+                    from app.models.ipcr_description import format_ipcr_target_description
                     dur_value = item.get('target_duration_value') or 1
                     dur_unit = item.get('target_duration_unit') or 'semesters'
                     desc = item.get('target_description') or None
+                    # is_auto_description True (explicit, from the frontend) always
+                    # regenerates, even if non-blank text was submitted — protects against
+                    # client-side drift (Decision 1). A blank description always regenerates
+                    # too, regardless.
+                    is_auto_description = 1 if (item.get('is_auto_description') is True or not desc) else 0
+                    if is_auto_description:
+                        cursor.execute("""
+                            SELECT dri.indicator_id, mi.indicator_description
+                            FROM tbl_ipcr_dean_review_items dri
+                            JOIN tbl_master_indicators mi ON dri.indicator_id = mi.indicator_id
+                            WHERE dri.item_id = %s
+                        """, (item_id,))
+                        ind_row = cursor.fetchone()
+                        indicator_description = ind_row[1] if ind_row else ''
+                        desc = format_ipcr_target_description(indicator_description, reviewed_qty, dur_value, dur_unit)
                     cursor.execute("""
                         UPDATE tbl_draft_targets dt
                         JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id
                         SET dt.target_description = %s, dt.target_duration_value = %s,
-                            dt.target_duration_unit = %s, dt.target_deadline = %s
+                            dt.target_duration_unit = %s, dt.target_deadline = %s, dt.is_auto_description = %s
                         WHERE dri.item_id = %s
-                    """, (desc, dur_value, dur_unit, format_duration(dur_value, dur_unit), item_id))
+                    """, (desc, dur_value, dur_unit, format_duration(dur_value, dur_unit), is_auto_description, item_id))
 
         conn.commit()
         return True, "Review items saved successfully."
@@ -487,7 +531,7 @@ def get_designated_faculty_assignments(cursor, term_id, emp_id):
     query = """
         SELECT da.allocation_id, da.indicator_id, da.assigned_quantity,
                da.custom_description, da.target_deadline,
-               da.target_duration_value, da.target_duration_unit,
+               da.target_duration_value, da.target_duration_unit, da.is_auto_description,
                mi.indicator_description, tc.category_name, tc.slug
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
@@ -546,14 +590,18 @@ def save_designated_faculty_assignments(conn, cursor, term_id, emp_id, assignmen
     (indicator_id, assigned_quantity, custom_description, target_duration_value, target_duration_unit)
     """
     from app.models.scoring import format_duration
+    from app.models.ipcr_description import format_ipcr_target_description
     try:
         # Get allowed College-Wide indicator IDs for this term
         cursor.execute("""
-            SELECT cq.indicator_id
+            SELECT cq.indicator_id, mi.indicator_description
             FROM tbl_cascaded_quotas cq
+            JOIN tbl_master_indicators mi ON cq.indicator_id = mi.indicator_id
             WHERE cq.term_id = %s AND cq.assigned_to_role = 'College-Wide' AND cq.total_target_value > 0
         """, (term_id,))
-        allowed_cw_ids = {r[0] for r in cursor.fetchall()}
+        cw_rows = cursor.fetchall()
+        allowed_cw_ids = {r[0] for r in cw_rows}
+        cw_descriptions = {r[0]: r[1] for r in cw_rows}
 
         if allowed_cw_ids:
             cw_placeholders = ','.join(['%s'] * len(allowed_cw_ids))
@@ -565,7 +613,10 @@ def save_designated_faculty_assignments(conn, cursor, term_id, emp_id, assignmen
         saved = 0
         skipped = 0
         for item in assignments:
-            if len(item) == 5:
+            is_auto_flag = None
+            if len(item) == 6:
+                indicator_id, qty, desc, dur_val, dur_unit, is_auto_flag = item
+            elif len(item) == 5:
                 indicator_id, qty, desc, dur_val, dur_unit = item
             else:
                 indicator_id, qty = item[0], item[1]
@@ -578,12 +629,19 @@ def save_designated_faculty_assignments(conn, cursor, term_id, emp_id, assignmen
             qty = qty if qty and int(qty) > 0 else 1
             deadline = format_duration(dur_val, dur_unit)
 
+            # is_auto_flag True (explicit, from the frontend) always regenerates, even if
+            # non-blank text was submitted — protects against client-side drift (Decision 1).
+            # A blank description always regenerates too, regardless of the flag.
+            is_auto_description = 1 if (is_auto_flag is True or not desc) else 0
+            if is_auto_description:
+                desc = format_ipcr_target_description(cw_descriptions.get(indicator_id, ''), qty, dur_val, dur_unit)
+
             cursor.execute("""
                 INSERT INTO tbl_draft_allocation (emp_id, indicator_id, assigned_quantity,
                                                   custom_description, target_deadline,
-                                                  target_duration_value, target_duration_unit)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (emp_id, indicator_id, int(qty), desc, deadline, dur_val, dur_unit))
+                                                  target_duration_value, target_duration_unit, is_auto_description)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (emp_id, indicator_id, int(qty), desc, deadline, dur_val, dur_unit, is_auto_description))
             saved += 1
 
         conn.commit()
@@ -626,10 +684,14 @@ def get_college_wide_allocations_tracker(cursor, term_id):
     """
     Get actual target distributions (from tbl_draft_targets) for indicators
     that have a College-Wide quota set in tbl_cascaded_quotas.
+
+    Includes Regular Faculty: a Program Chair can cascade a College-Wide Support indicator
+    down to their own regular faculty (see get_chair_indicators), so their commitments count
+    against the same quota as the Dean's direct Designated Faculty assignments.
     """
     from app.models.connection import timed_query
     query = """
-        SELECT 
+        SELECT
             dt.indicator_id,
             dt.emp_id,
             CONCAT(ep.first_name, ' ', ep.last_name) AS faculty_name,
@@ -639,7 +701,7 @@ def get_college_wide_allocations_tracker(cursor, term_id):
         FROM tbl_draft_targets dt
         JOIN tbl_employee_profiles ep ON dt.emp_id = ep.emp_id
         WHERE ep.designation IS NOT NULL AND ep.designation <> ''
-          AND ep.designation NOT IN ('Regular Faculty', 'Admin')
+          AND ep.designation NOT IN ('Admin')
           AND ep.leave_status = 'Active'
           AND dt.indicator_id IN (
               SELECT indicator_id 

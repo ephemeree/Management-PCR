@@ -68,17 +68,20 @@ def prog_chair_dashboard():
                     t_dead = alloc_info.get('target_deadline') or ''
                     dur_value = alloc_info.get('target_duration_value')
                     dur_unit = alloc_info.get('target_duration_unit')
+                    is_auto_desc = alloc_info.get('is_auto_description')
                 else:
                     assigned_qty = alloc_info or 0
                     cust_desc = ''
                     t_dead = ''
                     dur_value, dur_unit = None, None
+                    is_auto_desc = None
 
                 ind['assigned_per_faculty'] = assigned_qty
                 ind['custom_description'] = cust_desc
                 ind['target_deadline'] = t_dead
                 ind['target_duration_value'] = dur_value
                 ind['target_duration_unit'] = dur_unit
+                ind['is_auto_description'] = is_auto_desc
 
                 if ind.get('slug') == SLUG_INSTRUCTION:
                     ind['applicable_faculty_count'] = all_faculty_count
@@ -268,6 +271,7 @@ def assign_chair_target():
     custom_descriptions = request.form.getlist('custom_descriptions')
     target_duration_values = request.form.getlist('target_duration_values')
     target_duration_units = request.form.getlist('target_duration_units')
+    is_auto_descriptions = request.form.getlist('is_auto_descriptions')
 
     if not specialization or not term_id or not indicator_ids or not assigned_quantities:
         flash("Missing required data for assignment.", "danger")
@@ -294,10 +298,14 @@ def assign_chair_target():
             try:
                 qty_val = int(qty)
                 if qty_val > 0:
+                    # Blank is valid here — save_chair_allocations_batch auto-generates the
+                    # standard description from the indicator/quantity/duration when this is
+                    # None, rather than rejecting the submission.
                     c_desc = custom_descriptions[idx].strip() if idx < len(custom_descriptions) and custom_descriptions[idx] else None
-                    if not c_desc:
-                        flash("All allocated targets must have an IPCR target description.", "danger")
-                        return redirect(url_for('prog_chair.prog_chair_dashboard'))
+                    # Explicit auto/customized flag from wireAutoDescription (base.html) — see
+                    # Decision 1 in target_desc.md. Absent (e.g. JS disabled) falls back to
+                    # inferring from blank-ness in save_chair_allocations_batch.
+                    is_auto_flag = is_auto_descriptions[idx] if idx < len(is_auto_descriptions) else None
 
                     raw_value = target_duration_values[idx] if idx < len(target_duration_values) else None
                     raw_unit = target_duration_units[idx] if idx < len(target_duration_units) else None
@@ -308,7 +316,7 @@ def assign_chair_target():
                         flash("All allocated targets must have a valid deadline (target duration) specified.", "danger")
                         return redirect(url_for('prog_chair.prog_chair_dashboard'))
 
-                    allocations.append((int(ind_id), qty_val, c_desc, t_dead, dur_value, dur_unit))
+                    allocations.append((int(ind_id), qty_val, c_desc, t_dead, dur_value, dur_unit, is_auto_flag == '1'))
                 else:
                     allocations.append((int(ind_id), 0, None, None, None, None))
             except ValueError:

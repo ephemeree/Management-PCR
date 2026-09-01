@@ -21,7 +21,7 @@
     <span class="nav-text">Evidence Gathering</span>
 </button>
 {% endif %}
-{% if has_final_ipcr %}
+{% if is_locked or has_final_ipcr %}
 <button class="nav-item" data-section="nav-print-ipcr" onclick="showSection('nav-print-ipcr')">
     <i class="ti ti-printer" aria-hidden="true"></i>
     <span class="nav-text">Print IPCR</span>
@@ -67,6 +67,23 @@
             </div>
         </div>
     </div>
+
+    {% if is_locked %}
+    <div class="alert border-0 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2"
+        style="background: var(--c-surface-alt); border-left: 4px solid var(--c-text) !important; border-radius: 10px;">
+        <div>
+            <i class="ti ti-lock me-2" aria-hidden="true"></i>
+            {% if has_final_ipcr %}
+            Your IPCR has been finalized and approved by the Dean.
+            {% else %}
+            Your IPCR performance targets are approved and locked.
+            {% endif %}
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" onclick="window.open('{{ url_for('faculty.faculty_print_ipcr') }}', '_blank')">
+            <i class="ti ti-printer me-1" aria-hidden="true"></i> View &amp; Print Approved IPCR
+        </button>
+    </div>
+    {% endif %}
 </div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -265,7 +282,7 @@
                                             {% if 'Teaching Load' in target.indicator_description or target.is_mandatory %}
                                             <span class="badge bg-primary text-white border mb-1 ms-1"><i class="ti ti-pin-filled me-1" aria-hidden="true"></i>Mandatory Default Target</span>
                                             {% endif %}
-                                            <p class="mb-0 small text-secondary">{{ target.indicator_description }}</p>
+                                            <p class="mb-0 small text-secondary">{{ target.indicator_description | ipcr_preview }}</p>
                                             {# Show chair item remark if IPCR was returned #}
                                             {% if chair_review and chair_review.overall_status == 'Rejected' and
                                             target.chair_item_remarks %}
@@ -319,7 +336,7 @@
                                     <tr>
                                         <td class="ps-4 py-3">
                                             <span class="badge bg-light text-dark border mb-1">Support</span>
-                                            <p class="mb-0 small text-secondary">{{ target.indicator_description }}</p>
+                                            <p class="mb-0 small text-secondary">{{ target.indicator_description | ipcr_preview }}</p>
                                             {# Show chair item remark if IPCR was returned #}
                                             {% if chair_review and chair_review.overall_status == 'Rejected' and
                                             target.chair_item_remarks %}
@@ -373,7 +390,8 @@
                         {% if ret_menu.research_indicators|length > 0 %}
                         <div class="ret-options-container scroll-box-sm">
                             {% for ind in ret_menu.research_indicators %}
-                            {% set ns = namespace(is_selected=false, quantity=ind.target_quantity, is_assigned=false) %}
+                            {% set ns = namespace(is_selected=false, quantity=ind.target_quantity, is_assigned=false,
+                                                   dur_value=ind.target_duration_value, dur_unit=ind.target_duration_unit) %}
                             {% if ind.indicator_id in ret_assigned_ids %}
                             {% set ns.is_selected = true %}
                             {% set ns.is_assigned = true %}
@@ -382,6 +400,8 @@
                             {% if t.indicator_id == ind.indicator_id and t.assigned_quantity > 0 %}
                             {% set ns.is_selected = true %}
                             {% set ns.quantity = t.assigned_quantity %}
+                            {% set ns.dur_value = t.target_duration_value or ns.dur_value %}
+                            {% set ns.dur_unit = t.target_duration_unit or ns.dur_unit %}
                             {% endif %}
                             {% endfor %}
                             <label
@@ -396,7 +416,7 @@
                                     </div>
                                     <div>
                                         <p class="mb-0 small text-secondary">
-                                            {{ ind.indicator_description }}
+                                            {{ ind.indicator_description | ipcr_generate(ns.quantity, ns.dur_value, ns.dur_unit) }}
                                             <span class="badge bg-primary bg-opacity-10 text-primary ms-2">Qty: {{
                                                 ns.quantity }}</span>
                                             {% if ns.is_assigned %}
@@ -419,11 +439,11 @@
 
                 {% endif %}
 
-                <!-- Extension Card (read-only — distributed by RET Chair to all faculty) -->
+                <!-- Extension Card (read-only — configured by RET Chair for this rank band) -->
                 <div class="card border-0 shadow-sm card-rounded-clip">
                     <div class="card-header border-0 py-3">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools me-2" aria-hidden="true"></i>Extension Targets</h5>
-                        <p class="small mb-0 text-muted">Distributed by the RET Chair to all faculty (not selectable).</p>
+                        <p class="small mb-0 text-muted">Required for your rank band, configured by the RET Chair (not selectable).</p>
                     </div>
                     <div class="card-body bg-light">
                         {% if extension_targets %}
@@ -433,9 +453,9 @@
                                 <div class="d-flex align-items-start gap-2">
                                     <i class="ti ti-lock text-warning mt-1" aria-hidden="true"></i>
                                     <p class="mb-0 small text-secondary">
-                                        {{ ext.indicator_description }}
+                                        {{ ext.indicator_description | ipcr_generate(ext.target_quantity, ext.target_duration_value, ext.target_duration_unit) }}
                                         <span class="badge bg-warning bg-opacity-10 text-warning ms-2">Qty: {{ ext.target_quantity }}</span>
-                                        <span class="badge bg-info bg-opacity-10 text-info ms-1"><i class="ti ti-broadcast me-1" aria-hidden="true"></i>Assigned to all faculty</span>
+                                        <span class="badge bg-info bg-opacity-10 text-info ms-1"><i class="ti ti-lock me-1" aria-hidden="true"></i>Required for your rank band</span>
                                     </p>
                                 </div>
                             </div>
@@ -444,7 +464,7 @@
                         {% else %}
                         <div class="text-center py-4">
                             <i class="ti ti-circle-off fs-2 text-muted opacity-50 mb-2 d-block" aria-hidden="true"></i>
-                            <p class="text-muted small">No Extension targets distributed yet.</p>
+                            <p class="text-muted small">No Extension targets configured for your rank band yet.</p>
                         </div>
                         {% endif %}
                     </div>
@@ -471,8 +491,13 @@
 
             {% else %}
             {% if is_locked or ipcr_status == 'completed' %}
-            <div class="alert alert-dark d-inline-block border-0 shadow-sm px-4">
-                <i class="ti ti-lock me-2" aria-hidden="true"></i> Your IPCR is locked and committed.
+            <div class="d-inline-flex flex-column align-items-end gap-2">
+                <div class="alert alert-dark border-0 shadow-sm px-4 m-0">
+                    <i class="ti ti-lock me-2" aria-hidden="true"></i> Your IPCR is locked and committed.
+                </div>
+                <button type="button" class="btn btn-outline-primary shadow-sm" onclick="window.open('{{ url_for('faculty.faculty_print_ipcr') }}', '_blank')">
+                    <i class="ti ti-printer me-1" aria-hidden="true"></i> View &amp; Print Approved IPCR
+                </button>
             </div>
             {% elif ipcr_status == 'approved_by_program_chair' %}
             <div class="d-inline-flex flex-column align-items-end gap-2">
@@ -507,15 +532,20 @@
             <h2>Evidence Gathering</h2>
             <p>Upload your evidence and report accomplishment details for your locked commitment targets.</p>
         </div>
-        {% if has_final_ipcr %}
-        <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
-            <i class="ti ti-circle-check me-2" aria-hidden="true"></i>IPCR is approved by Dean and is ready for print
-        </span>
-        {% else %}
-        <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
-            <i class="ti ti-lock me-2" aria-hidden="true"></i>Locked &amp; Committed
-        </span>
-        {% endif %}
+        <div class="d-flex align-items-center gap-2">
+            {% if has_final_ipcr %}
+            <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
+                <i class="ti ti-circle-check me-2" aria-hidden="true"></i>IPCR is approved by Dean and is ready for print
+            </span>
+            {% else %}
+            <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
+                <i class="ti ti-lock me-2" aria-hidden="true"></i>Locked &amp; Committed
+            </span>
+            {% endif %}
+            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" onclick="window.open('{{ url_for('faculty.faculty_print_ipcr') }}', '_blank')">
+                <i class="ti ti-printer me-1" aria-hidden="true"></i> View &amp; Print
+            </button>
+        </div>
     </div>
 
     {# ── Returned Evidence Notification Alert ──────────────── #}
@@ -573,7 +603,7 @@
                                         {% if target_has_returned %}
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 mb-1" style="font-size:0.7rem;"><i class="ti ti-arrow-back-up me-1" aria-hidden="true"></i>Evidence Returned</span>
                                         {% endif %}
-                                        <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}</p>
+                                        <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description | ipcr_preview }}</p>
                                     </td>
                                     <td class="py-4">
                                         <p class="mb-1 small text-secondary fst-italic">{{ target.actual_accomplishment }}</p>
@@ -601,7 +631,7 @@
                                     <td class="text-center pe-4 py-4">
                                         <button type="button"
                                             class="btn {% if has_final_ipcr %}btn-outline-secondary{% elif evidence_readiness and evidence_readiness.evidence_submitted and not evidence_readiness.has_returned_evidence %}btn-secondary{% else %}btn-primary{% endif %} btn-sm px-4 py-2 fw-bold shadow-sm transition-all hover-shadow"
-                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', {{ 'true' if 'Research' in target.category_name else 'false' }}, '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.assigned_quantity }}', '{{ target.actual_quantity }}')">
+                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', {{ 'true' if 'Research' in target.category_name else 'false' }}, '{{ (target.indicator_description | ipcr_preview)|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.assigned_quantity }}', '{{ target.actual_quantity }}')">
                                             {% if has_final_ipcr %}
                                             <i class="ti ti-eye me-1" aria-hidden="true"></i>View Evidences (Approved)
                                             {% elif evidence_readiness and evidence_readiness.evidence_submitted and not evidence_readiness.has_returned_evidence %}
@@ -708,17 +738,28 @@
 </div>
 {% endif %}
 
-{% if has_final_ipcr %}
+{% if is_locked or has_final_ipcr %}
 <div id="nav-print-ipcr" class="dashboard-section">
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <div>
+            {% if has_final_ipcr %}
             <h2><i class="ti ti-printer me-2 text-primary" aria-hidden="true"></i>Finalized IPCR Details</h2>
             <p class="text-muted mb-0">Your IPCR is approved by Dean and is ready for print.</p>
+            {% else %}
+            <h2><i class="ti ti-printer me-2 text-primary" aria-hidden="true"></i>Approved Performance Commitment</h2>
+            <p class="text-muted mb-0">Your IPCR performance targets are approved and locked. You may review and print your official Performance Commitment form. Ratings will populate once evaluated at the end of the term.</p>
+            {% endif %}
         </div>
         <div class="d-flex align-items-center gap-2">
+            {% if has_final_ipcr %}
             <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
                 <i class="ti ti-circle-check me-2" aria-hidden="true"></i>IPCR is approved by Dean and is ready for print
             </span>
+            {% else %}
+            <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
+                <i class="ti ti-lock me-2" aria-hidden="true"></i>Locked &amp; Committed
+            </span>
+            {% endif %}
             <button class="btn btn-primary px-4 fw-bold shadow-sm" onclick="window.open('{{ url_for('faculty.faculty_print_ipcr') }}', '_blank');">
                 <i class="ti ti-printer me-2" aria-hidden="true"></i>Print IPCR
             </button>
@@ -757,12 +798,12 @@
                             {% endif %}
                             <tr>
                                 <td class="text-start px-4 text-muted border-end" style="font-size: 0.85rem;">{{ cat_name }}</td>
-                                <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ t.indicator_description }}</td>
+                                <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ t.indicator_description | ipcr_preview }}</td>
                                 <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ t.actual_accomplishment or '' }}</td>
-                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.q if t.rating and t.rating.q is not none else '-' }}</td>
-                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.e if t.rating and t.rating.e is not none else '-' }}</td>
-                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.t if t.rating and t.rating.t is not none else '-' }}</td>
-                                <td class="text-center fw-bold border-end" style="background-color: var(--c-surface-alt); color: var(--c-text);">{{ t.rating.average if t.rating and t.rating.average is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.q if has_final_ipcr and t.rating and t.rating.q is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.e if has_final_ipcr and t.rating and t.rating.e is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.t if has_final_ipcr and t.rating and t.rating.t is not none else '-' }}</td>
+                                <td class="text-center fw-bold border-end" style="background-color: var(--c-surface-alt); color: var(--c-text);">{{ t.rating.average if has_final_ipcr and t.rating and t.rating.average is not none else '-' }}</td>
                                 <td class="text-start px-3"></td>
                             </tr>
                         {% endfor %}
@@ -792,21 +833,21 @@
                             <tr>
                                 <td class="text-start px-4 fw-medium border-end" style="color: var(--c-text);">{{ b.category_name }}</td>
                                 <td class="text-center text-muted border-end">{{ b.weight_pct }}%</td>
-                                <td class="text-center fw-semibold text-dark border-end">{{ b.raw_avg if b.raw_avg is not none else '-' }}</td>
-                                <td class="text-center fw-bold text-primary">{{ b.weighted_value if b.weighted_value is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-dark border-end">{{ b.raw_avg if has_final_ipcr and b.raw_avg is not none else '-' }}</td>
+                                <td class="text-center fw-bold text-primary">{{ b.weighted_value if has_final_ipcr and b.weighted_value is not none else '-' }}</td>
                             </tr>
                             {% endfor %}
                             <tr style="background-color: var(--c-surface-alt);">
                                 <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-text-sub);">Total Overall Rating</td>
-                                <td colspan="2" class="text-center fw-bold fs-6 py-3" style="color: var(--c-text);">{{ ipcr_score.total_overall_rating if ipcr_score.total_overall_rating is not none else '-' }}</td>
+                                <td colspan="2" class="text-center fw-bold fs-6 py-3" style="color: var(--c-text);">{{ ipcr_score.total_overall_rating if has_final_ipcr and ipcr_score.total_overall_rating is not none else '-' }}</td>
                             </tr>
                             <tr style="background-color: var(--c-surface-alt);">
                                 <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-text);">Final Weighted Rating</td>
-                                <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">{{ ipcr_score.final_weighted_rating if ipcr_score.final_weighted_rating is not none else '-' }}</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">{{ ipcr_score.final_weighted_rating if has_final_ipcr and ipcr_score.final_weighted_rating is not none else '-' }}</td>
                             </tr>
                             <tr style="background-color: var(--c-success-glow);">
                                 <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-success);">Adjectival Rating</td>
-                                <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: var(--c-success);">{{ ipcr_score.adjectival_rating or '-' }}</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: var(--c-success);">{{ ipcr_score.adjectival_rating if has_final_ipcr else '-' }}</td>
                             </tr>
                         {% else %}
                             <tr>
@@ -1024,7 +1065,7 @@
     const SHORTFALL_TARGETS = [
         {% for target in assigned_targets %}
         {% if (target.actual_quantity or 0) < (target.assigned_quantity or 0) %}
-        { name: {{ (target.indicator_description or '') | tojson }}, actual: {{ target.actual_quantity or 0 }}, target: {{ target.assigned_quantity or 0 }} },
+        { name: {{ (target.indicator_description or '') | ipcr_preview | tojson }}, actual: {{ target.actual_quantity or 0 }}, target: {{ target.assigned_quantity or 0 }} },
         {% endif %}
         {% endfor %}
     ];

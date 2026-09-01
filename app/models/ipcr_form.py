@@ -126,7 +126,11 @@ def build_ipcr_form(cursor, emp_id, term_id):
     admin_type_name = type_meta.get(admin_type_id, ('Administrative Functions', 0))[0]
 
     # Group targets into category -> target type, matching how they are scored: an
-    # administrative row belongs to the admin category whatever its own type says.
+    # administrative row belongs to the admin category whatever its own type says, and
+    # prints as a single "Administrative Function" subsection — on the real DPCR, a
+    # designated faculty's Strategic Priorities/Support items are their administrative
+    # functions as a University-designated faculty member, not split by the target's own
+    # type (Instruction/Support/etc.), which only matters for their Core Functions work.
     grouped = {}
     for t in targets:
         if t.get('is_admin_function') and admin_category_id:
@@ -169,9 +173,13 @@ def build_ipcr_form(cursor, emp_id, term_id):
     full_name = f"{first_name} {last_name}".strip().upper()
     period = format_rating_period(period_start, period_end)
 
-    # Only a Dean-approved IPCR is final; anything earlier prints as a draft.
+    # Only a Dean-approved IPCR is final; anything earlier prints as a locked commitment.
     is_final = bool(targets) and all(
         (t.get('status') or '') == STATUS_DEAN_APPROVED for t in targets)
+    form_stage = 'final_evaluation' if is_final else 'commitment'
+    stage_title = ('INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR) - FINAL EVALUATION'
+                   if is_final else
+                   'INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR) - APPROVED COMMITMENT')
 
     return {
         'emp_id': emp_id,
@@ -194,5 +202,7 @@ def build_ipcr_form(cursor, emp_id, term_id):
         'signatories': resolve_signatories(cursor, emp_id, designation_type, specialization),
         'score': score,
         'is_final': is_final,
+        'form_stage': form_stage,
+        'stage_title': stage_title,
         'has_targets': bool(targets),
     }

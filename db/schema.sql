@@ -241,7 +241,7 @@ CREATE TABLE `tbl_ipcr_approval_notifications` (
 
 CREATE TABLE `tbl_ipcr_categories` (
   `ipcr_category_id` int NOT NULL AUTO_INCREMENT,
-  `designation_type` enum('Regular Faculty','Designated Faculty') NOT NULL,
+  `designation_type` varchar(50) NOT NULL,
   `category_name` varchar(120) NOT NULL,
   `display_order` int NOT NULL DEFAULT '100',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',

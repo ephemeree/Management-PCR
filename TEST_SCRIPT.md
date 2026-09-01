@@ -30,8 +30,11 @@ permission checks in Phase M, and ideally a **second Program Chair** in another 
 
 > **Migrations required:** `MIGRATION_group7.sql` (the `is_admin_function` column **and** its
 > backfill), `MIGRATION_group8.sql` (rating period, institution settings, signatories,
-> `print_remarks`), and `MIGRATION_group9.sql` (`target_description`, `target_duration_value`,
-> `target_duration_unit` on `tbl_ret_assignments`).
+> `print_remarks`), `MIGRATION_group9.sql` (`target_description`, `target_duration_value`,
+> `target_duration_unit` on `tbl_ret_assignments`), and `MIGRATION_group11.sql` (the
+> `is_auto_description` column on `tbl_draft_allocation`, `tbl_ret_rule_indicators`,
+> `tbl_ret_assignments`, `tbl_ret_extension_distribution`, `tbl_draft_targets` and
+> `tbl_committed_targets` — backs the auto-generated target description feature below).
 
 ---
 
@@ -58,16 +61,17 @@ permission checks in Phase M, and ideally a **second Program Chair** in another 
 | **K** | Print IPCR, both variants |
 | **L** | Admin maintenance: roster, CSV import, backup, accounts |
 | **M** | Permissions and security |
+| **N** | Auto-generated IPCR target descriptions (live mirroring, reset, backend fallback) |
 
 ---
 
 ## Phase 0 — Login and accounts
 
-- [ ] Each of the six accounts logs in and lands on **its own dashboard**.
-- [ ] Wrong password is rejected with a message, and does **not** reveal whether the email exists.
-- [ ] **Logout** returns to the login page; pressing Back does not restore the dashboard.
-- [ ] Visiting a dashboard URL while logged out redirects to login.
-- [ ] **Register** a new account → it is created as unapproved and **cannot log in** until
+- [/] Each of the six accounts logs in and lands on **its own dashboard**.
+- [/] Wrong password is rejected with a message, and does **not** reveal whether the email exists.
+- [/] **Logout** returns to the login page; pressing Back does not restore the dashboard.
+- [/] Visiting a dashboard URL while logged out redirects to login.
+- [/] **Register** a new account → it is created as unapproved and **cannot log in** until
       an Admin approves it.
 
 ---
@@ -77,10 +81,10 @@ permission checks in Phase M, and ideally a **second Program Chair** in another 
 ### A1. Open the term
 Admin → **Term Configuration**.
 
-- [ ] Form has Academic Year, Semester, Submission Deadline, and **Rating Period From / To**.
-- [ ] Set the period (e.g. `2026-01-01` → `2026-06-30`) — Phase K prints
+- [/] Form has Academic Year, Semester, Submission Deadline, and **Rating Period From / To**.
+- [/] Set the period (e.g. `2026-01-01` → `2026-06-30`) — Phase K prints
       *"for the period JANUARY to JUNE 2026"*.
-- [ ] Open the term → it becomes active and **every other term is deactivated**.
+- [/] Open the term → it becomes active and **every other term is deactivated**.
 
 ### A2. Departments
 Admin → **Institution Setup** → *Departments / Programs*.
@@ -168,6 +172,24 @@ Admin → **Master Indicators**.
 **Set up for later phases:**
 - [ ] Set one indicator to **Efficiency Type = Client Satisfaction** *(needed for G3)*.
 - [ ] Create at least one **Administrative Functions** indicator *(needed for J2)*.
+- [ ] Create at least one indicator using **click-to-tag**: type
+      `"Submit 51 accurate report of grades within 10 days after the final examination period"`
+      into the description field, click the detected `51` → **Qty**, click `10 days` → **Dur**
+      (the Dur button consumes the trailing unit word too — you should see it offer to tag
+      `"10 days"` as one unit, not just `10`) → Save *(needed for the placeholder-mode cases in
+      Phase N)*.
+- [ ] Reopen the Master Indicators list → the row still reads as a normal sentence with `51` and
+      `10 days` visible, not raw `{qty:51}`/`{duration:10:days}` syntax — confirms the tagged
+      default is used for display, even though the *actual* substitution (Phase N4) uses
+      whatever quantity/duration gets assigned later, not this original number.
+- [ ] Click **Undo last tag** immediately after tagging → the last tag reverts to its original
+      plain number.
+
+> **Placeholder authoring**: for a real-world indicator that already states its own quantity
+> mid-sentence (the common case — see Phase N), tag it instead of leaving the sentence bare.
+> Typing `{qty}`/`{duration}` by hand still works too. An indicator with no placeholders at all
+> still works — the system falls back to prepending the quantity and appending the duration —
+> but that only reads correctly for a bare activity name with no number of its own.
 
 ---
 
@@ -198,9 +220,18 @@ Program Chair → **Target Allocation**.
 - [ ] It **also shows the Dean, the Program Chair themselves, the RET Chair and any other
       designated faculty** in that department.
 - [ ] Each row has a **duration number + unit dropdown**, not free text.
+- [ ] Leave the description blank, fill quantity `2` and duration `1 semester` → the
+      description field **live-fills** with `2 <indicator text> within 1 semester` as you
+      type, with a small **Auto** badge next to it.
+- [ ] Change the quantity to `3` → the description text updates immediately.
+- [ ] Type over the description by hand → the **Auto** badge disappears and a **Reset to
+      Auto** button appears; changing quantity again no longer touches your typed text.
+- [ ] Click **Reset to Auto** → your text is replaced with the regenerated standard wording
+      and the Auto badge returns.
 - [ ] Fill quantity, duration (`6` + `months`) and a target description → Save.
 - [ ] **Allocate instruction to the Dean, the Program Chair and the RET Chair** — Phase J checks these appear in their Core Functions.
-- [ ] Reopen → values persist including the unit.
+- [ ] Reopen → values persist including the unit, and rows you left on Auto still show the
+      Auto badge; rows you customized still show your text with the badge hidden.
 - [ ] Support-type targets are offered to **Regular Faculty only**, not to designated faculty.
 - [ ] Re-saving after finalisation is blocked with a warning.
 
@@ -214,8 +245,14 @@ RET Chair → **Menu Config**.
 - [ ] Form is **Research-only** — no Extension fields.
 - [ ] Each research indicator has an **IPCR description** and **duration + unit**, enabled
       only when its checkbox is ticked.
+- [ ] Tick an indicator and leave its description blank → it live-fills with the standard
+      auto wording (Auto badge shown) as you fill quantity/duration; type over it → badge
+      hides and **Reset to Auto** appears.
 - [ ] Pick your Faculty's rank, Research Required = `1`, tick 2 indicators, fill their
       descriptions and durations → Save.
+- [ ] **Edit** an already-saved rule (see below) → each row's Auto/customized state restores
+      correctly — a row you'd customized before still shows your text and no Auto badge;
+      an untouched row still auto-mirrors.
 - [ ] **Active Research Rules** appears **in the same panel** (no separate nav item).
 - [ ] **Edit** a rule → stays on this panel and repopulates description + duration.
 - [ ] **Delete** a rule → removed, and the faculty of that rank no longer see a menu.
@@ -226,6 +263,8 @@ RET Chair → **Target Assignment**.
 
 - [ ] All regular faculty are listed.
 - [ ] **Assign** on a *different* faculty → modal shows **Research only** → tick one, verify IPCR description and duration (value + unit dropdown) fields appear and pre-fill → Save.
+- [ ] With the description left blank, the pre-filled preview already shows the standard
+      auto wording (Auto badge) before you even save — change the quantity and it updates live.
 - [ ] The button shows a count badge.
 - [ ] Reopen the editor → the assignment is still ticked and description/duration persist.
 - [ ] Log in as the assigned faculty in Phase E → assigned research is locked, carrying the assigned description and deadline.
@@ -235,6 +274,10 @@ Same panel → *Distribute Extension Targets to All Faculty*.
 
 - [ ] There is **no checkbox** — every extension target is distributed.
 - [ ] Each has qty / faculty, a **description**, and **duration + unit**.
+- [ ] Leave a description blank and set duration `6 months` → it auto-fills with the standard
+      wording (Auto badge). ⚠ Since this action is permanent, deliberately check the
+      auto-generated text reads correctly for at least one indicator before distributing —
+      there is no way to fix it afterward this term.
 - [ ] Fill them (`1`, `6 months`) → **Distribute** → confirm.
 - [ ] Card flips to **Distributed & Locked**; inputs disabled; button gone.
 - [ ] Refresh → still locked. *(Cannot be undone — see the Reset appendix.)*
@@ -337,6 +380,11 @@ Faculty → **Evidence Gathering**.
 - [ ] Enter **Completed in** = 4 of 6 → status **Completed** → Save.
 - [ ] **Computed Rating** badges populate: Q · E · T → Average.
 - [ ] The sentence now reads with real values.
+- [ ] On a target whose description was **auto-generated** (Auto badge was showing when it
+      was submitted): confirm the actual-accomplishment sentence substitutes the reported
+      quantity/duration into the `within X units` clause at the **end** of the sentence, not
+      into the middle of the indicator text — a mismatch there would mean the cleaning logic
+      in `format_ipcr_target_description` let a second duration-shaped phrase through.
 - [ ] Selecting a non-Completed status **disables** the "Completed in" field.
 - [ ] Type a **Remarks** note (e.g. `Chairperson, BSDS`) → Save → reopen → still there.
 
@@ -443,8 +491,12 @@ Log in as DESIGNATED_FACULTY.
 - [ ] The **Teaching Load** target shows the *Designated* hours from A3 (e.g. 10) under **Core Functions**.
 - [ ] Instruction allocated by their Program Chair in Phase C appears under **Core Functions** (locked).
 - [ ] Targets picked from the pool land under **Strategic Priorities/Support Functions**.
+- [ ] Pick a pool target and leave its description blank → it live-fills with the standard
+      auto wording (Auto badge) as you set quantity/duration; typing over it hides the badge
+      and shows **Reset to Auto**, which restores the auto text on click.
 - [ ] **Add custom target** modal has description, quantity and **Target Duration** value + unit dropdown.
-- [ ] A custom target saves and appears under **Strategic Priorities/Support Functions**.
+- [ ] A custom target saves and appears under **Strategic Priorities/Support Functions**
+      — it does **not** get an Auto badge (custom items are always free text, never mirrored).
 - [ ] **Submit** → the Dean sees it in **IPCR Draft Approval**.
 - [ ] Dean edits a quantity, adds a remark, and **returns** it → designated faculty sees remarks.
 - [ ] **Resubmit** → back to the Dean.
@@ -539,7 +591,17 @@ Run after B and C so there are cascades and allocations to pick up.
 - [ ] Dean → **Target Assignment** lists Program Chairs and the RET Chair among designated faculty with their assigned targets count.
 - [ ] Click **Assign** on a chairperson / designated faculty → modal shows College-Wide targets with total and remaining quotas.
 - [ ] Check a **College-Wide** target, set quantity, custom description, and duration (value + unit dropdown) → **Save Assignments** → badge updates.
+- [ ] Leave the description blank on one target instead → it live-fills with the standard
+      auto wording (Auto badge) from the target's own indicator text and quota-quantity.
 - [ ] Log in as that chair / designated faculty → the assigned College-Wide target appears on their IPCR under **Strategic Priorities & Support Functions** with the specified quantity and duration.
+
+**Dean's Review / Add Target modal** (during their own IPCR review of a designated faculty/chair):
+- [ ] Open **unpicked target items** for a submission awaiting review, add one with quantity
+      but no description → it auto-fills with the standard wording (Auto badge); adjusting
+      the quantity/duration before saving updates the preview live.
+- [ ] Type a custom description instead → Auto badge hides, **Reset to Auto** appears and
+      restores the auto text on click.
+- [ ] Save → reopening the review shows the same Auto/customized state you left it in.
 
 ### J7. Full cycle
 - [ ] A chair submits their own IPCR → Dean reviews → approves → chair locks.
@@ -579,6 +641,9 @@ Faculty → **Print IPCR** (new tab).
 ### K3. Remarks
 - [ ] The note typed in G2 appears in the **Remarks** column against that target.
 - [ ] Clearing it leaves the column blank, not whitespace.
+- [ ] At least one printed target's description was **auto-generated** (never hand-edited) —
+      confirm it reads as a complete, correctly-worded sentence, not truncated or duplicated
+      wording (e.g. no `"...within 6 months within 3 months"`).
 
 ### K4. Draft vs final
 - [ ] Before Dean approval, a red **DRAFT** banner appears.
@@ -653,6 +718,167 @@ Each of these should be **refused**. They are the checks that matter most.
 
 ---
 
+## Phase N — Auto-generated IPCR target descriptions
+
+Individual phases above (C, D1–D3, I, J6) already exercise the live-mirroring and Reset-to-Auto
+UI on each dashboard. This phase covers the behaviors that cut across all of them: what happens
+with JS disabled, what happens across a role handoff, and what a mismatched legacy description
+does.
+
+### N1. Backend fallback (JS disabled)
+- [ ] With JavaScript disabled in the browser, submit a target allocation (Program Chair,
+      RET Chair Direct Assignment, or Dean College-Wide Assignment) with the description field
+      left completely blank.
+- [ ] The submission **succeeds** — no validation error blocks it — and the saved row shows
+      the standard auto-generated description on reload, exactly as if JS had filled it live.
+- [ ] This applies to all five hard-fail points that existed before this feature: Program
+      Chair allocation, RET Chair Research Menu rule, RET Chair Direct Assignment, RET Chair
+      Extension Distribution, and Dean College-Wide Assignment — pick at least two to spot-check.
+
+### N2. Staleness across a role handoff
+- [ ] Dean cascades a quota of `5` to a department (Phase B).
+- [ ] Program Chair allocates it to a faculty member with quantity `5`, leaves the description
+      blank (Auto badge showing) → Save.
+- [ ] Program Chair re-opens the allocation and changes the quantity to `3`, without touching
+      the description field → Save.
+- [ ] Reload → the saved description now reads **"3 ..."**, not the stale "5 ..." — confirms
+      the backend recomputes from the row's current quantity/duration whenever the Auto flag
+      is still set, rather than keeping whatever text was last written to the column.
+
+### N3. Legacy mode / mismatched indicator text (no placeholders)
+- [ ] As Admin, create a master indicator with **no** `{qty}`/`{duration}` tokens, whose
+      description already contains a leading quantity or a trailing duration phrase in the old
+      manual style, e.g. `"1 Research paper published in a refereed journal"`.
+- [ ] Allocate it with a **different** quantity, e.g. `2` → the generated description reads
+      `"2 1 Research paper published..."` (the mismatch is left visible, not silently
+      "corrected") — this is expected: only an *exact*-matching leading quantity gets cleaned.
+- [ ] Allocate the same indicator with duration `3 months` when the indicator text already
+      ends in `"...within 6 months"` → the generated description shows only **one** duration
+      clause (`"...within 3 months"`), not both — confirms the trailing-duration clause is
+      always stripped before the current duration is appended, regardless of match.
+
+### N4. Placeholder mode — the real-world common case
+Uses the indicator created in A8 with `{qty}`/`{duration}` tokens, e.g. `"Submit {qty}
+accurate report of grades within {duration} after the final examination period"`.
+
+- [ ] Assign it via any dashboard with quantity `15`, duration `10 days`, description left
+      blank → the live preview (and the saved value) reads `"Submit 15 accurate report of
+      grades within 10 days after the final examination period"` — the number lands **exactly
+      where the placeholder was**, not prepended to the front.
+- [ ] Reuse the **same** indicator at a different cascade level with a different quantity, e.g.
+      a Program Chair distributing a smaller share (`3`) of a Dean-level total (`15`) — the
+      generated text shows only `3`, with no leftover `15` anywhere in the sentence.
+- [ ] Leave `{duration}` unset (no duration entered yet) → it renders as `____`, matching the
+      paper form's own blank convention, not the literal text `{duration}`.
+- [ ] **Evidence/accomplishment check** (this is the specific bug this redesign fixed): report
+      an **actual** quantity/duration different from the target's (e.g. target `15`/`10 days`,
+      actual `12`/`8 days`) on a target that is still on **Auto** → the printed "Actual
+      Accomplishment" sentence shows `12` and `8 days`, substituted at the same placeholder
+      positions. Before this redesign, this exact shape silently printed the *target* text
+      unchanged — neither actual value appeared anywhere.
+- [ ] Repeat the same report on a target where the description was **customized** (Auto turned
+      off) → the actual values are **not** guaranteed to substitute correctly (pre-existing,
+      documented limitation of free-text customization — see Known Gap below) — confirm this is
+      unchanged, not a new regression.
+
+### N5. Custom ad-hoc targets — the three composition branches
+Designated Faculty (including a Program Chair, RET Chair, or Dean on their own IPCR) →
+**Add Custom Target**. Each branch is decided by what you typed, with no guessing; the live
+preview under the form always shows exactly what will be saved.
+
+- [ ] **Plain phrase, no numbers.** Description `"Number of workshops conducted"`, Quantity `5`,
+      Duration `6 months` → preview reads `"5 Number of workshops conducted within 6 months"`.
+      Add it; the row shows that same sentence, and the Quantity/Duration columns show `5` and
+      `6 months`.
+- [ ] **Full sentence with its own numbers, untagged.** Description
+      `"Report 3 activities within 6 months"`, Quantity `1` → preview reads back the sentence
+      **exactly as typed**, with no `1` prepended. This is the fix for the confusing
+      `"1 Report 3 activities within 6 months"`: when the system can't know which number is the
+      tracked quantity, it never invents one.
+- [ ] **Same sentence, tagged.** With `"Report 3 activities within 6 months"` still in the field,
+      use the tag buttons below it: click **Qty** on `3`, then **Dur** on `6`. Confirm all of:
+      - the description becomes `Report {qty:3} activities within {duration:6:months}`;
+      - the **Target Quantity** field jumps to `3` and goes read-only, with the
+        "Taken from the number you tagged" note visible;
+      - the **Duration** field/unit jump to `6` / `months` and go read-only;
+      - the preview still reads `"Report 3 activities within 6 months"` — braces never shown;
+      - **Undo last tag** releases the field back to editable.
+- [ ] Tagging `6` as **Dur** consumes the word `months` too — the preview must read
+      `"...within 6 months"`, never `"...within 6 months months"`.
+- [ ] Submit the tagged target, then have the reviewer open it (Program Chair review, then the
+      Dean's IPCR Draft Approval modal) → the sentence reads correctly in both, with no literal
+      `{qty}`/`{duration}` anywhere and no duplicated number.
+- [ ] **Accomplishment check** — the payoff for tagging. Lock the IPCR, then report an actual
+      quantity/duration different from the target (e.g. actual `2` in `4 months`) → the printed
+      "Actual Accomplishment" reads `"Report 2 activities within 4 months"`, substituted
+      **mid-sentence**. Repeat on the *untagged* version of the same target: only the duration
+      updates and the `3` stays put — expected, and the reason to tag.
+- [ ] A custom description containing an incidental number, e.g. `"Conduct ISO 9001 audit"` with
+      Quantity `2` → saved verbatim, `9001` untouched, no `2` prepended.
+
+### N6. Percent quantities, empty deadlines, and half-finished tagging
+The three defects behind a real Dean IPCR that saved as
+`"100 % of undergraduate programs with valid accreditation in ____"`.
+
+- [ ] **Percent carried over.** Author an indicator as `{qty:80%} of undergraduate student
+      population enrolled in priority programs in {duration:6:months}`. Assign it at quantity
+      `75` → the description reads `75% of …`, not `75 of …` and not `80% of …`. The Admin's
+      indicator-list preview and the assigned description now agree.
+- [ ] **Empty deadline seeds from the token.** Open a dashboard where that indicator has never
+      had a deadline entered → the Deadline field is pre-filled `6 months` from
+      `{duration:6:months}`, the sentence reads `… in 6 months`, and the field is still
+      editable. It must **not** render `… in ____` on load. Change the deadline to `3 weeks`
+      → the sentence follows.
+- [ ] A `{duration}` token with **no** embedded default seeds nothing and still renders `____`
+      until a deadline is entered — unchanged, and correct.
+- [ ] Confirm the row stays on **Auto** through all of the above (the Auto badge remains, no
+      Reset button appears) — the whole point is that nobody has to hand-edit the text, since
+      hand-editing permanently freezes the row.
+- [ ] **Half-finished tagging is caught.** In Add Custom Target, type
+      `Accomplish 3 activities in 6 months`, tag only the `6` as **Dur**, and leave the `3`
+      untagged with Target Quantity at `1` → a warning names both numbers ("says 3 but Target
+      Quantity is 1") and the **Add** button is disabled. This is the exact state that
+      previously saved as a sentence reading 3 with a quantity column reading 1.
+- [ ] Now tag the `3` as **Qty** → warning clears, Add re-enables, quantity syncs to `3`.
+      Alternatively set Target Quantity to `3` by hand → warning also clears.
+- [ ] An entirely **untagged** description with numbers still warns but stays submittable —
+      that is the documented verbatim branch (Known Gap 17), not an error.
+- [ ] No warning when the only untagged number is the deadline's own value, e.g.
+      `Accomplish 3 activities in 6 months` with quantity `3` and deadline `6 months`.
+- [ ] Cancel and reopen the modal → warning cleared, Add re-enabled, fields editable again.
+
+### N7. Correcting a returned IPCR (Known Gap 16, fixed)
+Run as any Designated Faculty, then repeat as a Program Chair and as the **Dean** on their own
+IPCR — the Dean's own IPCR uses this same shared flow, and this is where the dropped-custom-target
+bug was first seen.
+
+- [ ] Submit an IPCR that includes at least one custom target, then have the reviewer **return**
+      it with overall remarks and a per-item note.
+- [ ] Reopen the returned IPCR → the banner now says the targets are editable again, the
+      **Add Target** button is back, quantity/deadline inputs are editable, and the Dean's
+      overall remarks and per-item notes are all still visible.
+- [ ] The previously saved **custom target still appears**, with an editable Quantity, an
+      editable deadline, and a **Remove** button. Its sentence reads correctly — no literal
+      `{qty}`/`{duration}`, no duplicated number.
+- [ ] Change a standard target's quantity, change the custom target's quantity **and** deadline,
+      unselect one standard target, and add one new custom target. Re-submit.
+- [ ] Reopen → every one of those five changes persisted. In particular the newly added custom
+      target is present (this is the exact bug: it used to be silently dropped, because
+      "Re-submit" only flipped `review_status` and never rebuilt the targets).
+- [ ] For a **tagged** custom target, changing the quantity on re-submit updates the number
+      inside the sentence too. For an untagged one it does not — expected, see Known Gap 17.
+- [ ] Remove a custom target, re-submit, reopen → it is gone, and the remaining targets are
+      unaffected.
+- [ ] The reviewer sees the corrected values (Program Chair review list, then the Dean's IPCR
+      Draft Approval modal), with the prior review cleared so it can be reviewed fresh.
+- [ ] Deadline-specific case from the original gap report: have the reviewer add a target with
+      **no deadline**, return the IPCR → the owner can now fill that deadline in themselves and
+      re-submit, with no direct database edit needed.
+- [ ] Negative check — an IPCR that is merely **awaiting** review (not returned) stays read-only,
+      and an **approved** or **locked/committed** one stays read-only.
+
+---
+
 ## Appendix — Known gaps
 
 1. **Rank rules reset each term** by design; redo D1 for a new term.
@@ -676,12 +902,46 @@ Each of these should be **refused**. They are the checks that matter most.
     references them, since co-author tagging was removed.
 12. **108 evidence PDFs are tracked in git.** They are runtime uploads and will keep
     accumulating; `app/uploads/evidence/` should be gitignored and untracked.
-13. **A designated faculty/chair cannot self-correct a Dean-rejected submission's data** —
-    "Re-submit IPCR for Approval" only flips status back to Pending Review, it does not reopen
-    the target-selection form. If the Dean adds a target with no deadline while reviewing (or
-    any other field needs fixing before resubmission), the chair has no UI path to fix it
-    themselves; someone has to correct the data directly. Not touched in the 2026-08-22 fixes
-    (see `old MDS/updates.md` §4) — flagged there, scoped as a separate feature gap.
+13. **In legacy mode (no `{qty}`/`{duration}` placeholders), auto-generated descriptions omit
+    the duration clause if the indicator text already contains an unrelated mid-sentence
+    duration-shaped phrase** (e.g. an indicator worded "...as needed every 3 months for
+    continuous improvement") — `format_ipcr_target_description` deliberately falls back to
+    `"[Quantity] [Indicator]"` rather than risk a second duration match corrupting the
+    actual-accomplishment sentence (see the module's docstring). Only applies to indicators
+    without placeholders; work around it by adding `{qty}`/`{duration}` tokens, rewording the
+    master indicator, or typing the description by hand.
+14. **`{duration}` only renders the system's standard unit vocabulary**
+    (days/weeks/months/semesters via `format_duration()`) — an indicator wanting different
+    wording (e.g. "10 *working* days" rather than "10 days") either accepts the closest
+    standard unit or has that target's description typed manually per recipient with Auto
+    turned off. Not solved by the placeholder redesign; explicitly out of scope.
+15. **A customized (non-Auto) description's actual-accomplishment sentence keeps the
+    pre-existing, position-dependent substitution limitation** — `build_actual_accomplishment`
+    only reliably substitutes the actual quantity/duration when they sit where the regex
+    expects (quantity at the very start of the string, duration as the first matching phrase).
+    This predates the whole auto-description feature and is unrelated to whether the indicator
+    uses placeholders; it only stops being a problem when the description is left on Auto,
+    since that path substitutes deterministically instead of guessing via regex.
+16. ~~A designated faculty/chair cannot self-correct a Dean-rejected submission's data.~~
+    **Fixed 2026-09-01.** A returned IPCR is editable again (`can_edit = not has_submitted or
+    is_returned`, `app/routes/designated.py`), and "Re-submit IPCR for Approval" now posts the
+    full submit path, which rebuilds `tbl_draft_targets` and resets the Dean review, instead of
+    only flipping `review_status`. Existing custom targets round-trip through the positional
+    `custom_*[]` fields with editable quantity and deadline, and can be removed. The old
+    `/designated/resubmit_ipcr` route still exists but nothing in the UI posts to it.
+17. **An untagged custom target that contains its own numbers is stored verbatim** — the
+    Quantity and Duration fields still drive scoring and still show in their own columns, but
+    they are not woven into the sentence, and the actual-accomplishment sentence can only
+    substitute the duration. This is deliberate (see the three-branch comment in
+    `submit_designated_ipcr`): with a free-typed sentence there is no way to tell a tracked
+    quantity from a year level or a standard number, and prepending regardless produced the
+    confusing `"1 Report 3 activities within 6 months"`. Tagging the number resolves it fully.
+18. ~~A percent quantity loses its `%` on substitution.~~ **Fixed 2026-09-01.** A trailing `%`
+    in the embedded default is now treated as a *unit* and carried over, so `{qty:80%}` at
+    assigned quantity `75` renders `75%`. The number still always comes from the assignment,
+    never from the default. This was not merely cosmetic: the Admin's own preview rendered
+    `80%` while substitution wrote `80`, so people retyped the `%` by hand, which flipped the
+    row to customized and froze whatever else was wrong in it (see Phase N6).
 
 ---
 

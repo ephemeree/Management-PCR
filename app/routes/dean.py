@@ -431,9 +431,14 @@ def designated_assignment_editor(emp_id):
 
             is_assigned = ind_id in assigned_map
             qty = asg['assigned_quantity'] if (asg and asg.get('assigned_quantity') is not None) else 1
-            desc = asg['custom_description'] if (asg and asg.get('custom_description')) else q['indicator_description']
             dur_val = asg['target_duration_value'] if (asg and asg.get('target_duration_value') is not None) else 6
             dur_unit = asg['target_duration_unit'] if (asg and asg.get('target_duration_unit')) else 'months'
+            is_auto_desc = asg.get('is_auto_description') if asg else None
+            is_auto = is_auto_desc is None or is_auto_desc == 1
+            if asg and asg.get('custom_description') and not is_auto:
+                desc = asg['custom_description']
+            else:
+                desc = format_ipcr_target_description(q['indicator_description'], qty, dur_val, dur_unit)
 
             targets.append({
                 'indicator_id': ind_id,
@@ -446,7 +451,8 @@ def designated_assignment_editor(emp_id):
                 'custom_description': desc,
                 'target_duration_value': dur_val,
                 'target_duration_unit': dur_unit,
-                'target_deadline': asg.get('target_deadline') if asg else None
+                'target_deadline': asg.get('target_deadline') if asg else None,
+                'is_auto_description': is_auto,
             })
 
         return jsonify({
@@ -479,6 +485,10 @@ def save_designated_assignments():
     for ind_id in indicator_ids:
         qty_val = request.form.get(f'assign_quantity_{ind_id}', 1)
         desc_val = request.form.get(f'assign_description_{ind_id}', '').strip() or None
+        # Explicit auto/customized flag from wireAutoDescription (base.html) — see Decision 1
+        # in target_desc.md. Absent (None) falls back to inferring from blank-ness.
+        raw_auto_flag = request.form.get(f'is_auto_description_{ind_id}')
+        is_auto_flag = (raw_auto_flag == '1') if raw_auto_flag is not None else None
         dur_val_raw = request.form.get(f'assign_dur_value_{ind_id}', '').strip()
         dur_unit_val = request.form.get(f'assign_dur_unit_{ind_id}', 'months').strip() or 'months'
 
@@ -496,15 +506,13 @@ def save_designated_assignments():
             flash("Assigned quantity must be greater than 0.", "danger")
             return redirect(url_for('dean.dean_dashboard'))
 
-        if not desc_val:
-            flash("All assigned targets must have an IPCR target description.", "danger")
-            return redirect(url_for('dean.dean_dashboard'))
-
+        # Blank is valid here — save_designated_faculty_assignments auto-generates the
+        # standard description from the indicator/quantity/duration when this is None.
         if not dur_val or dur_val <= 0:
             flash("All assigned targets must have a valid deadline (target duration) specified.", "danger")
             return redirect(url_for('dean.dean_dashboard'))
 
-        assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val))
+        assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val, is_auto_flag))
 
     conn = get_db_connection()
     cursor = conn.cursor()
