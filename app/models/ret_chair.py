@@ -1,3 +1,7 @@
+from app.models.ipcr_description import format_ipcr_target_description, get_indicator_description
+from app.models.criteria import RANK_BANDS, rank_band, SLUG_RESEARCH, SLUG_EXTENSION
+
+
 def get_ret_indicators(cursor, term_id):
     from app.models.connection import timed_query
     query = """
@@ -30,13 +34,38 @@ def get_ret_indicators(cursor, term_id):
 
 def save_ret_rule(conn, cursor, term_id, academic_rank, research_selections, extension_selections, research_indicators, extension_indicators):
     try:
-        # 1. Clean up existing rules for this academic rank to avoid conflicts
-        cursor.execute("SELECT rule_id FROM tbl_ret_rules WHERE academic_rank = %s", (academic_rank,))
-        rule_ids = [row[0] for row in cursor.fetchall()]
-        if rule_ids:
-            format_strings = ','.join(['%s'] * len(rule_ids))
-            cursor.execute(f"DELETE FROM tbl_ret_rule_indicators WHERE rule_id IN ({format_strings})", tuple(rule_ids))
-            cursor.execute(f"DELETE FROM tbl_ret_rules WHERE rule_id IN ({format_strings})", tuple(rule_ids))
+        # 1. Inspect existing rule rows for this rank IN THE CURRENT TERM, split by category
+        # (via their joined indicators) and lock status. Scoping by mi.term_id matters: without
+        # it, a locked Extension row from a past term matches purely on academic_rank and
+        # silently blocks every future term's save for that rank (get_ret_rules() already scopes
+        # by term for display, so such a stale lock wouldn't even show an "Unlock" button).
+        # Research is always freely rewritten; a locked Extension row in THIS term is left
+        # untouched by this save (the RET Chair must unlock it first — see
+        # unlock_ret_extension_rule) so a saved/distributed Extension menu can't be silently
+        # reshuffled once faculty may already be acting on it.
+        cursor.execute("""
+            SELECT DISTINCT r.rule_id, r.is_locked, tc.slug
+            FROM tbl_ret_rules r
+            JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
+            JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE r.academic_rank = %s AND mi.term_id = %s
+        """, (academic_rank, term_id))
+        existing_rows = cursor.fetchall()
+
+        research_rule_ids = [rid for rid, locked, slug in existing_rows if slug == SLUG_RESEARCH]
+        extension_rule_ids = [rid for rid, locked, slug in existing_rows if slug == SLUG_EXTENSION]
+        extension_locked = any(locked for _, locked, slug in existing_rows if slug == SLUG_EXTENSION)
+
+        if research_rule_ids:
+            format_strings = ','.join(['%s'] * len(research_rule_ids))
+            cursor.execute(f"DELETE FROM tbl_ret_rule_indicators WHERE rule_id IN ({format_strings})", tuple(research_rule_ids))
+            cursor.execute(f"DELETE FROM tbl_ret_rules WHERE rule_id IN ({format_strings})", tuple(research_rule_ids))
+
+        if not extension_locked and extension_rule_ids:
+            format_strings = ','.join(['%s'] * len(extension_rule_ids))
+            cursor.execute(f"DELETE FROM tbl_ret_rule_indicators WHERE rule_id IN ({format_strings})", tuple(extension_rule_ids))
+            cursor.execute(f"DELETE FROM tbl_ret_rules WHERE rule_id IN ({format_strings})", tuple(extension_rule_ids))
 
         # 2. Save Research rule (if indicators are selected).
         # Each research indicator carries its own IPCR description and target duration so
@@ -46,29 +75,67 @@ def save_ret_rule(conn, cursor, term_id, academic_rank, research_selections, ext
                            (academic_rank, int(research_selections)))
             res_rule_id = cursor.lastrowid
             for item in research_indicators:
-                if len(item) == 5:
+                is_auto_flag = None
+                if len(item) == 6:
+                    ind_id, qty, desc, dur_value, dur_unit, is_auto_flag = item
+                elif len(item) == 5:
                     ind_id, qty, desc, dur_value, dur_unit = item
                 else:
                     ind_id, qty = item[0], item[1]
                     desc, dur_value, dur_unit = None, None, None
+
+                # is_auto_flag True (explicit, from the frontend) always regenerates, even if
+                # non-blank text was submitted — protects against client-side drift
+                # (Decision 1). A blank description always regenerates too, regardless of the
+                # flag, as a safety net against ever storing an empty description.
+                is_auto_description = 1 if (is_auto_flag is True or not desc) else 0
+                if is_auto_description:
+                    desc = format_ipcr_target_description(
+                        get_indicator_description(cursor, ind_id), qty, dur_value, dur_unit)
+
                 cursor.execute("""
                     INSERT INTO tbl_ret_rule_indicators
-                        (rule_id, indicator_id, target_quantity, target_description, target_duration_value, target_duration_unit)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (res_rule_id, ind_id, qty, desc, dur_value, dur_unit))
+                        (rule_id, indicator_id, target_quantity, target_description, target_duration_value,
+                         target_duration_unit, is_auto_description)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (res_rule_id, ind_id, qty, desc, dur_value, dur_unit, is_auto_description))
 
-        # 3. Save Extension rule (if indicators are selected)
-        if extension_indicators and int(extension_selections) > 0:
-            cursor.execute("INSERT INTO tbl_ret_rules (academic_rank, required_selections) VALUES (%s, %s)", 
+        # 3. Save Extension rule (if indicators are selected and the rank band isn't locked).
+        # A save immediately locks the new rows (is_locked = 1) — saving an Extension menu is
+        # the "distribute" action, mirroring the legacy one-time-lock behavior; the RET Chair
+        # unlocks explicitly to make a correction, which re-locks on the next save.
+        extension_skipped = extension_locked and bool(extension_rule_ids)
+        if not extension_skipped and extension_indicators and int(extension_selections) > 0:
+            cursor.execute("INSERT INTO tbl_ret_rules (academic_rank, required_selections, is_locked) VALUES (%s, %s, 1)",
                            (academic_rank, int(extension_selections)))
             ext_rule_id = cursor.lastrowid
             for item in extension_indicators:
-                ind_id, qty = item[0], item[1]
-                cursor.execute("INSERT INTO tbl_ret_rule_indicators (rule_id, indicator_id, target_quantity) VALUES (%s, %s, %s)",
-                               (ext_rule_id, ind_id, qty))
+                is_auto_flag = None
+                if len(item) == 6:
+                    ind_id, qty, desc, dur_value, dur_unit, is_auto_flag = item
+                elif len(item) == 5:
+                    ind_id, qty, desc, dur_value, dur_unit = item
+                else:
+                    ind_id, qty = item[0], item[1]
+                    desc, dur_value, dur_unit = None, None, None
+
+                is_auto_description = 1 if (is_auto_flag is True or not desc) else 0
+                if is_auto_description:
+                    desc = format_ipcr_target_description(
+                        get_indicator_description(cursor, ind_id), qty, dur_value, dur_unit)
+
+                cursor.execute("""
+                    INSERT INTO tbl_ret_rule_indicators
+                        (rule_id, indicator_id, target_quantity, target_description, target_duration_value,
+                         target_duration_unit, is_auto_description)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (ext_rule_id, ind_id, qty, desc, dur_value, dur_unit, is_auto_description))
 
         conn.commit()
-        return True, "Menu configuration saved successfully to structural rules templates."
+        msg = "Menu configuration saved successfully to structural rules templates."
+        if extension_skipped:
+            msg += " Extension is locked for this rank band and was not changed — unlock it first to edit."
+        return True, msg
     except Exception as e:
         conn.rollback()
         return False, str(e)
@@ -81,14 +148,16 @@ def get_ret_rules(cursor, term_id):
     # references no longer match the current term's indicators, making the table appear
     # empty and prompting the RET Chair to reconfigure for the new term.
     query = """
-        SELECT r.rule_id, r.academic_rank, r.required_selections, mi.indicator_id, mi.indicator_description, tc.category_name,
-               rri.target_quantity, rri.target_description, rri.target_duration_value, rri.target_duration_unit
+        SELECT r.rule_id, r.academic_rank, r.required_selections, r.is_locked,
+               mi.indicator_id, mi.indicator_description, tc.slug,
+               rri.target_quantity, rri.target_description, rri.target_duration_value, rri.target_duration_unit,
+               rri.is_auto_description
         FROM tbl_ret_rules r
         JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
         JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE mi.term_id = %s
-        ORDER BY r.academic_rank, tc.category_name
+        ORDER BY r.academic_rank, tc.slug
     """
     # BUGFIX: timed_query() internally calls cursor.fetchall() and returns the rows.
     # The old code discarded the return value and called cursor.fetchall() again,
@@ -97,12 +166,11 @@ def get_ret_rules(cursor, term_id):
     rules_dict = {}
 
     for r in rows:
-        rule_id = r['rule_id']
         rank    = r['academic_rank']
         required = r['required_selections']
         ind_id   = r['indicator_id']
         desc     = r['indicator_description']
-        category = r['category_name']
+        slug     = r['slug']
         qty      = r['target_quantity']
 
         if rank not in rules_dict:
@@ -111,41 +179,119 @@ def get_ret_rules(cursor, term_id):
                 'academic_rank': rank,
                 'research_required': 0,
                 'extension_required': 0,
+                'extension_locked': False,
                 'research_indicators': [],
                 'extension_indicators': []
             }
 
-        # Safe matching using 'in' in case formatting contains letters like A. or B.
-        if 'Research' in category:
+        item = {
+            'id': ind_id, 'desc': desc, 'qty': qty,
+            'target_description': r.get('target_description') or '',
+            'duration_value': r.get('target_duration_value'),
+            'duration_unit': r.get('target_duration_unit'),
+            'is_auto_description': r.get('is_auto_description') is None or r.get('is_auto_description') == 1,
+        }
+
+        if slug == SLUG_RESEARCH:
             rules_dict[rank]['research_required'] = required
-            rules_dict[rank]['research_indicators'].append({
-                'id': ind_id, 'desc': desc, 'qty': qty,
-                'target_description': r.get('target_description') or '',
-                'duration_value': r.get('target_duration_value'),
-                'duration_unit': r.get('target_duration_unit'),
-            })
-        elif 'Extension' in category or 'Training' in category or 'Advisory' in category:
+            rules_dict[rank]['research_indicators'].append(item)
+        elif slug == SLUG_EXTENSION:
             rules_dict[rank]['extension_required'] = required
-            rules_dict[rank]['extension_indicators'].append({'id': ind_id, 'desc': desc, 'qty': qty})
+            rules_dict[rank]['extension_locked'] = bool(r.get('is_locked'))
+            rules_dict[rank]['extension_indicators'].append(item)
 
     return list(rules_dict.values())
 
 
-def delete_ret_rule(conn, cursor, rule_id, category_type=None):
+def delete_ret_rule(conn, cursor, term_id, rule_id, category_type=None):
+    """
+    Deletes a rank band's rule row(s) IN THE CURRENT TERM. `category_type` ('research'/'extension')
+    optionally scopes the delete to just that category; omitted, both are targeted. A locked
+    Extension row is refused (returns False) — unlock it first via unlock_ret_extension_rule.
+    Scoped by term_id so this can't reach into a past term's rows for the same rank (see the
+    matching note in save_ret_rule).
+    """
     try:
         # Note: rule_id is passed as the academic_rank string from the frontend delete form
         academic_rank = rule_id
-        cursor.execute("SELECT rule_id FROM tbl_ret_rules WHERE academic_rank = %s", (academic_rank,))
-        rule_ids = [row[0] for row in cursor.fetchall()]
-        if rule_ids:
-            format_strings = ','.join(['%s'] * len(rule_ids))
-            cursor.execute(f"DELETE FROM tbl_ret_rule_indicators WHERE rule_id IN ({format_strings})", tuple(rule_ids))
-            cursor.execute(f"DELETE FROM tbl_ret_rules WHERE rule_id IN ({format_strings})", tuple(rule_ids))
+        cursor.execute("""
+            SELECT DISTINCT r.rule_id, r.is_locked, tc.slug
+            FROM tbl_ret_rules r
+            JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
+            JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            WHERE r.academic_rank = %s AND mi.term_id = %s
+        """, (academic_rank, term_id))
+        rows = cursor.fetchall()
+
+        target_ids = []
+        locked_blocked = False
+        for rid, locked, slug in rows:
+            if category_type and slug != category_type:
+                continue
+            if slug == SLUG_EXTENSION and locked:
+                locked_blocked = True
+                continue
+            target_ids.append(rid)
+
+        if locked_blocked and not target_ids:
+            return False
+
+        if target_ids:
+            format_strings = ','.join(['%s'] * len(target_ids))
+            cursor.execute(f"DELETE FROM tbl_ret_rule_indicators WHERE rule_id IN ({format_strings})", tuple(target_ids))
+            cursor.execute(f"DELETE FROM tbl_ret_rules WHERE rule_id IN ({format_strings})", tuple(target_ids))
         conn.commit()
         return True
     except Exception as e:
         conn.rollback()
         return False
+
+
+def unlock_ret_extension_rule(conn, cursor, term_id, academic_rank):
+    """
+    Unlocks a rank band's Extension configuration IN THE CURRENT TERM so the RET Chair can edit
+    and re-save it. Saving re-locks it (save_ret_rule always writes new Extension rows with
+    is_locked = 1) — this mirrors the original one-time "distribute, then locked" behavior while
+    allowing a deliberate, explicit correction. Scoped by term_id so this can't reach into a past
+    term's rows for the same rank (see the matching note in save_ret_rule).
+    """
+    try:
+        cursor.execute("""
+            UPDATE tbl_ret_rules r
+            JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
+            JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
+            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+            SET r.is_locked = 0
+            WHERE r.academic_rank = %s AND tc.slug = %s AND mi.term_id = %s
+        """, (academic_rank, SLUG_EXTENSION, term_id))
+        conn.commit()
+        return True, "Extension configuration unlocked for editing."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
+def get_faculty_counts_by_rank(cursor, term_id=None):
+    """
+    Returns {rank_band: count} of regular faculty, bucketed by their normalized Academic
+    Rank Band — for the RET Chair menu's per-band headcount badge. term_id is accepted for
+    call-site symmetry with the rest of the RET menu config API but unused: employee profiles
+    (and their academic_rank) aren't term-scoped.
+    """
+    cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE designation = 'Regular Faculty'")
+    counts = {band: 0 for band in RANK_BANDS}
+    for (academic_rank,) in cursor.fetchall():
+        band = rank_band(academic_rank)
+        if band in counts:
+            counts[band] += 1
+    return counts
+
+
+def get_total_regular_faculty_count(cursor):
+    """Total regular faculty, org-wide — the shared Auto Divide denominator for every rank band."""
+    cursor.execute("SELECT COUNT(*) FROM tbl_employee_profiles WHERE designation = 'Regular Faculty'")
+    return cursor.fetchone()[0]
 
 
 def get_ret_assignment_faculty(cursor, term_id):
@@ -174,116 +320,6 @@ def get_ret_assignment_faculty(cursor, term_id):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
-def get_ret_extension_distribution(cursor, term_id):
-    """
-    Returns every Extension indicator for the term with the per-faculty quantity currently
-    distributed to all regular faculty (0 if not distributed) — for the RET Chair's
-    Extension distribution editor.
-    """
-    query = """
-        SELECT
-            mi.indicator_id,
-            mi.indicator_description,
-            COALESCE(red.target_quantity, 0) AS distributed_quantity,
-            red.target_description,
-            red.target_duration_value,
-            red.target_duration_unit,
-            CASE WHEN red.dist_id IS NOT NULL THEN 1 ELSE 0 END AS is_distributed,
-            (SELECT cq.total_target_value FROM tbl_cascaded_quotas cq
-             WHERE cq.indicator_id = mi.indicator_id AND cq.term_id = %s LIMIT 1) AS dean_quota
-        FROM tbl_master_indicators mi
-        JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-        LEFT JOIN tbl_ret_extension_distribution red
-               ON red.indicator_id = mi.indicator_id AND red.term_id = %s
-        WHERE mi.term_id = %s AND tc.slug = 'extension'
-        ORDER BY mi.indicator_id
-    """
-    cursor.execute(query, (term_id, term_id, term_id))
-    columns = [col[0] for col in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-
-def get_distributed_extension_targets(cursor, term_id):
-    """Extension targets distributed to all regular faculty — for the faculty read-only view."""
-    query = """
-        SELECT red.indicator_id, mi.indicator_description, red.target_quantity,
-               red.target_description, red.target_duration_value, red.target_duration_unit
-        FROM tbl_ret_extension_distribution red
-        JOIN tbl_master_indicators mi ON red.indicator_id = mi.indicator_id
-        WHERE red.term_id = %s
-        ORDER BY mi.indicator_id
-    """
-    cursor.execute(query, (term_id,))
-    columns = [col[0] for col in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-
-def is_extension_distributed(cursor, term_id):
-    """True once Extension has been distributed for the term (distribution is one-time / locked)."""
-    cursor.execute("SELECT COUNT(*) FROM tbl_ret_extension_distribution WHERE term_id = %s", (term_id,))
-    return cursor.fetchone()[0] > 0
-
-
-def save_ret_extension_distribution(conn, cursor, term_id, distributions, distributed_by):
-    """
-    Replaces the term's Extension distribution set. `distributions` is a list of
-    (indicator_id, per_faculty_quantity). Only Extension indicators for the term are
-    accepted. Extension is uniform across all regular faculty and is materialized per
-    faculty at submit. This is a one-time action per term: once distributed it is locked
-    and cannot be changed.
-    """
-    try:
-        # One-time lock: refuse if Extension has already been distributed for this term.
-        if is_extension_distributed(cursor, term_id):
-            return False, "Extension targets have already been distributed for this term and are locked."
-
-        cursor.execute("""
-            SELECT mi.indicator_id
-            FROM tbl_master_indicators mi
-            JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-            WHERE mi.term_id = %s AND tc.slug = 'extension'
-        """, (term_id,))
-        allowed = {r[0] for r in cursor.fetchall()}
-
-        cursor.execute("DELETE FROM tbl_ret_extension_distribution WHERE term_id = %s", (term_id,))
-
-        saved = 0
-        skipped = 0
-        for item in distributions:
-            # Newer callers supply a description and target duration alongside the quantity.
-            if len(item) == 5:
-                indicator_id, qty, desc, dur_value, dur_unit = item
-            else:
-                indicator_id, qty = item[0], item[1]
-                desc, dur_value, dur_unit = None, None, None
-            if indicator_id not in allowed:
-                skipped += 1
-                continue
-            qty = qty if qty and int(qty) > 0 else 1
-            cursor.execute("""
-                INSERT INTO tbl_ret_extension_distribution
-                    (term_id, indicator_id, target_quantity, target_description,
-                     target_duration_value, target_duration_unit, distributed_by)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    target_quantity = VALUES(target_quantity),
-                    target_description = VALUES(target_description),
-                    target_duration_value = VALUES(target_duration_value),
-                    target_duration_unit = VALUES(target_duration_unit),
-                    distributed_by = VALUES(distributed_by)
-            """, (term_id, indicator_id, int(qty), desc, dur_value, dur_unit, distributed_by))
-            saved += 1
-
-        conn.commit()
-        msg = f"Distributed {saved} Extension target(s) to all regular faculty."
-        if skipped:
-            msg += f" {skipped} skipped (not an Extension indicator for this term)."
-        return True, msg
-    except Exception as e:
-        conn.rollback()
-        return False, str(e)
-
-
 def get_ret_faculty_assignments(cursor, term_id, emp_id):
     """
     Returns the RET Chair's authored assignments for one faculty member in a term,
@@ -292,7 +328,7 @@ def get_ret_faculty_assignments(cursor, term_id, emp_id):
     query = """
         SELECT ra.indicator_id, ra.target_quantity,
                ra.target_description, ra.target_duration_value, ra.target_duration_unit,
-               mi.indicator_description, tc.category_name, tc.slug
+               ra.is_auto_description, mi.indicator_description, tc.category_name, tc.slug
         FROM tbl_ret_assignments ra
         JOIN tbl_master_indicators mi ON ra.indicator_id = mi.indicator_id
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
@@ -335,7 +371,10 @@ def save_ret_assignments(conn, cursor, term_id, emp_id, assignments, assigned_by
         saved = 0
         skipped = 0
         for item in assignments:
-            if len(item) == 5:
+            is_auto_flag = None
+            if len(item) == 6:
+                indicator_id, qty, desc, dur_val, dur_unit, is_auto_flag = item
+            elif len(item) == 5:
                 indicator_id, qty, desc, dur_val, dur_unit = item
             else:
                 indicator_id, qty = item[0], item[1]
@@ -345,17 +384,28 @@ def save_ret_assignments(conn, cursor, term_id, emp_id, assignments, assigned_by
                 skipped += 1
                 continue
             qty = qty if qty and int(qty) > 0 else 1
+
+            # is_auto_flag True (explicit, from the frontend) always regenerates, even if
+            # non-blank text was submitted — protects against client-side drift (Decision 1).
+            # A blank description always regenerates too, regardless of the flag.
+            is_auto_description = 1 if (is_auto_flag is True or not desc) else 0
+            if is_auto_description:
+                desc = format_ipcr_target_description(
+                    get_indicator_description(cursor, indicator_id), qty, dur_val, dur_unit)
+
             cursor.execute("""
                 INSERT INTO tbl_ret_assignments (term_id, emp_id, indicator_id, target_quantity,
-                                                target_description, target_duration_value, target_duration_unit, assigned_by)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                                target_description, target_duration_value, target_duration_unit,
+                                                assigned_by, is_auto_description)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     target_quantity = VALUES(target_quantity),
                     target_description = VALUES(target_description),
                     target_duration_value = VALUES(target_duration_value),
                     target_duration_unit = VALUES(target_duration_unit),
-                    assigned_by = VALUES(assigned_by)
-            """, (term_id, emp_id, indicator_id, int(qty), desc, dur_val, dur_unit, assigned_by))
+                    assigned_by = VALUES(assigned_by),
+                    is_auto_description = VALUES(is_auto_description)
+            """, (term_id, emp_id, indicator_id, int(qty), desc, dur_val, dur_unit, assigned_by, is_auto_description))
             saved += 1
 
         conn.commit()

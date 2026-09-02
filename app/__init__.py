@@ -140,6 +140,29 @@ from app.routes import register_blueprints
 register_blueprints(app)
 
 
+@app.template_filter('ipcr_preview')
+def ipcr_preview_filter(indicator_description):
+    """
+    Renders a placeholder-tagged master indicator ({qty:1}, {duration:6:months}, ...) using
+    its tokens' embedded default values, so the Admin's indicator list shows a normal-looking
+    sentence instead of raw brace syntax. Display only — see ipcr_description.py.
+    """
+    from app.models.ipcr_description import render_indicator_preview
+    return render_indicator_preview(indicator_description)
+
+
+@app.template_filter('ipcr_generate')
+def ipcr_generate_filter(indicator_description, quantity, duration_value=None, duration_unit=None):
+    """
+    Substitutes the *real* quantity/duration into a master indicator's description — for a
+    template rendering a menu/pool row where a genuine assigned/configured value is already
+    known (e.g. a rank's configured RET quantity, or a faculty member's own actual selection),
+    as opposed to `ipcr_preview`'s cosmetic use of a placeholder's own embedded example value.
+    """
+    from app.models.ipcr_description import format_ipcr_target_description
+    return format_ipcr_target_description(indicator_description, quantity, duration_value, duration_unit)
+
+
 @app.context_processor
 def inject_own_ipcr_flag():
     # Exposes has_own_ipcr and home_nav to every template

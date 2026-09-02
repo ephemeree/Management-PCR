@@ -50,7 +50,7 @@
     {% for item in modified_items %}
     <div style="padding: 14px 16px; {% if not loop.last %}border-bottom: 1px solid #e2e8f0;{% endif %}">
         <div style="font-weight: 600; color: #1e293b; font-size: 13.5px; margin-bottom: 4px;">
-            {{ item.indicator_description }}
+            {{ item.indicator_description | ipcr_preview }}
         </div>
         <div style="display: flex; gap: 16px; font-size: 13px; color: #64748b; margin-bottom: 4px;">
             {% if item.is_qty_changed %}

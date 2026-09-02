@@ -6,8 +6,6 @@
     <title>D-IPCR: Digital IPCR System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons kept during the icon-set migration: dashboards not yet converted still use bi- classes -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -36,7 +34,7 @@
             font-family: var(--font-body);
             background-color: var(--content-bg);
             overflow-x: hidden;
-            color: #2B2822;
+            color: var(--c-text);
         }
 
         h1, h2, h3, h4, h5, h6 {
@@ -107,7 +105,7 @@
             font-size: 15px;
             font-weight: 700;
             font-family: var(--font-heading);
-            color: #2B2822;
+            color: var(--c-text);
             letter-spacing: 0;
         }
 
@@ -216,7 +214,7 @@
 
         .sidebar-nav .nav-item:hover {
             background: var(--sidebar-hover);
-            color: #2B2822;
+            color: var(--c-text);
         }
 
         .sidebar-nav .nav-item.active {
@@ -384,13 +382,18 @@
             --c-accent:       #3E5C82;
             --c-accent-dark:  #2F4767;
             --c-accent-glow:  rgba(62,92,130,0.14);
+            --c-accent-tint:  rgba(62,92,130,0.06);
             --c-success:      #3F7D58;
+            --c-success-glow: rgba(63,125,88,0.06);
             --c-warning:      #B8842E;
+            --c-warning-glow: rgba(184,132,46,0.08);
             --c-danger:       #B0453D;
+            --c-danger-glow:  rgba(176,69,61,0.06);
             --c-indigo:       #5B5A8C;
             --c-text:         #2B2822;
             --c-text-sub:     #6B6459;
             --c-text-muted:   #A39D8F;
+            --c-text-glow:    rgba(43,40,34,.08);
             --c-surface:      #FFFFFF;
             --c-surface-alt:  #F7F6F3;
             --c-border:       #E7E4DD;
@@ -467,21 +470,48 @@
             font-size: 12px;
             color: var(--c-text-sub);
         }
-        /* Accent bars, flattened */
-        .border-start.border-primary { border-left-width: 3px !important; border-left-color: var(--c-accent) !important; }
-        .border-start.border-success { border-left-width: 3px !important; border-left-color: var(--c-success) !important; }
-        .border-start.border-warning { border-left-width: 3px !important; border-left-color: var(--c-warning) !important; }
-        .border-start.border-danger  { border-left-width: 3px !important; border-left-color: var(--c-danger)  !important; }
-        .border-start.border-info    { border-left-width: 3px !important; border-left-color: var(--c-accent)  !important; }
-        .border-top.border-info      { border-top-width: 3px !important;  border-top-color: var(--c-accent)   !important; }
-        .border-top.border-primary   { border-top-width: 3px !important;  border-top-color: var(--c-accent)   !important; }
-        .border-top.border-success   { border-top-width: 3px !important;  border-top-color: var(--c-success)  !important; }
-        .border-top.border-4         { border-top-width: 3px !important; }
+        /* Accent bars: thinned and desaturated toward the card's own neutral border
+           color, rather than a full-saturation 3px stripe — the "side-tab" pattern
+           reads as templated/AI-generated at full strength; blending it down keeps
+           the at-a-glance color coding without the isolated, high-contrast tab look. */
+        .border-start.border-primary { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important; }
+        .border-start.border-success { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important; }
+        .border-start.border-warning { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important; }
+        .border-start.border-danger  { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-danger)  55%, var(--c-border)) !important; }
+        .border-start.border-info    { border-left-width: 2px !important; border-left-color: color-mix(in srgb, var(--c-accent)  55%, var(--c-border)) !important; }
+        .border-top.border-info      { border-top-width: 2px !important;  border-top-color: color-mix(in srgb, var(--c-accent)  55%, var(--c-border)) !important; }
+        .border-top.border-primary   { border-top-width: 2px !important;  border-top-color: color-mix(in srgb, var(--c-accent)  55%, var(--c-border)) !important; }
+        .border-top.border-success   { border-top-width: 2px !important;  border-top-color: color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important; }
+        .border-top.border-4         { border-top-width: 2px !important; }
 
         /* ── Tables ── */
         .table-responsive {
             border-radius: 8px;
-            overflow: hidden;
+            /* `overflow: hidden` here would silently override Bootstrap's own
+               `overflow-x: auto`, disabling horizontal scroll on every wide table
+               app-wide (content past the container width becomes unreachable, not
+               just visually clipped). Keep the rounded-corner clipping on the
+               vertical axis only. */
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        /* Sticky first column for wide matrix tables (e.g. a quota-cascading grid
+           with one column per department) — keeps the row's label readable while
+           scrolling through many data columns. Needs a solid background per row
+           context so scrolled-past cells don't show through underneath it. */
+        .table-responsive th.sticky-col,
+        .table-responsive td.sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            box-shadow: 2px 0 4px rgba(43,40,34,0.06);
+        }
+        .table-responsive thead th.sticky-col {
+            z-index: 3;
+            background: var(--c-surface-alt) !important;
+        }
+        .table-responsive tbody td.sticky-col {
+            background: var(--c-surface) !important;
         }
         .table {
             margin-bottom: 0;
@@ -628,6 +658,22 @@
             box-shadow: 0 0 0 3px var(--c-accent-glow) !important;
             outline: none !important;
         }
+        /* Invalid state — the design system had a focus state but nothing for
+           validation errors, so error fields fell back to raw Bootstrap red. */
+        .form-control.is-invalid, .form-select.is-invalid,
+        .form-control:invalid, .form-select:invalid {
+            border-color: var(--c-danger) !important;
+            background-image: none !important;
+        }
+        .form-control.is-invalid:focus, .form-select.is-invalid:focus,
+        .form-control:invalid:focus, .form-select:invalid:focus {
+            border-color: var(--c-danger) !important;
+            box-shadow: 0 0 0 3px var(--c-danger-glow) !important;
+        }
+        .invalid-feedback {
+            color: var(--c-danger) !important;
+            font-size: 12px !important;
+        }
         .form-label {
             font-size: 12px !important;
             font-weight: 600 !important;
@@ -647,12 +693,15 @@
             font-size: 13px !important;
             padding: 12px 16px !important;
         }
-        .alert-info    { background: rgba(62,92,130,0.07)  !important; border-left: 3px solid var(--c-accent)   !important; color: #2F4767 !important; }
-        .alert-success { background: rgba(63,125,88,0.08)  !important; border-left: 3px solid var(--c-success)  !important; color: #2E5F42 !important; }
-        .alert-warning { background: rgba(184,132,46,0.1)  !important; border-left: 3px solid var(--c-warning)  !important; color: #8F6421 !important; }
-        .alert-danger  { background: rgba(176,69,61,0.08)  !important; border-left: 3px solid var(--c-danger)   !important; color: #8F372F !important; }
-        .alert-primary { background: rgba(62,92,130,0.07)  !important; border-left: 3px solid var(--c-accent)   !important; color: #2F4767 !important; }
-        .alert i { opacity: 0.85; }
+        /* No left-border stripe: the tinted background plus the alert's own icon
+           already carry the status color, so the stripe was a redundant, more
+           template-looking signal on top of two that already work. */
+        .alert-info    { background: rgba(62,92,130,0.07)  !important; color: #2F4767 !important; }
+        .alert-success { background: rgba(63,125,88,0.08)  !important; color: #2E5F42 !important; }
+        .alert-warning { background: rgba(184,132,46,0.1)  !important; color: #8F6421 !important; }
+        .alert-danger  { background: rgba(176,69,61,0.08)  !important; color: #8F372F !important; }
+        .alert-primary { background: rgba(62,92,130,0.07)  !important; color: #2F4767 !important; }
+        .alert i { opacity: 0.9; }
 
         /* ── Modals ── */
         .modal-content {
@@ -767,7 +816,7 @@
             left: calc(100% + 12px);
             top: 50%;
             transform: translateY(-50%);
-            background: #2B2822;
+            background: var(--c-text);
             color: white;
             padding: 6px 12px;
             border-radius: 6px;
@@ -798,6 +847,26 @@
         .btn-outline-dark-navy:hover {
             background-color: var(--c-accent) !important;
             color: #ffffff !important;
+        }
+        /* Skip-to-content: visually hidden until focused, so keyboard users don't
+           have to tab through the entire sidebar nav on every page load. */
+        .skip-to-content {
+            position: absolute;
+            top: -100px;
+            left: 12px;
+            z-index: 2000;
+            background: var(--c-accent);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+            transition: top 0.15s ease;
+        }
+        .skip-to-content:focus {
+            top: 12px;
+            color: #fff;
         }
         .badge-status-active {
             background-color: rgba(63,125,88,0.12) !important;
@@ -834,13 +903,26 @@
         .shadow-xs {
             box-shadow: 0 1px 3px rgba(43,40,34,0.05) !important;
         }
+        /* Two patterns repeated many times as inline styles across the dashboards
+           (card corners clipped to a rounded border, small scrollable list boxes) —
+           extracted here so a future radius/height change is one edit, not dozens. */
+        .card-rounded-clip {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .scroll-box-sm {
+            max-height: 250px;
+            overflow-y: auto;
+        }
     </style>
     {% block extra_styles %}{% endblock %}
 </head>
 <body>
 
+    <a href="#mainContent" class="skip-to-content">Skip to main content</a>
+
     <!-- Mobile hamburger -->
-    <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation">
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation" aria-expanded="false">
         <i class="ti ti-menu-2"></i>
     </button>
 
@@ -879,12 +961,13 @@
     </aside>
 
     <!-- Collapse toggle (desktop) -->
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
         <i class="ti ti-chevron-left"></i>
     </button>
 
     <!-- Main content -->
     <main class="dipcr-main" id="mainContent">
+        <h1 class="visually-hidden">{{ self.role_display() }}</h1>
         <div class="flash-container">
             {% block flash_messages %}
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -916,13 +999,16 @@
             sidebar.classList.add('collapsed');
             toggleBtn.classList.add('collapsed');
             mainContent.classList.add('expanded');
+            toggleBtn.setAttribute('aria-expanded', 'false');
         }
 
         toggleBtn.addEventListener('click', () => {
             sidebar.classList.toggle('collapsed');
             toggleBtn.classList.toggle('collapsed');
             mainContent.classList.toggle('expanded');
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            const collapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', collapsed);
+            toggleBtn.setAttribute('aria-expanded', String(!collapsed));
         });
 
         // Mobile toggle
@@ -932,11 +1018,13 @@
         mobileToggle.addEventListener('click', () => {
             sidebar.classList.toggle('mobile-open');
             overlay.classList.toggle('visible');
+            mobileToggle.setAttribute('aria-expanded', String(sidebar.classList.contains('mobile-open')));
         });
 
         overlay.addEventListener('click', () => {
             sidebar.classList.remove('mobile-open');
             overlay.classList.remove('visible');
+            mobileToggle.setAttribute('aria-expanded', 'false');
         });
 
         // Section switching
@@ -955,6 +1043,7 @@
             // Close mobile sidebar if open
             sidebar.classList.remove('mobile-open');
             overlay.classList.remove('visible');
+            mobileToggle.setAttribute('aria-expanded', 'false');
 
             // Store active section
             localStorage.setItem('activeSection_' + (window.dashboardRole || 'default'), sectionId);
@@ -979,13 +1068,21 @@
                 showSection(firstNav.dataset.section);
             }
 
-            // Auto-populate data-tooltip for all nav items
+            // Auto-populate data-tooltip for all nav items, and give every nav item an
+            // aria-label so its name survives when .nav-text is display:none'd in the
+            // collapsed sidebar state (display:none removes text from the a11y tree too,
+            // not just visually — aria-label doesn't depend on that span being visible).
             document.querySelectorAll('.dipcr-sidebar .nav-item').forEach(item => {
-                if (!item.getAttribute('data-tooltip')) {
+                let label = item.getAttribute('data-tooltip');
+                if (!label) {
                     const textEl = item.querySelector('.nav-text');
                     if (textEl) {
-                        item.setAttribute('data-tooltip', textEl.textContent.trim());
+                        label = textEl.textContent.trim();
+                        item.setAttribute('data-tooltip', label);
                     }
+                }
+                if (label && !item.getAttribute('aria-label')) {
+                    item.setAttribute('aria-label', label);
                 }
             });
         });
@@ -1037,7 +1134,7 @@
 
             titleText.textContent = title || 'Validation Notice';
             heading.textContent = title || 'Action Required';
-            messageEl.innerHTML = message || '';
+            messageEl.textContent = message || '';
 
             if (type === 'danger' || type === 'error') {
                 header.style.backgroundColor = 'var(--bs-danger, #dc3545)';
@@ -1070,6 +1167,377 @@
                 modalEl.addEventListener('hidden.bs.modal', onHidden);
             }
             modal.show();
+        };
+    </script>
+    <script>
+        // ── Auto-generated IPCR target description ──
+        //
+        // Mirrors app/models/ipcr_description.py's format_ipcr_target_description() so the
+        // live preview a manager/faculty sees while typing matches what the backend actually
+        // saves. Keep the two in sync — see that module's docstring for why the cleaning is
+        // asymmetric (leading quantity: exact-match-only; trailing duration: always stripped,
+        // with a safety net that skips appending a duration clause if one still lurks
+        // mid-sentence). If you change one, change the other.
+        window.formatDuration = function (value, unit) {
+            const units = ['days', 'weeks', 'months', 'semesters'];
+            let u = String(unit || '').trim().toLowerCase();
+            if (!u) return '';
+            if (!u.endsWith('s')) u += 's';
+            if (units.indexOf(u) === -1) return '';
+            const v = parseInt(value, 10);
+            if (!v || v <= 0) return '';
+            const label = v === 1 ? u.slice(0, -1) : u;
+            return `${v} ${label}`;
+        };
+
+        // Mirrors ipcr_description.py's render_indicator_preview(): renders a raw master
+        // indicator's {qty:1}/{duration:6:months} tokens using their embedded display-only
+        // defaults, so any screen listing indicators before they're cascaded into an actual
+        // target (Dean's quota cascading, Program Chair's allocation table, RET Chair's menu,
+        // etc.) shows a readable sentence instead of raw brace syntax. Safe to call on any
+        // text — a string with no placeholders passes through unchanged, so this never needs
+        // to know whether the text it's given has already been substituted or not.
+        window.renderIndicatorPreview = function (text) {
+            text = text || '';
+            const qtyRe = /\{qty(?::([^}]*))?\}/g;
+            const durationRe = /\{duration(?::([^:}]*)(?::([^}]*))?)?\}/g;
+            const BLANK = '____';
+            text = text.replace(qtyRe, function (m, def) { return def || BLANK; });
+            text = text.replace(durationRe, function (m, value, unit) {
+                if (value && unit) return window.formatDuration(value, unit) || BLANK;
+                return value || BLANK;
+            });
+            return text;
+        };
+
+        // Dual mode, mirroring ipcr_description.py's format_ipcr_target_description:
+        // placeholder mode ({qty}/{duration} tokens present — substitute directly, no
+        // guessing) takes priority; legacy mode (prepend/append with conservative cleaning)
+        // is the fallback for indicators authored before placeholders existed. See
+        // REVISION MDs/target_desc.md, "Redesign: Placeholder-based generation".
+        //
+        // A token may optionally carry a display-only default, e.g. "{qty:1}" or
+        // "{duration:6:months}" (written by the click-to-tag helper in admin_dashboard.html) —
+        // ignored here exactly like on the Python side; actual generation always substitutes
+        // the real quantity/duration, never the embedded default.
+        // Separate instances for testing vs. replacing: a global-flagged regex's .test() is
+        // stateful (lastIndex carries over between calls on the same object), which would
+        // make repeated calls to generateIpcrDescription (once per keystroke) intermittently
+        // report "no placeholder" even when one exists. String.replace() resets lastIndex
+        // itself each call, so the global-flagged copies stay safe to reuse there.
+        const PLACEHOLDER_QTY_TEST_RE = /\{qty(?::[^}]*)?\}/;
+        // Capturing group on the embedded default (matching Python's PLACEHOLDER_QTY_RE) so the
+        // replace callback below can read it — a trailing '%' there is a unit to carry over.
+        const PLACEHOLDER_QTY_REPLACE_RE = /\{qty(?::([^}]*))?\}/g;
+        const PLACEHOLDER_DURATION_TEST_RE = /\{duration(?::[^:}]*(?::[^}]*)?)?\}/;
+        const PLACEHOLDER_DURATION_REPLACE_RE = /\{duration(?::[^:}]*(?::[^}]*)?)?\}/g;
+
+        window.generateIpcrDescription = function (indicatorText, quantity, durationValue, durationUnit) {
+            let text = (indicatorText || '').trim();
+            if (!text) return '';
+
+            const BLANK = '____';
+            const qtyNum = parseFloat(quantity);
+            const qtyText = (quantity !== null && quantity !== undefined && quantity !== '' && qtyNum > 0)
+                ? String(qtyNum) : '';
+            const durationLabel = window.formatDuration(durationValue, durationUnit);
+
+            if (PLACEHOLDER_QTY_TEST_RE.test(text) || PLACEHOLDER_DURATION_TEST_RE.test(text)) {
+                return text
+                    // Mirrors _format_placeholders' _qty in ipcr_description.py: a trailing '%'
+                    // in the embedded default ("{qty:80%}") is a unit the sentence has to keep,
+                    // not part of the example number. Only the number comes from the assignment.
+                    .replace(PLACEHOLDER_QTY_REPLACE_RE, function (match, embeddedDefault) {
+                        const value = qtyText || BLANK;
+                        const def = embeddedDefault || '';
+                        if (def.slice(-1) === '%' && value !== BLANK && value.slice(-1) !== '%') {
+                            return value + '%';
+                        }
+                        return value;
+                    })
+                    .replace(PLACEHOLDER_DURATION_REPLACE_RE, durationLabel || BLANK);
+            }
+
+            const unitAlt = 'day(?:s)?|week(?:s)?|month(?:s)?|semester(?:s)?';
+
+            // Leading quantity: strip only when it exactly duplicates what we're prepending.
+            if (qtyText) {
+                const leadMatch = text.match(/^\s*(\d+(?:\.\d+)?)\s+/);
+                if (leadMatch && leadMatch[1] === qtyText) {
+                    text = text.slice(leadMatch[0].length);
+                }
+            }
+
+            // Trailing "within/in <N> <unit>" clause: always stripped before appending the
+            // current duration (a stale leftover here would give the accomplishment engine
+            // two duration-shaped phrases to match against — see the Python module docstring).
+            const trailingRe = new RegExp(`\\s*\\b(?:within|in)\\s+\\d+\\s*(?:${unitAlt})\\s*\\.?\\s*$`, 'i');
+            text = text.replace(trailingRe, '');
+
+            text = text.trim().replace(/\.+$/, '').trim();
+            if (!text) return '';
+
+            let result = qtyText ? `${qtyText} ${text}` : text;
+
+            if (durationLabel) {
+                // Safety net: don't append our own duration clause if one still exists
+                // somewhere in the text (e.g. a mid-sentence mention) — a second match would
+                // let the accomplishment engine substitute into the wrong place.
+                const anyRe = new RegExp(`\\b\\d+\\s*(?:${unitAlt})\\b`, 'i');
+                if (!anyRe.test(result)) {
+                    result = `${result} within ${durationLabel}`;
+                }
+            }
+
+            return result;
+        };
+
+        // Wires one description field to live-mirror its quantity/duration inputs, with an
+        // explicit auto/customized flag persisted in a hidden input (autoFlagInput) so the
+        // backend can tell "still mirroring" apart from "user typed custom text" on submit —
+        // see Decision 1 in REVISION MDs/target_desc.md for why this can't just be inferred
+        // from whether the field happens to be blank.
+        //
+        // opts: { indicatorText, qtyInput, durValueInput, durUnitInput, descField,
+        //         autoFlagInput, badgeEl, resetBtn }
+        window.wireAutoDescription = function (opts) {
+            const { indicatorText, qtyInput, durValueInput, durUnitInput, descField, autoFlagInput, badgeEl, resetBtn } = opts;
+
+            function isAuto() {
+                return autoFlagInput.value === '1';
+            }
+            function setAuto(value) {
+                autoFlagInput.value = value ? '1' : '0';
+                if (badgeEl) badgeEl.hidden = !value;
+                if (resetBtn) resetBtn.hidden = value;
+            }
+            function regenerate() {
+                descField.value = window.generateIpcrDescription(
+                    typeof indicatorText === 'function' ? indicatorText() : indicatorText,
+                    qtyInput ? qtyInput.value : null,
+                    durValueInput ? durValueInput.value : null,
+                    durUnitInput ? durUnitInput.value : null
+                );
+            }
+
+            setAuto(isAuto());
+
+            // Seed an empty deadline from the indicator's own {duration:<value>:<unit>} default
+            // before the first regenerate below. Without this, a row whose deadline hasn't been
+            // filled in yet regenerates to "...in ____" the instant the page loads — a visibly
+            // broken sentence the person is then tempted to repair by typing, which flips the
+            // row to customized and freezes whatever else was wrong in it. (That is exactly how
+            // a Dean's IPCR ended up stored as "100 % of undergraduate programs with valid
+            // accreditation in ____".) The Admin authored this value as the intended duration,
+            // so it is a real default, not a guess — and it stays fully editable, which is why
+            // it is only ever written into a field the person has left blank.
+            (function seedDurationFromDefault() {
+                if (!durValueInput || durValueInput.value.trim()) return;
+                const text = typeof indicatorText === 'function' ? indicatorText() : indicatorText;
+                const m = (text || '').match(/\{duration:([^:}]*)(?::([^}]*))?\}/);
+                if (!m || !m[1]) return;
+                durValueInput.value = m[1];
+                if (durUnitInput && m[2]) {
+                    const unit = m[2].toLowerCase();
+                    if (Array.from(durUnitInput.options).some(function (o) { return o.value === unit; })) {
+                        durUnitInput.value = unit;
+                    }
+                }
+            })();
+
+            // Always regenerate on init when Auto — never trust whatever text is already in
+            // the field. If it was pre-filled from a raw master indicator (e.g. a JS fallback
+            // of `custom_description || indicator_description` before any assignment exists),
+            // that text can still contain literal {qty}/{duration} syntax; regenerating here
+            // replaces it with the real substituted value immediately, before the row could
+            // ever be submitted un-touched. When the field already holds the correct
+            // previously-saved auto text, regenerating reproduces it exactly — a no-op.
+            if (isAuto()) regenerate();
+
+            [qtyInput, durValueInput, durUnitInput].forEach(function (el) {
+                if (!el) return;
+                el.addEventListener('input', function () { if (isAuto()) regenerate(); });
+                el.addEventListener('change', function () { if (isAuto()) regenerate(); });
+            });
+
+            descField.addEventListener('input', function () {
+                if (isAuto()) setAuto(false);
+            });
+
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function () {
+                    setAuto(true);
+                    regenerate();
+                });
+            }
+        };
+
+        // ── Click-to-tag placeholder helper ──
+        //
+        // {qty}/{duration} placeholders (see ipcr_description.py) mean a description never has
+        // to be retyped at every cascade level — but typing the curly-brace tokens by hand is
+        // still friction. This scans a description field for number-like tokens as the person
+        // types and lets them click one to convert it in place. Purely additive: it only ever
+        // rewrites the exact character range of the number that was clicked, and never guesses
+        // or auto-tags anything on its own.
+        //
+        // Used by two different forms with different needs, hence `options`:
+        //   Admin's Master Indicator form  — authors reusable text, previews sample values.
+        //   Designated's Add Custom Target — one-off text, syncs the real quantity/duration
+        //                                    inputs from whatever was tagged (see onTagsChange).
+        //
+        // options: { onTagsChange(text, tags), renderPreview(text) -> string, emptyHint }
+        // where tags = { qty: <string|null>, durationValue: <string|null>, durationUnit: <string|null> }
+        // reads back each token's embedded display default, or null when a token is absent or bare.
+        window.wirePlaceholderTagger = function (textareaId, taggerId, previewId, options) {
+            options = options || {};
+            const textarea = document.getElementById(textareaId);
+            const tagger = document.getElementById(taggerId);
+            const preview = document.getElementById(previewId);
+            if (!textarea || !tagger) return;
+
+            const NUMBER_RE = /\d+(?:\.\d+)?%?/g;
+            const UNIT_SUFFIX_RE = /^\s*(days?|weeks?|months?|semesters?)\b/i;
+            const undoStack = [];
+
+            function escapeHtml(s) {
+                return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            // How much further than the bare number the "Duration" tag should consume — e.g. for
+            // "...within 6 months", tagging "6" as {duration} must also remove "months", since
+            // format_duration() already renders the complete "6 months" — leaving "months" behind
+            // would print "6 months months". The "Quantity" tag never extends past the number
+            // itself, since {qty} only ever substitutes a bare value.
+            function unitSuffixLength(text, afterIndex) {
+                const m = text.slice(afterIndex).match(UNIT_SUFFIX_RE);
+                return m ? m[0].length : 0;
+            }
+
+            // Spans already inside an existing {qty:...}/{duration:...} token — numbers found here
+            // must not get their own tag pills, or clicking one would nest a new token inside the
+            // existing braces (e.g. "{qty:{qty:1}}").
+            function taggedSpans(text) {
+                const spans = [];
+                [/\{qty(?::[^}]*)?\}/g, /\{duration(?::[^:}]*(?::[^}]*)?)?\}/g].forEach(function (re) {
+                    let m;
+                    while ((m = re.exec(text)) !== null) {
+                        spans.push([m.index, m.index + m[0].length]);
+                    }
+                });
+                return spans;
+            }
+
+            function isInsideAnySpan(index, spans) {
+                return spans.some(function (s) { return index >= s[0] && index < s[1]; });
+            }
+
+            // Non-global on purpose: a /g regex's .test() is stateful across calls (lastIndex
+            // persists), which flips the answer true/false on alternating calls.
+            function readTags(text) {
+                const qty = text.match(/\{qty(?::([^}]*))?\}/);
+                const dur = text.match(/\{duration(?::([^:}]*)(?::([^}]*))?)?\}/);
+                return {
+                    hasQty: !!qty,
+                    hasDuration: !!dur,
+                    qty: qty && qty[1] ? qty[1] : null,
+                    durationValue: dur && dur[1] ? dur[1] : null,
+                    durationUnit: dur && dur[2] ? dur[2] : null
+                };
+            }
+
+            function render() {
+                const text = textarea.value;
+                const existingTags = taggedSpans(text);
+                const matches = Array.from(text.matchAll(NUMBER_RE)).filter(function (m) {
+                    return !isInsideAnySpan(m.index, existingTags);
+                });
+
+                let html = '';
+                if (matches.length === 0) {
+                    html = '<span class="text-muted small">' +
+                           (options.emptyHint || 'No numbers detected yet — type the target with its real ' +
+                            'quantity/duration in it, then tag them here.') + '</span>';
+                } else {
+                    html = '<span class="small text-muted me-2">Click a number to tag it:</span>';
+                    matches.forEach(function (m) {
+                        const start = m.index;
+                        const qtyEnd = start + m[0].length;
+                        const unitLen = unitSuffixLength(text, qtyEnd);
+                        const durationEnd = qtyEnd + unitLen;
+                        const durationTitle = unitLen > 0
+                            ? 'Tag "' + escapeHtml(text.slice(start, durationEnd).trim()) + '" as Duration'
+                            : 'Tag as Duration';
+                        html += '<span class="btn-group btn-group-sm me-1 mb-1" role="group">' +
+                            '<button type="button" class="btn btn-outline-secondary disabled py-0 px-2">' + escapeHtml(m[0]) + '</button>' +
+                            '<button type="button" class="btn btn-outline-primary py-0 px-2 tagger-btn" data-start="' + start + '" data-end="' + qtyEnd + '" data-type="qty" title="Tag as Quantity">Qty</button>' +
+                            '<button type="button" class="btn btn-outline-warning py-0 px-2 tagger-btn" data-start="' + start + '" data-end="' + durationEnd + '" data-type="duration" title="' + durationTitle + '">Dur</button>' +
+                            '</span>';
+                    });
+                }
+
+                const tags = readTags(text);
+                if (tags.hasQty || tags.hasDuration) {
+                    html += '<div class="mt-1">' +
+                        (tags.hasQty ? '<span class="badge bg-primary me-1">{qty} tagged</span>' : '') +
+                        (tags.hasDuration ? '<span class="badge bg-warning text-dark me-1">{duration} tagged</span>' : '') +
+                        (undoStack.length ? '<button type="button" class="btn btn-link btn-sm p-0 ms-2 tagger-undo">Undo last tag</button>' : '') +
+                        '</div>';
+                }
+                tagger.innerHTML = html;
+
+                if (preview) {
+                    if (options.renderPreview) {
+                        preview.textContent = options.renderPreview(text);
+                    } else {
+                        const sample = window.generateIpcrDescription ? window.generateIpcrDescription(text, 2, 6, 'months') : '';
+                        preview.textContent = sample ? ('Preview with sample values (qty=2, duration=6 months): "' + sample + '"') : '';
+                    }
+                }
+
+                // Numbers still sitting untagged in the text. A caller that syncs real fields
+                // from the tags needs this to notice a half-finished tagging pass — e.g. the
+                // duration tagged but the quantity left as a bare "3", where the sentence reads
+                // perfectly while the quantity field silently keeps an unrelated value.
+                tags.untagged = matches.map(function (m) { return m[0]; });
+                if (options.onTagsChange) options.onTagsChange(text, tags);
+            }
+
+            // Builds the token with its matched text embedded as a display-only default (e.g.
+            // "{qty:1}", "{duration:6:months}") — see ipcr_description.py's module docstring.
+            // Substitution always uses the real assigned value regardless; this only lets the
+            // indicator list preview a readable sentence instead of raw "{qty}" syntax.
+            function buildToken(type, matchedText) {
+                if (type === 'qty') {
+                    return '{qty:' + matchedText + '}';
+                }
+                const durationMatch = matchedText.match(/^(\d+(?:\.\d+)?)\s*(days?|weeks?|months?|semesters?)?$/i);
+                if (durationMatch && durationMatch[2]) {
+                    return '{duration:' + durationMatch[1] + ':' + durationMatch[2].toLowerCase() + '}';
+                }
+                return '{duration:' + matchedText + '}';
+            }
+
+            tagger.addEventListener('click', function (e) {
+                const btn = e.target.closest('.tagger-btn');
+                if (btn) {
+                    const start = parseInt(btn.dataset.start, 10);
+                    const end = parseInt(btn.dataset.end, 10);
+                    const matchedText = textarea.value.slice(start, end);
+                    const token = buildToken(btn.dataset.type, matchedText);
+                    undoStack.push(textarea.value);
+                    textarea.value = textarea.value.slice(0, start) + token + textarea.value.slice(end);
+                    render();
+                    return;
+                }
+                if (e.target.classList.contains('tagger-undo') && undoStack.length) {
+                    textarea.value = undoStack.pop();
+                    render();
+                }
+            });
+
+            textarea.addEventListener('input', render);
+            render();
         };
     </script>
     {% block scripts %}{% endblock %}

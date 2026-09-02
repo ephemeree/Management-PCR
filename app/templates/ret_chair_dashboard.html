@@ -73,7 +73,7 @@
         <div class="col-md-4">
             <div class="card shadow-sm border-0 h-100 border-start border-info border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Registered Targets</h6>
+                    <h6 role="heading" aria-level="4" class="text-muted text-uppercase fw-bold">Registered Targets</h6>
                     <h2 class="display-6 fw-bold text-info">{{ ret_indicators|length if ret_indicators else 0 }}</h2>
                     <span class="small text-muted">Active DPCR research targets</span>
                 </div>
@@ -82,7 +82,7 @@
         <div class="col-md-4">
             <div class="card shadow-sm border-0 h-100 border-start border-primary border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Configured Ranks</h6>
+                    <h6 role="heading" aria-level="4" class="text-muted text-uppercase fw-bold">Configured Ranks</h6>
                     <h2 class="display-6 fw-bold text-primary">{{ ret_rules|length if ret_rules else 0 }}</h2>
                     <span class="small text-muted">Active rank-based rules set</span>
                 </div>
@@ -91,7 +91,7 @@
         <div class="col-md-4">
             <div class="card shadow-sm border-0 h-100 border-start border-warning border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Pending Approvals</h6>
+                    <h6 role="heading" aria-level="4" class="text-muted text-uppercase fw-bold">Pending Approvals</h6>
                     <h2 class="display-6 fw-bold text-warning">1</h2>
                     <span class="small text-muted">Faculty selections awaiting review</span>
                 </div>
@@ -164,10 +164,12 @@ function openAssignmentEditor(empId) {
             items.forEach(it => {
                 const qty = it.assigned_quantity != null ? it.assigned_quantity : it.default_quantity;
                 const desc = escapeHtml(it.target_description || '');
+                const ariaDesc = escapeHtml(window.renderIndicatorPreview(it.indicator_description || ''));
                 const durVal = it.target_duration_value != null ? it.target_duration_value : '';
                 const durUnit = it.target_duration_unit || 'months';
                 const checked = it.is_assigned ? 'checked' : '';
                 const disabledAttr = it.is_assigned ? '' : 'disabled';
+                const isAutoFlag = it.is_auto_description ? '1' : '0';
 
                 const units = ['days', 'weeks', 'months', 'semesters'];
                 let unitOptions = '';
@@ -179,25 +181,32 @@ function openAssignmentEditor(empId) {
                   '<div class="list-group-item py-3">' +
                     '<div class="d-flex align-items-center gap-2">' +
                       '<input class="form-check-input m-0 assign-check" type="checkbox" name="assign_indicator_ids[]" value="' + it.indicator_id + '" ' + checked + ' onchange="toggleAssignRowInputs(' + it.indicator_id + ', this.checked)">' +
-                      '<span class="flex-grow-1 fw-semibold small text-dark">' + escapeHtml(it.indicator_description) + '</span>' +
+                      '<span class="flex-grow-1 fw-semibold small text-dark">' + escapeHtml(window.renderIndicatorPreview(it.indicator_description)) + '</span>' +
                       '<span class="text-muted small">Qty:</span>' +
                       '<input type="number" min="1" class="form-control form-control-sm text-center assign-input-' + it.indicator_id + '" style="width:80px;" ' +
-                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + '>' +
+                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" aria-label="Quantity for ' + ariaDesc + '" ' + disabledAttr + '>' +
                     '</div>' +
                     '<div class="row g-2 mt-2 ps-4">' +
                       '<div class="col-md-7">' +
-                        '<input type="text" class="form-control form-control-sm assign-input-' + it.indicator_id + '" ' +
+                        '<input type="text" class="form-control form-control-sm assign-input-' + it.indicator_id + ' assign-desc-input" ' +
                                'name="assign_description_' + it.indicator_id + '" ' +
                                'placeholder="IPCR target description" ' +
+                               'aria-label="IPCR target description for ' + ariaDesc + '" ' +
                                'value="' + desc + '" ' + disabledAttr + '>' +
+                        '<div class="d-flex align-items-center gap-2 mt-1">' +
+                          '<span class="badge bg-light text-secondary assign-auto-badge-' + it.indicator_id + '"' + (it.is_auto_description ? '' : ' hidden') + '><i class="ti ti-wand"></i> Auto</span>' +
+                          '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 assign-auto-reset-' + it.indicator_id + '"' + (it.is_auto_description ? ' hidden' : '') + '><i class="ti ti-rotate"></i> Reset to Auto</button>' +
+                        '</div>' +
+                        '<input type="hidden" name="is_auto_description_' + it.indicator_id + '" value="' + isAutoFlag + '" class="assign-auto-flag-' + it.indicator_id + '">' +
                       '</div>' +
                       '<div class="col-md-5">' +
                         '<div class="d-flex gap-1">' +
                           '<input type="number" min="1" class="form-control form-control-sm text-center assign-input-' + it.indicator_id + '" ' +
                                  'name="assign_dur_value_' + it.indicator_id + '" placeholder="Duration" ' +
+                                 'aria-label="Deadline duration for ' + ariaDesc + '" ' +
                                  'value="' + durVal + '" ' + disabledAttr + '>' +
                           '<select class="form-select form-select-sm assign-input-' + it.indicator_id + '" ' +
-                                  'name="assign_dur_unit_' + it.indicator_id + '" ' + disabledAttr + '>' +
+                                  'name="assign_dur_unit_' + it.indicator_id + '" aria-label="Deadline duration unit for ' + ariaDesc + '" ' + disabledAttr + '>' +
                             unitOptions +
                           '</select>' +
                         '</div>' +
@@ -211,6 +220,25 @@ function openAssignmentEditor(empId) {
 
         // Research only — Extension is distributed to all faculty, not assigned per-person.
         body.innerHTML = section('Research Targets', data.research);
+
+        // Wire live auto-description mirroring for each research row now that the markup exists.
+        if (window.wireAutoDescription) {
+            data.research.forEach(it => {
+                const flagInput = document.querySelector('.assign-auto-flag-' + it.indicator_id);
+                const descField = document.querySelector('input[name="assign_description_' + it.indicator_id + '"]');
+                if (!flagInput || !descField) return;
+                window.wireAutoDescription({
+                    indicatorText: it.indicator_description,
+                    qtyInput: document.querySelector('input[name="assign_quantity_' + it.indicator_id + '"]'),
+                    durValueInput: document.querySelector('input[name="assign_dur_value_' + it.indicator_id + '"]'),
+                    durUnitInput: document.querySelector('select[name="assign_dur_unit_' + it.indicator_id + '"]'),
+                    descField: descField,
+                    autoFlagInput: flagInput,
+                    badgeEl: document.querySelector('.assign-auto-badge-' + it.indicator_id),
+                    resetBtn: document.querySelector('.assign-auto-reset-' + it.indicator_id)
+                });
+            });
+        }
     })
     .catch(err => {
         body.innerHTML = '<div class="alert alert-danger">Error: ' + err + '</div>';
@@ -241,11 +269,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!firstInvalid) { firstInvalid = qtyInp; errorMsg = 'Assigned quantity must be greater than 0.'; }
                 }
 
-                if (descInp && !descInp.value.trim()) {
-                    descInp.classList.add('is-invalid');
-                    isValid = false;
-                    if (!firstInvalid) { firstInvalid = descInp; errorMsg = 'All assigned targets must have an IPCR target description.'; }
-                }
+                // Description is no longer required client-side: it auto-mirrors the
+                // indicator/quantity/duration (see wireAutoDescription in base.html), and the
+                // backend auto-generates it too if it somehow arrives blank.
 
                 if (durInp && (!durInp.value.trim() || parseInt(durInp.value) <= 0)) {
                     durInp.classList.add('is-invalid');
@@ -266,17 +292,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Validation for Research Menu Rules Form
+    // Validation for Research & Extension Menu Rules Form
     const saveRuleForm = document.querySelector('form[action="{{ url_for('ret_chair.ret_chair_save_rule') }}"]');
     if (saveRuleForm) {
         saveRuleForm.addEventListener('submit', function(e) {
-            const checked = saveRuleForm.querySelectorAll('.research-indicator-checkbox:checked');
-            if (checked.length === 0) {
+            const checkedResearch = saveRuleForm.querySelectorAll('.research-indicator-checkbox:checked');
+            const checkedExtension = saveRuleForm.querySelectorAll('.extension-indicator-checkbox:checked');
+            if (checkedResearch.length === 0 && checkedExtension.length === 0) {
                 e.preventDefault();
                 if (window.showCustomAlert) {
-                    showCustomAlert('No Indicators Selected', 'Please select at least one research indicator option for this rank rule.', 'warning');
+                    showCustomAlert('No Indicators Selected', 'Please select at least one Research or Extension indicator for this rank band.', 'warning');
                 } else {
-                    alert('Please select at least one research indicator option for this rank rule.');
+                    alert('Please select at least one Research or Extension indicator for this rank band.');
                 }
                 return;
             }
@@ -287,11 +314,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             saveRuleForm.querySelectorAll('.is-invalid, .border-danger').forEach(el => el.classList.remove('is-invalid', 'border-danger'));
 
-            checked.forEach(cb => {
+            checkedResearch.forEach(cb => {
                 const indId = cb.value;
                 const qtyInp = saveRuleForm.querySelector(`input[name="research_quantity_${indId}"]`);
                 const durInp = saveRuleForm.querySelector(`input[name="research_dur_value_${indId}"]`);
-                const descInp = saveRuleForm.querySelector(`input[name="research_description_${indId}"]`);
 
                 if (qtyInp && (!qtyInp.value || parseInt(qtyInp.value) <= 0)) {
                     qtyInp.classList.add('is-invalid');
@@ -299,11 +325,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!firstInvalid) { firstInvalid = qtyInp; errorMsg = 'Research target quantity must be greater than 0.'; }
                 }
 
-                if (descInp && !descInp.value.trim()) {
-                    descInp.classList.add('is-invalid');
-                    isValid = false;
-                    if (!firstInvalid) { firstInvalid = descInp; errorMsg = 'All selected research targets must have an IPCR target description.'; }
-                }
+                // Description is no longer required client-side: it auto-mirrors the
+                // indicator/quantity/duration (see wireAutoDescription in base.html), and the
+                // backend auto-generates it too if it somehow arrives blank.
 
                 if (durInp && (!durInp.value.trim() || parseInt(durInp.value) <= 0)) {
                     durInp.classList.add('is-invalid');
@@ -312,14 +336,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            checkedExtension.forEach(cb => {
+                const indId = cb.value;
+                const qtyInp = saveRuleForm.querySelector(`input[name="extension_quantity_${indId}"]`);
+                const durInp = saveRuleForm.querySelector(`input[name="extension_dur_value_${indId}"]`);
+
+                if (qtyInp && (!qtyInp.value || parseInt(qtyInp.value) <= 0)) {
+                    qtyInp.classList.add('is-invalid');
+                    isValid = false;
+                    if (!firstInvalid) { firstInvalid = qtyInp; errorMsg = 'Extension target quantity must be greater than 0.'; }
+                }
+
+                if (durInp && (!durInp.value.trim() || parseInt(durInp.value) <= 0)) {
+                    durInp.classList.add('is-invalid');
+                    isValid = false;
+                    if (!firstInvalid) { firstInvalid = durInp; errorMsg = 'All selected Extension targets must have a valid deadline (target duration) specified.'; }
+                }
+            });
+
             if (!isValid) {
                 e.preventDefault();
                 if (window.showCustomAlert) {
-                    showCustomAlert('Incomplete Research Rule', errorMsg || 'Please specify a valid deadline duration and target description for all selected research targets.', 'warning', firstInvalid);
+                    showCustomAlert('Incomplete Menu Rule', errorMsg || 'Please specify a valid deadline duration for all selected targets.', 'warning', firstInvalid);
                 } else {
                     if (firstInvalid) firstInvalid.focus();
-                    alert(errorMsg || 'Please specify a valid deadline duration and target description for all selected research targets.');
+                    alert(errorMsg || 'Please specify a valid deadline duration for all selected targets.');
                 }
+                return;
+            }
+
+            // Saving replaces the selected rank band's entire existing Research rule
+            // (delete-and-rewrite, not a merge); a locked Extension rule is left unchanged
+            // unless unlocked first — confirm before committing to that.
+            const rankSelect = saveRuleForm.querySelector('#academic_rank');
+            const rankLabel = rankSelect && rankSelect.selectedOptions.length ? rankSelect.selectedOptions[0].text : 'this rank band';
+            if (!confirm(`Save the Research & Extension menu rule for ${rankLabel}? This replaces the rank band's entire existing Research rule — any previously configured indicators not checked here will be removed. A locked Extension configuration is skipped unless unlocked first.`)) {
+                e.preventDefault();
             }
         });
     }
@@ -327,13 +379,13 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Assignment Editor Modal (Dual Assignment Workflow) -->
-<div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="assignmentEditorModal" tabindex="-1" aria-hidden="true" aria-labelledby="assignmentEditorModalLabel">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form action="{{ url_for('ret_chair.save_assignments') }}" method="POST">
                 <input type="hidden" name="emp_id" id="assignmentEditorEmpId">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="ti ti-list-check me-2"></i>Assign Research Targets</h5>
+                    <h5 class="modal-title" id="assignmentEditorModalLabel"><i class="ti ti-list-check me-2"></i>Assign Research Targets</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -370,8 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
     <!-- Research Targets Card -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header border-0 py-3"
-            style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-accent) !important;">
-            <h5 class="fw-bold text-primary mb-0"><i class="ti ti-star-filled me-2"></i>Research</h5>
+            style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
+            <h5 role="heading" aria-level="3" class="fw-bold text-primary mb-0"><i class="ti ti-star-filled me-2"></i>Research</h5>
         </div>
         <div class="card-body bg-light rounded-bottom m-0 p-4 border-top">
             <ul class="list-group shadow-sm">
@@ -382,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <span>
                         <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('A. ', '') }}</span>
-                        {{ ind.indicator_description }}
+                        {{ ind.indicator_description | ipcr_preview }}
                     </span>
                     <span class="badge bg-primary px-3 py-2">Quota: {{ ind.dean_quota }}</span>
                 </li>
@@ -401,8 +453,8 @@ document.addEventListener('DOMContentLoaded', function() {
     <!-- Extension Targets Card -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header border-0 py-3"
-            style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-warning) !important;">
-            <h5 class="fw-bold text-warning mb-0"><i class="ti ti-tools me-2"></i>Extension Services / Training /
+            style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important;">
+            <h5 role="heading" aria-level="3" class="fw-bold text-warning mb-0"><i class="ti ti-tools me-2"></i>Extension Services / Training /
                 Advisory</h5>
         </div>
         <div class="card-body bg-light rounded-bottom m-0 p-4 border-top">
@@ -414,7 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li class="list-group-item d-flex justify-content-between align-items-center py-3">
                     <span>
                         <span class="badge bg-light text-dark border me-2">{{ ind.category_name | replace('B. ', '') }}</span>
-                        {{ ind.indicator_description }}
+                        {{ ind.indicator_description | ipcr_preview }}
                     </span>
                     <span class="badge bg-primary px-3 py-2">Quota: {{ ind.dean_quota }}</span>
                 </li>
@@ -448,10 +500,10 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 
     <!-- Direct Research Assignment (relocated from the old Faculty RET Access panel) -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-accent) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="fw-bold mb-0 text-primary">
+                <h5 role="heading" aria-level="3" class="fw-bold mb-0 text-primary">
                     <i class="ti ti-users-group me-2"></i>Assign Research Targets to Faculty
                 </h5>
                 <small class="text-muted">Every regular faculty may self-select Research. Use this to directly assign
@@ -516,9 +568,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important;">
         <div class="card-header bg-white border-0 py-3">
-            <h5 class="fw-bold mb-0 text-success">
+            <h5 role="heading" aria-level="3" class="fw-bold mb-0 text-success">
                 <i class="ti ti-world me-2"></i>RET Targets with Quotas
             </h5>
             <small class="text-muted">Track how cascaded RET targets are distributed across your sector profile and
@@ -537,8 +589,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="p-3 mb-4 rounded border shadow-sm bg-white">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                     <div style="flex: 1; min-width: 250px;">
-                        <h6 class="fw-bold text-dark mb-1">
-                            <i class="ti ti-target text-success me-1"></i> {{ ind.indicator_description }}
+                        <h6 role="heading" aria-level="4" class="fw-bold text-dark mb-1">
+                            <i class="ti ti-target text-success me-1"></i> {{ ind.indicator_description | ipcr_preview }}
                         </h6>
                         <span class="badge bg-secondary small">{{ title }}</span>
                     </div>
@@ -645,40 +697,34 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Phase 2: Menu Configuration -->
 <div id="nav-phase2" class="dashboard-section">
     <div class="page-header">
-        <h2>Phase 2: Research Menu Configuration</h2>
-        <p>Map the cascaded targets to specific academic ranks to create dynamic faculty menus.</p>
+        <h2>Phase 2: Research &amp; Extension Menu Configuration</h2>
+        <p>Map the cascaded targets to Academic Rank Bands to create dynamic faculty menus.</p>
     </div>
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold text-dark mb-0">Phase 2: Research Menu Configuration</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Phase 2: Research &amp; Extension Menu Configuration</h5>
             <span class="badge bg-primary"><i class="ti ti-settings me-1"></i> Setup Rules</span>
         </div>
         <div class="card-body">
-            <p class="text-muted small mb-4">Map the registered Research targets to specific academic ranks to generate
-                the faculty Research selection menus. (Extension is distributed to all faculty, not rank-based.)</p>
+            <p class="text-muted small mb-4">Map the registered Research and Extension targets to an Academic Rank Band
+                to generate the faculty menus. Research is an optional self-selection up to the required count;
+                Extension is locked/mandatory for every faculty member in that band. Saving an Extension configuration
+                locks it — use the Unlock button to make a correction.</p>
             <form action="{{ url_for('ret_chair.ret_chair_save_rule') }}" method="POST">
                 <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
 
                 <div class="row mb-4">
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">1. Select Academic Rank</label>
+                        <label class="form-label fw-bold">1. Select Academic Rank Band</label>
                         <select class="form-select shadow-sm border-primary" id="academic_rank" name="academic_rank"
                             required>
-                            <option selected disabled value="">-- Choose Rank --</option>
-                            <option value="Instructor I">Instructor I</option>
-                            <option value="Instructor II">Instructor II</option>
-                            <option value="Instructor III">Instructor III</option>
-                            <option value="Assistant Professor I">Assistant Professor I</option>
-                            <option value="Assistant Professor II">Assistant Professor II</option>
-                            <option value="Assistant Professor III">Assistant Professor III</option>
-                            <option value="Assistant Professor IV">Assistant Professor IV</option>
-                            <option value="Associate Professor I">Associate Professor I</option>
-                            <option value="Associate Professor II">Associate Professor II</option>
-                            <option value="Associate Professor III">Associate Professor III</option>
-                            <option value="Associate Professor IV">Associate Professor IV</option>
-                            <option value="Associate Professor V">Associate Professor V</option>
+                            <option selected disabled value="">-- Choose Rank Band --</option>
+                            {% for band in rank_bands %}
+                            <option value="{{ band }}" data-count="{{ faculty_rank_counts.get(band, 0) }}">{{ band }}</option>
+                            {% endfor %}
                         </select>
+                        <div class="form-text small"><span id="rankFacultyCountBadge" class="badge bg-light text-dark border"></span></div>
                     </div>
                     <div class="col-md-8">
                         <label class="form-label fw-bold text-primary"><i class="ti ti-star-filled me-1"></i>Research
@@ -695,11 +741,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <!-- Research Indicators -->
                         <div class="col-md-12 mb-3">
                             <div class="card shadow-sm border-0 h-100"
-                                style="border-top: 3px solid var(--c-accent) !important;">
+                                style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
                                 <div class="card-header bg-light py-2">
-                                    <h6 class="fw-bold text-primary mb-0 small">Research Options</h6>
+                                    <h6 role="heading" aria-level="4" class="fw-bold text-primary mb-0 small">Research Options</h6>
                                 </div>
-                                <ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+                                <ul class="list-group list-group-flush scroll-box-sm">
                                     {% set ns_r = namespace(found=false) %}
                                     {% for ind in ret_indicators %}
                                     {% if ind.category_name == 'A. Research' %}
@@ -712,7 +758,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                     type="checkbox" id="ind_{{ ind.indicator_id }}"
                                                     name="research_indicator_ids[]" value="{{ ind.indicator_id }}">
                                                 <label class="form-check-label" for="ind_{{ ind.indicator_id }}">
-                                                    {{ ind.indicator_description }}
+                                                    {{ ind.indicator_description | ipcr_preview }}
                                                 </label>
                                             </div>
                                             <div style="width: 80px;">
@@ -724,12 +770,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                         {# IPCR description + target duration — needed so research targets
                                            can be scored for Timeliness and render an accomplishment sentence. #}
-                                        <div class="row g-2 mt-1 ps-4 research-detail-row" id="detail_{{ ind.indicator_id }}">
+                                        <div class="row g-2 mt-1 ps-4 research-detail-row" id="detail_{{ ind.indicator_id }}" data-indicator-text="{{ ind.indicator_description | e }}">
                                             <div class="col-md-7">
-                                                <input type="text" class="form-control form-control-sm research-detail-input"
+                                                <input type="text" class="form-control form-control-sm research-detail-input research-desc-input"
                                                     name="research_description_{{ ind.indicator_id }}"
                                                     placeholder="IPCR target description (e.g. 1 research paper published in 6 months)"
                                                     disabled>
+                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                    <span class="badge bg-light text-secondary research-auto-badge"><i class="ti ti-wand"></i> Auto</span>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 research-auto-reset" hidden><i class="ti ti-rotate"></i> Reset to Auto</button>
+                                                </div>
+                                                <input type="hidden" name="research_auto_{{ ind.indicator_id }}" value="1" class="research-auto-flag">
                                             </div>
                                             <div class="col-md-5">
                                                 <div class="d-flex gap-1">
@@ -756,14 +807,115 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </ul>
                             </div>
                         </div>
+
+                        <!-- Extension Indicators -->
+                        <div class="col-md-12 mb-3">
+                            <div class="card shadow-sm border-0 h-100"
+                                style="border-top: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important;">
+                                <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                                    <h6 role="heading" aria-level="4" class="fw-bold text-warning mb-0 small">Extension Options
+                                        <span class="badge bg-secondary ms-1" id="extensionLockBadge" hidden><i class="ti ti-lock"></i> Locked</span>
+                                    </h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-warning py-0" onclick="autoDivideAllExtension()">
+                                            <i class="ti ti-divide"></i> Auto Divide All
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0" id="unlockExtensionBtn" hidden onclick="unlockExtensionRule()">
+                                            <i class="ti ti-lock-open"></i> Unlock to Edit
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="px-3 pt-2">
+                                    <p class="text-muted small mb-1">Extension targets are <strong>mandatory / locked</strong> on the faculty dashboard for this rank band — not self-selected. Auto Divide sets the quantity to Dean quota &divide; total regular faculty (org-wide).</p>
+                                </div>
+                                <ul class="list-group list-group-flush scroll-box-sm">
+                                    {% set ns_e = namespace(found=false) %}
+                                    {% for ind in ret_indicators %}
+                                    {% if ind.category_name == 'B. Extension Services / Training / Advisory' %}
+                                    {% set ns_e.found = true %}
+                                    <li class="list-group-item py-2 small">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-start" style="flex: 1; padding-right: 15px;">
+                                                <input
+                                                    class="form-check-input me-2 indicator-checkbox extension-indicator-checkbox"
+                                                    type="checkbox" id="extind_{{ ind.indicator_id }}"
+                                                    name="extension_indicator_ids[]" value="{{ ind.indicator_id }}">
+                                                <label class="form-check-label" for="extind_{{ ind.indicator_id }}">
+                                                    {{ ind.indicator_description | ipcr_preview }}
+                                                    {% if ind.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ind.dean_quota }}</span>{% endif %}
+                                                </label>
+                                            </div>
+                                            <div class="d-flex align-items-center" style="width: 160px; gap: 4px;">
+                                                <input type="number" class="form-control form-control-sm text-center"
+                                                    id="extqty_{{ ind.indicator_id }}"
+                                                    name="extension_quantity_{{ ind.indicator_id }}" value="1" min="1"
+                                                    disabled placeholder="Qty" data-dean-quota="{{ ind.dean_quota or '' }}">
+                                                <button type="button" class="btn btn-sm btn-outline-warning py-0 px-1 extension-auto-divide-btn"
+                                                    data-indicator-id="{{ ind.indicator_id }}"
+                                                    title="Auto Divide: Dean quota &divide; total regular faculty"
+                                                    onclick="autoDivideExtension({{ ind.indicator_id }})" disabled>
+                                                    <i class="ti ti-divide"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="row g-2 mt-1 ps-4 extension-detail-row" id="extdetail_{{ ind.indicator_id }}" data-indicator-text="{{ ind.indicator_description | e }}">
+                                            <div class="col-md-7">
+                                                <input type="text" class="form-control form-control-sm extension-detail-input extension-desc-input"
+                                                    name="extension_description_{{ ind.indicator_id }}"
+                                                    placeholder="IPCR target description (e.g. 1 extension project for community partners in 6 months)"
+                                                    disabled>
+                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                    <span class="badge bg-light text-secondary extension-auto-badge"><i class="ti ti-wand"></i> Auto</span>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 extension-auto-reset" hidden><i class="ti ti-rotate"></i> Reset to Auto</button>
+                                                </div>
+                                                <input type="hidden" name="extension_auto_{{ ind.indicator_id }}" value="1" class="extension-auto-flag">
+                                            </div>
+                                            <div class="col-md-5">
+                                                <div class="d-flex gap-1">
+                                                    <input type="number" min="1"
+                                                        class="form-control form-control-sm text-center extension-detail-input"
+                                                        name="extension_dur_value_{{ ind.indicator_id }}"
+                                                        placeholder="Duration" disabled>
+                                                    <select class="form-select form-select-sm extension-detail-input"
+                                                        name="extension_dur_unit_{{ ind.indicator_id }}" disabled>
+                                                        {% for u in ['days', 'weeks', 'months', 'semesters'] %}
+                                                        <option value="{{ u }}" {% if u == 'months' %}selected{% endif %}>{{ u }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    {% endif %}
+                                    {% endfor %}
+                                    {% if not ns_e.found %}
+                                    <li class="list-group-item py-2 text-muted small">No Extension indicators available.
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="text-end border-top pt-3">
-                    <button type="submit" id="save_rule_btn" class="btn btn-primary fw-bold px-4 shadow-sm"><i
-                            class="ti ti-device-floppy"></i>
-                        Save Menu Rules</button>
+                <div class="border-top pt-3">
+                    <div class="alert alert-warning small py-2 px-3 mb-3">
+                        <i class="ti ti-alert-triangle me-1"></i>
+                        Saving <strong>replaces</strong> the selected rank band's entire existing Research rule. Any
+                        indicators from a previous rule that aren't checked here will be removed. A
+                        <strong>locked</strong> Extension configuration is left unchanged unless you unlock it first;
+                        saving Extension changes re-locks them.
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" id="save_rule_btn" class="btn btn-primary fw-bold px-4 shadow-sm"><i
+                                class="ti ti-device-floppy"></i>
+                            Save Menu Rules</button>
+                    </div>
                 </div>
+            </form>
+            <form id="unlockExtensionForm" action="{{ url_for('ret_chair.ret_chair_unlock_extension_rule') }}" method="POST" class="d-none">
+                <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+                <input type="hidden" name="academic_rank" id="unlockExtensionRank">
             </form>
         </div>
     </div>
@@ -771,7 +923,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <!-- Active Rules — kept in the same panel so editing a rule doesn't jump sections -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white pt-4 pb-2 border-0 d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold text-dark mb-0">Active Research Rules</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Active Research &amp; Extension Rules</h5>
             <span class="badge bg-secondary"><i class="ti ti-list-check me-1"></i> Configured Menus</span>
         </div>
         <div class="card-body">
@@ -780,9 +932,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <table class="table table-hover align-middle shadow-sm border">
                     <thead class="table-light">
                         <tr>
-                            <th>Academic Rank</th>
+                            <th>Academic Rank Band</th>
                             <th class="text-center text-primary">Research Required</th>
                             <th class="text-center">Research Options</th>
+                            <th class="text-center text-warning">Extension Targets</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
@@ -793,18 +946,32 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td class="text-center fw-bold text-primary">{{ rule.research_required }}</td>
                             <td class="text-center">
                                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary"
-                                    title="{% for i in rule.research_indicators %}{{ i.desc }}{% if not loop.last %}&#10;{% endif %}{% endfor %}">
+                                    title="{% for i in rule.research_indicators %}{{ i.desc | ipcr_preview }}{% if not loop.last %}&#10;{% endif %}{% endfor %}">
                                     {{ rule.research_indicators|length }} Options
                                 </span>
+                            </td>
+                            <td class="text-center">
+                                {% if rule.extension_indicators %}
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning"
+                                    title="{% for i in rule.extension_indicators %}{{ i.desc | ipcr_preview }}{% if not loop.last %}&#10;{% endif %}{% endfor %}">
+                                    {{ rule.extension_indicators|length }} Locked
+                                </span>
+                                {% if rule.extension_locked %}
+                                <span class="badge bg-secondary ms-1"><i class="ti ti-lock"></i></span>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted small">None</span>
+                                {% endif %}
                             </td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">
                                     <button type="button" class="btn btn-sm btn-outline-primary px-3"
-                                        onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}, desc_text: {{ (i.target_description or "") | tojson }}, dur_value: {{ i.duration_value if i.duration_value else "null" }}, dur_unit: {{ (i.duration_unit or "") | tojson }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
+                                        onclick='editRule("{{ rule.academic_rank }}", {{ rule.research_required }}, [{% for i in rule.research_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}, desc_text: {{ (i.target_description or "") | tojson }}, dur_value: {{ i.duration_value if i.duration_value else "null" }}, dur_unit: {{ (i.duration_unit or "") | tojson }}, is_auto: {{ "true" if i.is_auto_description else "false" }}}{% if not loop.last %}, {% endif %}{% endfor %}], [{% for i in rule.extension_indicators %}{id: {{ i.id }}, qty: {{ i.qty }}, desc_text: {{ (i.target_description or "") | tojson }}, dur_value: {{ i.duration_value if i.duration_value else "null" }}, dur_unit: {{ (i.duration_unit or "") | tojson }}, is_auto: {{ "true" if i.is_auto_description else "false" }}}{% if not loop.last %}, {% endif %}{% endfor %}])'>
                                         <i class="ti ti-pencil me-1"></i>Edit
                                     </button>
                                     <form method="POST" action="{{ url_for('ret_chair.ret_chair_delete_rule') }}"
-                                        class="m-0" onsubmit="return confirm('Delete all RET rules for this rank?');">
+                                        class="m-0" onsubmit="confirmDeleteRetRule(this, '{{ rule.academic_rank | e }}'); return false;">
+                                        <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
                                         <input type="hidden" name="rule_id" value="{{ rule.rule_id }}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger px-3"><i
                                                 class="ti ti-trash me-1"></i>Delete</button>
@@ -814,7 +981,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted">No menu rules configured yet.</td>
+                            <td colspan="5" class="text-center text-muted">No menu rules configured yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -823,173 +990,6 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 
-    <!-- Distribute Extension Targets to all regular faculty -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
-        <form action="{{ url_for('ret_chair.save_extension_distribution') }}" method="POST">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-start">
-                <div>
-                    <h5 class="fw-bold mb-0 text-warning">
-                        <i class="ti ti-tools me-2"></i>Distribute Extension Targets to All Faculty
-                    </h5>
-                    <small class="text-muted">All Extension targets are distributed equally to every regular
-                        faculty across all specializations. Set the per-faculty quantity, description and
-                        duration for each. This is a one-time action and locks once distributed.</small>
-                </div>
-                {% if extension_locked %}
-                <span class="badge bg-secondary px-3 py-2"><i class="ti ti-lock me-1"></i>Distributed &amp; Locked</span>
-                {% endif %}
-            </div>
-            <div class="card-body">
-                {% if extension_locked %}
-                <div class="alert alert-secondary border-0 small py-2 mb-3">
-                    <i class="ti ti-info-circle me-1"></i>Extension has been distributed for this term and can no longer be changed.
-                </div>
-                {% endif %}
-                {% if extension_distribution %}
-                <div class="list-group mb-3">
-                    {% for ext in extension_distribution %}
-                    <div class="list-group-item">
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="hidden" name="ext_indicator_ids[]" value="{{ ext.indicator_id }}">
-                            <i class="ti ti-broadcast text-warning"></i>
-                            <span class="flex-grow-1 fw-semibold small">{{ ext.indicator_description }}
-                                {% if ext.dean_quota %}<span class="badge bg-light text-dark border ms-2">Dean quota: {{ ext.dean_quota }}</span>{% endif %}
-                            </span>
-                            <span class="text-muted small">Qty / faculty</span>
-                            <input type="number" min="1" class="form-control form-control-sm" style="width: 90px;"
-                                   name="ext_quantity_{{ ext.indicator_id }}"
-                                   value="{{ ext.distributed_quantity if ext.distributed_quantity > 0 else 1 }}"
-                                   {% if extension_locked %}disabled{% endif %}>
-                        </div>
-                        {# Description + duration, matching how the Program Chair allocates —
-                           the duration is what makes this target scorable for Timeliness. #}
-                        <div class="row g-2 mt-2 ps-4">
-                            <div class="col-md-7">
-                                <input type="text" class="form-control form-control-sm"
-                                       name="ext_description_{{ ext.indicator_id }}"
-                                       placeholder="IPCR target description"
-                                       value="{{ ext.target_description or '' }}"
-                                       {% if extension_locked %}disabled{% endif %}>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="d-flex gap-1">
-                                    <input type="number" min="1" class="form-control form-control-sm text-center"
-                                           name="ext_dur_value_{{ ext.indicator_id }}" placeholder="Duration"
-                                           value="{{ ext.target_duration_value or '' }}"
-                                           {% if extension_locked %}disabled{% endif %}>
-                                    <select class="form-select form-select-sm"
-                                            name="ext_dur_unit_{{ ext.indicator_id }}"
-                                            {% if extension_locked %}disabled{% endif %}>
-                                        {% for u in ['days', 'weeks', 'months', 'semesters'] %}
-                                        <option value="{{ u }}" {% if ext.target_duration_unit == u %}selected{% elif not ext.target_duration_unit and u == 'months' %}selected{% endif %}>{{ u }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% if not extension_locked %}
-                <div class="text-end">
-                    <button type="button" class="btn btn-warning fw-bold" onclick="showConfirmExtDistModal()">
-                        <i class="ti ti-broadcast me-1"></i>Distribute to All Faculty
-                    </button>
-                </div>
-                {% endif %}
-                {% else %}
-                <div class="text-center py-4 text-muted">
-                    <i class="ti ti-inbox fs-3 d-block mb-2"></i>No Extension indicators configured for this term.
-                </div>
-                {% endif %}
-            </div>
-        </form>
-    </div>
-
-    <!-- Confirm Extension Distribution Modal -->
-    <div class="modal fade" id="confirmExtDistModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-                <div class="modal-header bg-warning text-dark border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                    <h5 class="modal-title fw-bold"><i class="ti ti-alert-triangle me-2"></i>Confirm Extension Distribution</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4 text-center">
-                    <i class="ti ti-broadcast text-warning display-3 d-block mb-3"></i>
-                    <h6 class="fw-bold text-dark mb-2" style="font-size: 1.1rem;">Distribute Extension Targets to ALL Faculty?</h6>
-                    <p class="text-secondary small mb-0">This is a <strong>one-time action</strong> for the active term. Once distributed, extension targets are locked and cannot be edited or redistributed.</p>
-                </div>
-                <div class="modal-footer border-0 p-3 justify-content-center bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                    <button type="button" class="btn btn-secondary fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-warning fw-bold px-4" onclick="submitExtDistForm()">Confirm &amp; Distribute</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script>
-    function showConfirmExtDistModal() {
-        const form = document.querySelector('form[action="{{ url_for('ret_chair.save_extension_distribution') }}"]');
-        if (!form) return;
-
-        let isValid = true;
-        let firstInvalid = null;
-        let errorMsg = '';
-
-        form.querySelectorAll('.is-invalid, .border-danger').forEach(el => {
-            el.classList.remove('is-invalid', 'border-danger');
-        });
-
-        const items = form.querySelectorAll('.list-group-item');
-        items.forEach(item => {
-            const qtyInp = item.querySelector('input[name^="ext_quantity_"]');
-            const durInp = item.querySelector('input[name^="ext_dur_value_"]');
-            const descInp = item.querySelector('input[name^="ext_description_"]');
-
-            if (qtyInp && (!qtyInp.value || parseInt(qtyInp.value) <= 0)) {
-                qtyInp.classList.add('is-invalid');
-                isValid = false;
-                if (!firstInvalid) {
-                    firstInvalid = qtyInp;
-                    errorMsg = 'Extension quantity must be greater than 0.';
-                }
-            }
-
-            if (durInp && (!durInp.value.trim() || parseInt(durInp.value) <= 0)) {
-                durInp.classList.add('is-invalid');
-                isValid = false;
-                if (!firstInvalid) {
-                    firstInvalid = durInp;
-                    errorMsg = 'All extension targets must have a valid deadline (target duration) specified.';
-                }
-            }
-
-            if (descInp && !descInp.value.trim()) {
-                descInp.classList.add('is-invalid');
-                isValid = false;
-                if (!firstInvalid) {
-                    firstInvalid = descInp;
-                    errorMsg = 'All extension targets must have an IPCR target description.';
-                }
-            }
-        });
-
-        if (!isValid) {
-            if (window.showCustomAlert) {
-                showCustomAlert('Incomplete Extension Distribution', errorMsg || 'Please specify a valid deadline duration and target description for all extension targets.', 'warning', firstInvalid);
-            } else {
-                if (firstInvalid) firstInvalid.focus();
-                alert(errorMsg || 'Please specify a valid deadline duration and target description for all extension targets.');
-            }
-            return;
-        }
-
-        new bootstrap.Modal(document.getElementById('confirmExtDistModal')).show();
-    }
-    function submitExtDistForm() {
-        const form = document.querySelector('form[action="{{ url_for('ret_chair.save_extension_distribution') }}"]');
-        if (form) form.submit();
-    }
-    </script>
 </div>
 
 <!-- Phase 4: Commitment Verification -->
@@ -1003,12 +1003,20 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="badge bg-warning text-dark"><i class="ti ti-user-check me-1"></i> Commitments</span>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <div></div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="commitmentVerificationSearch" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterCommitmentVerificationTable()">
+            </div>
+        </div>
         <div class="card-body">
             <p class="text-muted small">Review and approve the specific research and extension targets selected by
                 faculty members for this semester.</p>
             <div class="table-responsive">
-                <table class="table table-hover align-middle border shadow-sm">
+                <table class="table table-hover align-middle border shadow-sm" id="commitmentVerificationTable">
                     <thead class="table-dark">
                         <tr>
                             <th>Faculty Name</th>
@@ -1077,17 +1085,35 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 
+    <script>
+    function filterCommitmentVerificationTable() {
+        const input = document.getElementById('commitmentVerificationSearch').value.toLowerCase();
+        document.querySelectorAll('#commitmentVerificationTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) { return; }
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+    </script>
+
     <!-- Approved RET Selections Table -->
     <div class="page-header mt-5">
         <h2>Approved RET Choices</h2>
         <p>Faculty members whose research and extension targets have been approved and verified.</p>
     </div>
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <div></div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="approvedRetChoicesSearch" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterApprovedRetChoicesTable()">
+            </div>
+        </div>
         <div class="card-body">
             <p class="text-muted small">The following faculty members have had their RET selections verified and
                 approved by you.</p>
             <div class="table-responsive">
-                <table class="table table-hover align-middle border shadow-sm">
+                <table class="table table-hover align-middle border shadow-sm" id="approvedRetChoicesTable">
                     <thead class="table-dark">
                         <tr>
                             <th>Faculty Name</th>
@@ -1133,12 +1159,22 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
     </div>
+
+    <script>
+    function filterApprovedRetChoicesTable() {
+        const input = document.getElementById('approvedRetChoicesSearch').value.toLowerCase();
+        document.querySelectorAll('#approvedRetChoicesTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) { return; }
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+    </script>
 </div>
 
 <!-- RET REVIEW MODAL -->
 <div class="modal fade" id="reviewRetModal" tabindex="-1" aria-labelledby="reviewRetModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+        <div class="modal-content border-0 shadow-lg card-rounded-clip">
             <!-- Modal Header -->
             <div class="modal-header border-0 py-3"
                 style="background: var(--c-indigo);">
@@ -1270,9 +1306,84 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endif %}
 
 <script>
+    // Total regular faculty org-wide — the shared Auto Divide denominator for every rank band.
+    const TOTAL_REGULAR_FACULTY = {{ total_regular_faculty|default(0) }};
+    // Per-rank-band Extension lock status, so both a manual rank pick and editRule() can tell
+    // whether the Extension panel should stay disabled until explicitly unlocked.
+    const RET_EXTENSION_LOCK_BY_RANK = {
+        {% for rule in ret_rules %}{{ rule.academic_rank | tojson }}: {{ 'true' if rule.extension_locked else 'false' }}{% if not loop.last %}, {% endif %}{% endfor %}
+    };
+
+    function computeAutoDivideQty(deanQuota) {
+        const quota = parseInt(deanQuota, 10);
+        if (!quota || quota <= 0 || !TOTAL_REGULAR_FACULTY) return 1;
+        return Math.max(1, Math.ceil(quota / TOTAL_REGULAR_FACULTY));
+    }
+
+    function autoDivideExtension(indicatorId) {
+        const qtyInput = document.getElementById('extqty_' + indicatorId);
+        if (!qtyInput || qtyInput.disabled) return;
+        qtyInput.value = computeAutoDivideQty(qtyInput.dataset.deanQuota);
+        qtyInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function autoDivideAllExtension() {
+        document.querySelectorAll('.extension-indicator-checkbox:checked').forEach(cb => {
+            autoDivideExtension(cb.value);
+        });
+    }
+
+    function unlockExtensionRule() {
+        const rankSelect = document.getElementById('academic_rank');
+        const rank = rankSelect ? rankSelect.value : '';
+        if (!rank) return;
+        if (!confirm(`Unlock the Extension configuration for ${rank}? You'll need to save it again afterward, which re-locks it.`)) return;
+        document.getElementById('unlockExtensionRank').value = rank;
+        document.getElementById('unlockExtensionForm').submit();
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         const rankSelect = document.getElementById('academic_rank');
-        const checkboxes = document.querySelectorAll('.indicator-checkbox');
+        const researchCheckboxes = document.querySelectorAll('.research-indicator-checkbox');
+        const extensionCheckboxes = document.querySelectorAll('.extension-indicator-checkbox');
+
+        // Auto-generated IPCR target description for each Research Menu Rules row.
+        if (window.wireAutoDescription) {
+            document.querySelectorAll('.research-detail-row[data-indicator-text]').forEach(function (row) {
+                const descField = row.querySelector('.research-desc-input');
+                const flagInput = row.querySelector('.research-auto-flag');
+                if (!descField || !flagInput) return;
+                window.wireAutoDescription({
+                    indicatorText: row.dataset.indicatorText,
+                    qtyInput: document.getElementById('qty_' + row.id.replace('detail_', '')),
+                    durValueInput: row.querySelector('input[name^="research_dur_value_"]'),
+                    durUnitInput: row.querySelector('select[name^="research_dur_unit_"]'),
+                    descField: descField,
+                    autoFlagInput: flagInput,
+                    badgeEl: row.querySelector('.research-auto-badge'),
+                    resetBtn: row.querySelector('.research-auto-reset')
+                });
+            });
+        }
+
+        // Auto-generated IPCR target description for each Extension Menu row.
+        if (window.wireAutoDescription) {
+            document.querySelectorAll('.extension-detail-row[data-indicator-text]').forEach(function (row) {
+                const descField = row.querySelector('.extension-desc-input');
+                const flagInput = row.querySelector('.extension-auto-flag');
+                if (!descField || !flagInput) return;
+                window.wireAutoDescription({
+                    indicatorText: row.dataset.indicatorText,
+                    qtyInput: document.getElementById('extqty_' + row.id.replace('extdetail_', '')),
+                    durValueInput: row.querySelector('input[name^="extension_dur_value_"]'),
+                    durUnitInput: row.querySelector('select[name^="extension_dur_unit_"]'),
+                    descField: descField,
+                    autoFlagInput: flagInput,
+                    badgeEl: row.querySelector('.extension-auto-badge'),
+                    resetBtn: row.querySelector('.extension-auto-reset')
+                });
+            });
+        }
 
         // Enable/disable the per-indicator detail fields (description + duration) alongside
         // its quantity input.
@@ -1291,26 +1402,80 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        function setExtensionIndicatorFields(indicatorId, enabled) {
+            const qtyInput = document.getElementById('extqty_' + indicatorId);
+            if (qtyInput) {
+                qtyInput.disabled = !enabled;
+                if (!enabled) qtyInput.value = 1;
+            }
+            const divideBtn = document.querySelector('.extension-auto-divide-btn[data-indicator-id="' + indicatorId + '"]');
+            if (divideBtn) divideBtn.disabled = !enabled;
+            const detail = document.getElementById('extdetail_' + indicatorId);
+            if (detail) {
+                detail.querySelectorAll('.extension-detail-input').forEach(el => {
+                    el.disabled = !enabled;
+                    if (!enabled && el.tagName !== 'SELECT') el.value = '';
+                });
+            }
+        }
+
+        function updateRankFacultyBadge() {
+            const badge = document.getElementById('rankFacultyCountBadge');
+            if (!badge || !rankSelect) return;
+            const opt = rankSelect.selectedOptions[0];
+            badge.textContent = (opt && opt.dataset.count !== undefined) ? (opt.dataset.count + ' Regular Faculty in this Band') : '';
+        }
+
+        function isExtensionLockedForCurrentRank() {
+            return !!RET_EXTENSION_LOCK_BY_RANK[rankSelect.value];
+        }
+
+        function updateExtensionLockUI() {
+            const locked = rankSelect.value ? isExtensionLockedForCurrentRank() : false;
+            const lockBadge = document.getElementById('extensionLockBadge');
+            const unlockBtn = document.getElementById('unlockExtensionBtn');
+            if (lockBadge) lockBadge.hidden = !locked;
+            if (unlockBtn) unlockBtn.hidden = !locked;
+            return locked;
+        }
+
         function toggleCheckboxes() {
             const rankVal = rankSelect.value;
             const disabled = !rankVal;
+            const extensionLocked = updateExtensionLockUI();
 
-            // Only lock/unlock based on whether a rank is selected.
-            // The "Required" count controls how many faculty MUST pick,
-            // NOT which indicators the chair can make available.
-            checkboxes.forEach(cb => {
+            // Only lock/unlock Research based on whether a rank band is selected. The
+            // "Required" count controls how many faculty MUST pick, NOT which indicators
+            // the chair can make available.
+            researchCheckboxes.forEach(cb => {
                 cb.disabled = disabled;
                 if (disabled) {
                     cb.checked = false;
                     setIndicatorFields(cb.value, false);
                 }
             });
+
+            // Extension is additionally gated on the rank band's lock status.
+            extensionCheckboxes.forEach(cb => {
+                cb.disabled = disabled || extensionLocked;
+                if (disabled) {
+                    cb.checked = false;
+                    setExtensionIndicatorFields(cb.value, false);
+                }
+            });
+
+            updateRankFacultyBadge();
         }
 
         // Toggle quantity/detail inputs based on checkbox state
-        checkboxes.forEach(cb => {
+        researchCheckboxes.forEach(cb => {
             cb.addEventListener('change', function () {
                 setIndicatorFields(cb.value, cb.checked);
+            });
+        });
+        extensionCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function () {
+                setExtensionIndicatorFields(cb.value, cb.checked);
             });
         });
 
@@ -1320,7 +1485,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    function editRule(rank, researchCount, researchIds) {
+    function editRule(rank, researchCount, researchIds, extensionIds) {
+        extensionIds = extensionIds || [];
+
         // Automatically switch to Phase 2 (Menu Config) section
         if (typeof showSection === 'function') {
             showSection('nav-phase2');
@@ -1335,13 +1502,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('academic_rank').value = rank;
         document.getElementById('research_selections').value = researchCount;
 
-        // Trigger the toggle to enable checkboxes
+        // Trigger the toggle to enable checkboxes (and refresh the Extension lock UI for this rank)
         const event = new Event('change');
         document.getElementById('academic_rank').dispatchEvent(event);
 
+        const extensionLocked = !!RET_EXTENSION_LOCK_BY_RANK[rank];
+
         // Uncheck and disable everything first
-        const checkboxes = document.querySelectorAll('.indicator-checkbox');
-        checkboxes.forEach(cb => {
+        document.querySelectorAll('.research-indicator-checkbox').forEach(cb => {
             cb.checked = false;
             const qtyInput = document.getElementById('qty_' + cb.value);
             if (qtyInput) {
@@ -1354,11 +1522,40 @@ document.addEventListener('DOMContentLoaded', function() {
                     el.disabled = true;
                     if (el.tagName !== 'SELECT') el.value = '';
                 });
+                const flagEl = detail.querySelector('.research-auto-flag');
+                const badgeEl = detail.querySelector('.research-auto-badge');
+                const resetEl = detail.querySelector('.research-auto-reset');
+                if (flagEl) flagEl.value = '1';
+                if (badgeEl) badgeEl.hidden = false;
+                if (resetEl) resetEl.hidden = true;
+            }
+        });
+        document.querySelectorAll('.extension-indicator-checkbox').forEach(cb => {
+            cb.checked = false;
+            const qtyInput = document.getElementById('extqty_' + cb.value);
+            if (qtyInput) {
+                qtyInput.value = 1;
+                qtyInput.disabled = true;
+            }
+            const divideBtn = document.querySelector('.extension-auto-divide-btn[data-indicator-id="' + cb.value + '"]');
+            if (divideBtn) divideBtn.disabled = true;
+            const detail = document.getElementById('extdetail_' + cb.value);
+            if (detail) {
+                detail.querySelectorAll('.extension-detail-input').forEach(el => {
+                    el.disabled = true;
+                    if (el.tagName !== 'SELECT') el.value = '';
+                });
+                const flagEl = detail.querySelector('.extension-auto-flag');
+                const badgeEl = detail.querySelector('.extension-auto-badge');
+                const resetEl = detail.querySelector('.extension-auto-reset');
+                if (flagEl) flagEl.value = '1';
+                if (badgeEl) badgeEl.hidden = false;
+                if (resetEl) resetEl.hidden = true;
             }
         });
 
-        // Restore the previously selected indicators with their quantity, description
-        // and target duration.
+        // Restore the previously selected Research indicators with their quantity,
+        // description and target duration.
         researchIds.forEach(item => {
             const id = item.id;
             const cb = document.getElementById('ind_' + id);
@@ -1378,6 +1575,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (descEl) descEl.value = item.desc_text || '';
                 if (durEl) durEl.value = (item.dur_value != null) ? item.dur_value : '';
                 if (unitEl && item.dur_unit) unitEl.value = item.dur_unit;
+
+                // Restore the auto/customized state this row was saved with, so editing an
+                // existing rule doesn't silently overwrite a description the RET Chair
+                // deliberately customized (or start mirroring one that wasn't).
+                const flagEl = detail.querySelector('.research-auto-flag');
+                const badgeEl = detail.querySelector('.research-auto-badge');
+                const resetEl = detail.querySelector('.research-auto-reset');
+                if (flagEl) {
+                    flagEl.value = item.is_auto ? '1' : '0';
+                    if (badgeEl) badgeEl.hidden = !item.is_auto;
+                    if (resetEl) resetEl.hidden = !!item.is_auto;
+                }
+            }
+        });
+
+        // Restore the previously configured Extension indicators. If this rank band's
+        // Extension is locked, populate for display but leave everything disabled — the
+        // RET Chair must Unlock before editing.
+        extensionIds.forEach(item => {
+            const id = item.id;
+            const cb = document.getElementById('extind_' + id);
+            if (!cb) return;
+            cb.checked = true;
+            cb.disabled = extensionLocked;
+            const qtyInput = document.getElementById('extqty_' + id);
+            if (qtyInput) {
+                qtyInput.value = item.qty;
+                qtyInput.disabled = extensionLocked;
+            }
+            const divideBtn = document.querySelector('.extension-auto-divide-btn[data-indicator-id="' + id + '"]');
+            if (divideBtn) divideBtn.disabled = extensionLocked;
+            const detail = document.getElementById('extdetail_' + id);
+            if (detail) {
+                detail.querySelectorAll('.extension-detail-input').forEach(el => { el.disabled = extensionLocked; });
+                const descEl = detail.querySelector(`[name="extension_description_${id}"]`);
+                const durEl = detail.querySelector(`[name="extension_dur_value_${id}"]`);
+                const unitEl = detail.querySelector(`[name="extension_dur_unit_${id}"]`);
+                if (descEl) descEl.value = item.desc_text || '';
+                if (durEl) durEl.value = (item.dur_value != null) ? item.dur_value : '';
+                if (unitEl && item.dur_unit) unitEl.value = item.dur_unit;
+
+                const flagEl = detail.querySelector('.extension-auto-flag');
+                const badgeEl = detail.querySelector('.extension-auto-badge');
+                const resetEl = detail.querySelector('.extension-auto-reset');
+                if (flagEl) {
+                    flagEl.value = item.is_auto ? '1' : '0';
+                    if (badgeEl) badgeEl.hidden = !item.is_auto;
+                    if (resetEl) resetEl.hidden = !!item.is_auto;
+                }
             }
         });
 
@@ -1415,18 +1661,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    console.log("[DEBUG] RET script loaded.");
-
     document.addEventListener('DOMContentLoaded', function () {
-        console.log("[DEBUG] DOMContentLoaded in RET logic. Attaching listeners...");
         // Open modal and fetch review data
         const buttons = document.querySelectorAll('.open-ret-review-modal');
-        console.log("[DEBUG] Found " + buttons.length + " buttons with class .open-ret-review-modal");
         buttons.forEach(function (btn) {
-            console.log("[DEBUG] Attaching click listener to button for empId:", btn.dataset.empId);
             btn.addEventListener('click', function () {
                 const empId = this.dataset.empId;
-                console.log("[DEBUG] Review RET button clicked! empId:", empId);
                 loadRetReviewModal(empId);
             });
         });
@@ -1467,7 +1707,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function loadRetReviewModal(empId) {
-        console.log("[DEBUG] loadRetReviewModal called with empId:", empId);
         // Reset modal to loading state
         document.getElementById('retModalLoader').style.display = 'block';
         document.getElementById('retModalBody').style.display = 'none';
@@ -1480,15 +1719,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('retUnpickedItemsBody').innerHTML = '';
 
         const url = `/ret_chair/review_ipcr/${empId}`;
-        console.log("[DEBUG] Fetching URL:", url);
 
         fetch(url)
             .then(function (res) {
-                console.log("[DEBUG] Fetch response status:", res.status);
                 return res.json();
             })
             .then(function (data) {
-                console.log("[DEBUG] Fetch response data parsed:", data);
                 if (data.error) {
                     document.getElementById('retModalLoader').style.display = 'none';
                     alert('Error loading IPCR RET choices: ' + data.error);
@@ -1499,7 +1735,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 populateRetModal(data);
             })
             .catch(function (err) {
-                console.error("[DEBUG] Fetch caught error:", err);
+                console.error("Failed to load RET review data:", err);
                 document.getElementById('retModalLoader').style.display = 'none';
                 alert('Network error: ' + err);
             });
@@ -1571,7 +1807,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return a.indicator_id - b.indicator_id;
         });
 
-        // Distributed Extension targets — read-only (chair-distributed to all faculty)
+        // Rank-band Extension targets — read-only (RET-Chair-configured per rank band)
         const extensionItems = (retReviewData && retReviewData.extension) ? retReviewData.extension : [];
 
         if (activeItems.length === 0 && extensionItems.length === 0) {
@@ -1601,11 +1837,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const origQtyDisplay = item.original_quantity === -1
                 ? '0'
                 : item.original_quantity;
+            const previewDesc = window.renderIndicatorPreview(item.indicator_description);
 
             tr.innerHTML = `
                 <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
                 <td>
-                    <div class="small fw-semibold">${item.indicator_description}</div>
+                    <div class="small fw-semibold">${escapeHtml(previewDesc)}</div>
                     ${item.original_quantity === -1 ? '<span class="badge bg-info text-dark mt-1" style="font-size: 0.75rem; width: fit-content; display: block;">Added by RET</span>' : ''}
                 </td>
                 <td class="text-center text-muted">${origQtyDisplay}</td>
@@ -1614,14 +1851,16 @@ document.addEventListener('DOMContentLoaded', function() {
                            value="${item.reviewed_quantity}"
                            min="1"
                            data-indicator-id="${item.indicator_id}"
+                           aria-label="Reviewed quantity for ${escapeHtml(previewDesc)}"
                            ${isDecided ? 'disabled' : ''}>
                 </td>
                 <td>
                     <div class="d-flex align-items-center gap-2">
                         <input type="text" class="form-control form-control-sm ret-item-remarks-input"
-                               value="${item.item_remarks || ''}"
+                               value="${escapeHtml(item.item_remarks || '')}"
                                placeholder="Optional note..."
                                data-indicator-id="${item.indicator_id}" style="flex:1;"
+                               aria-label="Remarks for ${escapeHtml(previewDesc)}"
                                ${isDecided ? 'disabled' : ''}>
                         <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-ret-item-btn"
                                 data-indicator-id="${item.indicator_id}" title="Remove selection"
@@ -1634,8 +1873,8 @@ document.addEventListener('DOMContentLoaded', function() {
             tbody.appendChild(tr);
         });
 
-        // Distributed Extension rows — read-only; the RET Chair distributed these, so no
-        // quantity/remarks editing and no delete action.
+        // Rank-band Extension rows — read-only; configured per rank band by the RET Chair, so
+        // no quantity/remarks editing and no delete action.
         extensionItems.forEach(function (ext) {
             const displayCat = cleanCategoryName(ext.category_name);
             if (displayCat !== lastCategory) {
@@ -1654,7 +1893,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tr.innerHTML = `
                 <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
                 <td>
-                    <div class="small fw-semibold">${ext.indicator_description}</div>
+                    <div class="small fw-semibold">${escapeHtml(window.renderIndicatorPreview(ext.indicator_description))}</div>
                     <span class="badge bg-warning bg-opacity-10 text-warning mt-1" style="font-size: 0.75rem; width: fit-content; display: block;"><i class="ti ti-broadcast me-1"></i>Distributed to all faculty</span>
                 </td>
                 <td class="text-center text-muted">${ext.reviewed_quantity}</td>
@@ -1705,7 +1944,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tr.className = 'table-warning';
             tr.innerHTML = `
                 <td><span class="badge bg-light text-dark border small">${displayCat}</span></td>
-                <td>${ind.indicator_description}</td>
+                <td>${escapeHtml(window.renderIndicatorPreview(ind.indicator_description))}</td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-unpicked-btn fw-bold"
                             data-indicator-id="${ind.indicator_id}"
@@ -1868,6 +2107,18 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.show();
     };
 
+    window.confirmDeleteRetRule = function (formEl, rankLabel) {
+        showCustomRetConfirm({
+            title: "Delete Research Rule?",
+            mainText: `Delete all RET research rules for <strong>${escapeHtml(rankLabel)}</strong>?`,
+            subText: "This cannot be undone — faculty at this rank will lose their configured research menu.",
+            confirmText: "Yes, Delete",
+            confirmClass: "btn-danger",
+            iconClass: "ti-trash",
+            onConfirm: () => formEl.submit()
+        });
+    };
+
     window.submitRetDecision = function (action) {
         const remarksInput = document.getElementById('retOverallRemarks');
         const remarks = remarksInput.value.trim();
@@ -1897,7 +2148,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Custom Confirmation Modal for RET Chair (z-index 1060 to overlay on top of review modal) -->
-<div class="modal fade" id="customRetConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="customRetConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="retConfirmModalTitle" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
@@ -1942,13 +2193,18 @@ document.addEventListener('DOMContentLoaded', function() {
         </span>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-clipboard-check me-2 text-primary"></i>Faculty RET Evidence Submissions</h5>
+            <h5 role="heading" aria-level="3" class="mb-0 fw-bold text-dark"><i class="ti ti-clipboard-check me-2 text-primary"></i>Faculty RET Evidence Submissions</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="retEvidencePendingSearch" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterRetEvidencePendingTable()">
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0" id="retEvidencePendingTable">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Faculty Member</th>
@@ -2001,14 +2257,29 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 
+    <script>
+    function filterRetEvidencePendingTable() {
+        const input = document.getElementById('retEvidencePendingSearch').value.toLowerCase();
+        document.querySelectorAll('#retEvidencePendingTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) { return; }
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+    </script>
+
     <!-- Approved RET Evidence Submissions Table -->
-    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm card-rounded-clip">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-circle-check me-2 text-success"></i>Approved RET Evidence Submissions</h5>
+            <h5 role="heading" aria-level="3" class="mb-0 fw-bold text-dark"><i class="ti ti-circle-check me-2 text-success"></i>Approved RET Evidence Submissions</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="retEvidenceApprovedSearch" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterRetEvidenceApprovedTable()">
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0" id="retEvidenceApprovedTable">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Faculty Member</th>
@@ -2054,10 +2325,20 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
     </div>
+
+    <script>
+    function filterRetEvidenceApprovedTable() {
+        const input = document.getElementById('retEvidenceApprovedSearch').value.toLowerCase();
+        document.querySelectorAll('#retEvidenceApprovedTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) { return; }
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+    </script>
 </div>
 
 <!-- RET Faculty Evidence Verification Modal -->
-<div class="modal fade" id="retFacultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="retFacultyEvidenceVerificationModal" tabindex="-1" aria-hidden="true" aria-labelledby="retEvidenceModalTitle">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
@@ -2201,8 +2482,8 @@ function openRetFacultyEvidenceVerificationModal(empId, facultyName) {
 
                     tr.innerHTML = `
                         <td class="ps-3 py-3">
-                            <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Research & Extension'}</span>
-                            <p class="mb-0 small fw-semibold text-dark">${t.indicator_description}</p>
+                            <span class="badge bg-light text-dark border mb-1">${escapeHtml(t.category_name || 'Research & Extension')}</span>
+                            <p class="mb-0 small fw-semibold text-dark">${escapeHtml(window.renderIndicatorPreview(t.indicator_description))}</p>
                         </td>
                         <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                         <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
@@ -2232,7 +2513,7 @@ function openEvidenceViewer(evidenceList) {
         let html = '';
         evidenceList.forEach((ev) => {
             const fileUrl = `/evidence_uploads/${ev.evidence_id}`;
-            const fileName = ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, '');
+            const fileName = escapeHtml(ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, ''));
             const ext = ev.file_path.split('.').pop().toLowerCase();
             const isImage = ext.match(/^(jpg|jpeg|png|gif|webp)$/i);
             const isPdf = ext === 'pdf';
@@ -2263,7 +2544,7 @@ function openEvidenceViewer(evidenceList) {
 
             const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
             const commentHtml = ev.supervisor_comment
-                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${escapeHtml(ev.supervisor_comment)}</div>`
                 : '';
 
             html += `
@@ -2275,7 +2556,7 @@ function openEvidenceViewer(evidenceList) {
                         </div>
                         <div class="small text-muted flex-shrink-0">
                             <span><i class="ti ti-circle-check me-1"></i>Qty: ${ev.actual_qty_Q}</span>
-                            ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
+                            ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${escapeHtml(ev.uploaded_by || 'Co-author')}</span>` : ''}
                         </div>
                     </div>
                     ${commentHtml}
@@ -2404,12 +2685,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<div class="modal fade" id="evidenceViewerModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="evidenceViewerModal" tabindex="-1" aria-hidden="true" aria-labelledby="evidenceViewerModalLabel">
     <!-- Full-width so PDF/image evidence is readable while verifying. -->
     <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white border-0 py-3" style="background: var(--c-accent);">
-                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
+                <h5 class="modal-title fw-bold fs-6" id="evidenceViewerModalLabel"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="evidenceViewerBody"></div>
@@ -2421,11 +2702,11 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- Return Evidence Reason Modal -->
-<div class="modal fade" id="returnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+<div class="modal fade" id="returnEvidenceReasonModal" tabindex="-1" aria-hidden="true" aria-labelledby="returnEvidenceReasonModalLabel" style="z-index: 1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence to Faculty</h5>
+                <h5 class="modal-title fw-bold" id="returnEvidenceReasonModalLabel"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence to Faculty</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 text-start">
@@ -2492,13 +2773,17 @@ document.addEventListener('DOMContentLoaded', function() {
         border-radius: 0 !important;
     }
 
+    :root {
+        --evidence-bg: #2B2822;
+    }
+
     /* Portrait container — tall narrow display area */
     .evidence-portrait-container {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: var(--c-text);
+        background: var(--evidence-bg, #2B2822);
         border-radius: 8px;
         padding: 8px;
         min-height: 40vh;

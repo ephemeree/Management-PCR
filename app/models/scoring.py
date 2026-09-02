@@ -100,7 +100,8 @@ BLANK = '____'
 
 def build_actual_accomplishment(target_description, actual_quantity=None,
                                 actual_duration_value=None, duration_unit=None,
-                                efficiency_label=None):
+                                efficiency_label=None, raw_indicator_description=None,
+                                is_auto_description=None):
     """
     Compose the IPCR "Actual Accomplishments" sentence from the target's success
     indicator, substituting what the faculty actually achieved.
@@ -111,14 +112,38 @@ def build_actual_accomplishment(target_description, actual_quantity=None,
     mirrors how the paper form is issued.
 
     Best-effort by design: target descriptions are free text, so an unusual phrasing
-    may leave a slot unsubstituted rather than guessing wrong.
+    may leave a slot unsubstituted rather than guessing wrong. The one exception is a
+    row still on Auto (`is_auto_description` true/None) whose master indicator uses the
+    {qty}/{duration} placeholder convention (see ipcr_description.py): pass its raw,
+    un-substituted `raw_indicator_description` and the actual values are substituted
+    directly into the template, deterministically, regardless of where the quantity
+    sits in the sentence — this is what a plain regex guess on the already-generated
+    `target_description` can't safely do for an indicator like
+    "Submit {qty} accurate report of grades..." (see target_desc.md's redesign section
+    for why: the quantity isn't at the start of the string, so the regex below never
+    finds it). Customized text (`is_auto_description` false), or an indicator that
+    doesn't use placeholders, always falls through to the regex-based approach below.
     """
+    treated_as_auto = is_auto_description is None or is_auto_description == 1 or is_auto_description is True
+    if treated_as_auto and raw_indicator_description:
+        from app.models.ipcr_description import _format_placeholders, has_placeholders
+        if has_placeholders(raw_indicator_description):
+            text = _format_placeholders(raw_indicator_description, actual_quantity, actual_duration_value, duration_unit)
+            return _RATING_PHRASE.sub(f"with {efficiency_label or BLANK} rating", text, count=1)
+
     text = (target_description or '').strip()
     if not text:
         return ''
 
-    # 1) Leading quantity -> actual accomplished quantity
-    qty_text = BLANK if actual_quantity in (None, '') else str(actual_quantity)
+    # 1) Leading quantity -> actual accomplished quantity. actual_quantity is NOT NULL
+    # DEFAULT 0 in the DB (it's the running sum of accepted evidence, recalculated on
+    # upload — see recalculate_target_accomplished_quantity in faculty.py), so a target
+    # with nothing reported yet is 0, never None. _format_quantity already treats 0 the
+    # same as "not yet reported" for the placeholder path above; match that convention
+    # here instead of only checking for None, or an unreported target prints "0" instead
+    # of the paper form's blank.
+    from app.models.ipcr_description import _format_quantity
+    qty_text = _format_quantity(actual_quantity) or BLANK
 
     def _sub_qty(m):
         return f"{qty_text}{m.group(2)}"

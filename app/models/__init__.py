@@ -3,6 +3,7 @@
 from .connection import *
 from .criteria import *
 from .scoring import *
+from .ipcr_description import *
 from .institution import *
 from .user import *
 from .term import *

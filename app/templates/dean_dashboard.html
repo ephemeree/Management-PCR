@@ -153,14 +153,14 @@
                     <table class="table table-hover align-middle shadow-sm">
                         <thead class="table-light">
                             <tr>
-                                <th>Master Indicator</th>
+                                <th scope="col" class="sticky-col">Master Indicator</th>
                                 {# Columns come from the managed department list plus the
                                    non-department cascade roles. #}
                                 {% for d in departments %}
-                                <th>{{ d.department_name }}</th>
+                                <th scope="col">{{ d.department_name }}</th>
                                 {% endfor %}
                                 {% for r in special_roles %}
-                                <th>{{ r }}</th>
+                                <th scope="col">{{ r }}</th>
                                 {% endfor %}
                             </tr>
                         </thead>
@@ -176,9 +176,9 @@
                             </tr>
                             {% endif %}
                             <tr>
-                                <td class="ps-4">
+                                <td class="ps-4 sticky-col">
                                     <input type="hidden" name="indicator_id[]" value="{{ indicator.indicator_id }}">
-                                    {{ indicator.indicator_description }}
+                                    {{ indicator.indicator_description | ipcr_preview }}
                                     <span class="badge bg-dark ms-2">{{ indicator.efficiency_type }}</span>
                                 </td>
                                 {% for role in (departments | map(attribute='department_name') | list) + special_roles %}
@@ -188,6 +188,7 @@
                                         name="quota_{{ loop.index0 }}[]" min="0"
                                         value="{{ existing_quotas.get(indicator.indicator_id, {}).get(role, 0) }}"
                                         data-indicator="{{ indicator.indicator_id }}" onchange="updateTotals()"
+                                        aria-label="Quota for {{ indicator.indicator_description | ipcr_preview }} - {{ role }}"
                                         {% if has_cascaded_quotas %}disabled{% endif %}>
                                 </td>
                                 {% endfor %}
@@ -210,11 +211,11 @@
             </form>
 
             <!-- Cascade confirmation: blocks submission while any target is unassigned -->
-            <div class="modal fade" id="cascadeConfirmModal" tabindex="-1" aria-hidden="true">
+            <div class="modal fade" id="cascadeConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="cascadeConfirmModalLabel">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title fw-bold"><i class="ti ti-broadcast me-2"></i>Cascade Institutional Targets</h5>
+                            <h5 class="modal-title fw-bold" id="cascadeConfirmModalLabel"><i class="ti ti-broadcast me-2"></i>Cascade Institutional Targets</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
@@ -314,49 +315,6 @@
     </div>
 </div>
 
-<!-- Phase 2: IPCR Commitment Verification -->
-<div id="nav-phase2" class="dashboard-section">
-    <div class="page-header">
-        <h2>Phase 2: Commitment Verification (Digital Handshake)</h2>
-        <p>Review your faculty's proposed targets and
-            lock them for the semester.</p>
-    </div>
-
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Faculty Name</th>
-                            <th>Rank</th>
-                            <th>Proposed Targets</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="fw-bold">Chester Developer</td>
-                            <td>Instructor I</td>
-                            <td><span class="badge bg-secondary">10 Selected</span> + <span
-                                    class="badge bg-info text-dark">1 Custom</span></td>
-                            <td><span class="badge bg-warning text-dark"><i class="ti ti-hourglass"></i>
-                                    Awaiting Review</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-dark me-1"><i class="ti ti-eye"></i> View
-                                    IPCR</button>
-                                <button class="btn btn-sm btn-success"><i class="ti ti-lock"></i> Lock
-                                    Commitment</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Phase 6: Final Digital Batch Approvals -->
 
 <!-- ──────────────────────────────────────────────
@@ -375,7 +333,7 @@
     {% set approved_drafts = draft_submissions | selectattr('review_status', 'equalto', 'Approved') | list if draft_submissions else [] %}
 
     <!-- Table 1: Pending Draft Submissions -->
-    <div class="card shadow-sm border-0 mb-5" style="border-top: 3px solid var(--c-warning) !important; border-radius: 14px; overflow: hidden;">
+    <div class="card shadow-sm border-0 mb-5" style="border-top: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important; border-radius: 14px; overflow: hidden;">
         <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
             <h5 class="fw-bold text-dark mb-0"><i class="ti ti-hourglass text-warning me-2"></i>Pending Draft Submissions</h5>
             <small class="text-muted">Draft IPCRs submitted by Designated Faculty awaiting review or returned for revisions.</small>
@@ -386,13 +344,13 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Name</th>
-                            <th>Academic Rank</th>
-                            <th>Designation</th>
-                            <th>Assigned Program</th>
-                            <th class="text-center">Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Name</th>
+                            <th scope="col">Academic Rank</th>
+                            <th scope="col">Designation</th>
+                            <th scope="col">Assigned Program</th>
+                            <th scope="col" class="text-center">Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -435,7 +393,7 @@
     </div>
 
     <!-- Table 2: Approved IPCRs -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important; border-radius: 14px; overflow: hidden;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important; border-radius: 14px; overflow: hidden;">
         <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
             <h5 class="fw-bold text-success mb-0"><i class="ti ti-circle-check me-2"></i>Approved IPCR Drafts</h5>
             <small class="text-muted">Draft IPCRs that have been verified and approved by the Dean.</small>
@@ -446,13 +404,13 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Name</th>
-                            <th>Academic Rank</th>
-                            <th>Designation</th>
-                            <th>Assigned Program</th>
-                            <th class="text-center">Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Name</th>
+                            <th scope="col">Academic Rank</th>
+                            <th scope="col">Designation</th>
+                            <th scope="col">Assigned Program</th>
+                            <th scope="col" class="text-center">Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -526,7 +484,7 @@
             <div class="modal-body p-4" id="modalBody" style="display:none; background-color: var(--c-surface-alt);">
 
                 <!-- Section 1: Core Functions Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                     <div class="card-header border-0 py-3 bg-light">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-star-filled text-warning me-2"></i>1. Core Functions</h5>
                         <p class="small mb-0 text-muted">Mandatory teaching load target (10 hrs) and cascaded instruction targets assigned by Program Chair (Locked)</p>
@@ -536,11 +494,11 @@
                             <table class="table table-hover align-middle mb-0" id="reviewCoreItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="ps-4">Indicator / IPCR Target Description</th>
-                                        <th class="text-center" width="110">Orig Qty</th>
-                                        <th class="text-center" width="120">Reviewed Qty</th>
-                                        <th class="text-center" width="130">Deadline</th>
-                                        <th width="28%">Dean Remarks / Notes</th>
+                                        <th scope="col" class="ps-4">Indicator / IPCR Target Description</th>
+                                        <th scope="col" class="text-center" width="110">Orig Qty</th>
+                                        <th scope="col" class="text-center" width="120">Reviewed Qty</th>
+                                        <th scope="col" class="text-center" width="130">Deadline</th>
+                                        <th scope="col" width="28%">Dean Remarks / Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody id="reviewCoreItemsBody">
@@ -552,7 +510,7 @@
                 </div>
 
                 <!-- Section 2: Strategic Priorities & Support Functions Card -->
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                     <div class="card-header border-0 py-3 bg-light">
                         <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
                         <p class="small mb-0 text-muted">Uncascaded instructional options, support functions, and custom DPCR target items</p>
@@ -562,11 +520,11 @@
                             <table class="table table-hover align-middle mb-0" id="reviewStrategicItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="ps-4">Indicator / IPCR Target Description</th>
-                                        <th class="text-center" width="110">Orig Qty</th>
-                                        <th class="text-center" width="120">Reviewed Qty</th>
-                                        <th class="text-center" width="130">Deadline</th>
-                                        <th width="28%">Dean Remarks / Notes</th>
+                                        <th scope="col" class="ps-4">Indicator / IPCR Target Description</th>
+                                        <th scope="col" class="text-center" width="110">Orig Qty</th>
+                                        <th scope="col" class="text-center" width="120">Reviewed Qty</th>
+                                        <th scope="col" class="text-center" width="130">Deadline</th>
+                                        <th scope="col" width="28%">Dean Remarks / Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody id="reviewStrategicItemsBody">
@@ -578,7 +536,7 @@
                 </div>
 
                 <!-- Section 3: Unselected Indicators Card -->
-                <div class="card border-0 shadow-sm mb-4" id="unselectedIndicatorsCard" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip" id="unselectedIndicatorsCard">
                     <div class="card-header border-0 py-3 bg-light">
                         <h6 class="fw-bold text-secondary text-uppercase mb-0">
                             <i class="ti ti-alert-circle me-2"></i>Unselected Indicators
@@ -590,9 +548,9 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th width="20%">Category</th>
-                                        <th width="65%">Indicator Description</th>
-                                        <th class="text-center" width="15%">Action</th>
+                                        <th scope="col" width="20%">Category</th>
+                                        <th scope="col" width="65%">Indicator Description</th>
+                                        <th scope="col" class="text-center" width="15%">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="unpickedItemsBody">
@@ -604,7 +562,7 @@
                 </div>
 
                 <!-- Section 4: College-Wide Targets Card -->
-                <div class="card border-0 shadow-sm mb-4" id="collegeWideTargetsCard" style="border-radius: 12px; overflow: hidden;">
+                <div class="card border-0 shadow-sm mb-4 card-rounded-clip" id="collegeWideTargetsCard">
                     <div class="card-header border-0 py-3 bg-light">
                         <h6 class="fw-bold text-secondary text-uppercase mb-0">
                             <i class="ti ti-world me-2"></i>College-Wide Targets
@@ -616,10 +574,10 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th width="20%">Category</th>
-                                        <th width="55%">Indicator Description</th>
-                                        <th class="text-center" width="12%">Quota</th>
-                                        <th class="text-center" width="13%">Action</th>
+                                        <th scope="col" width="20%">Category</th>
+                                        <th scope="col" width="55%">Indicator Description</th>
+                                        <th scope="col" class="text-center" width="12%">Quota</th>
+                                        <th scope="col" class="text-center" width="13%">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="collegeWideItemsBody">
@@ -666,7 +624,7 @@
 <!-- ═══════════════════════════════════════════ -->
 <!-- CONFIRMATION MODAL for Approve/Reject       -->
 <!-- ═══════════════════════════════════════════ -->
-<div class="modal fade" id="confirmDeanModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="confirmDeanModal" tabindex="-1" aria-hidden="true" aria-labelledby="confirmModalTitle">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 py-3"
@@ -706,7 +664,7 @@
     </div>
 
     {% if college_wide_quotas %}
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important;">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="fw-bold mb-0 text-success">
                 <i class="ti ti-world me-2"></i>College-Wide Targets with Quotas
@@ -719,15 +677,15 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Indicator</th>
-                            <th>Category</th>
-                            <th class="text-center">College-Wide Quota</th>
+                            <th scope="col">Indicator</th>
+                            <th scope="col">Category</th>
+                            <th scope="col" class="text-center">College-Wide Quota</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for q in college_wide_quotas %}
                         <tr>
-                            <td class="fw-bold">{{ q.indicator_description }}</td>
+                            <td class="fw-bold">{{ q.indicator_description | ipcr_preview }}</td>
                             <td>{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Instructions{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</td>
                             <td class="text-center">
                                 <span class="badge bg-success fs-6">{{ q.total_target_value }}</span>
@@ -742,7 +700,7 @@
 
     {% if designated_faculty_list %}
     <!-- Designated Faculty & Chairs Assignment Table -->
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-accent) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold mb-0 text-primary">
@@ -753,7 +711,8 @@
             <div class="d-flex align-items-center gap-2">
                 <i class="ti ti-search text-muted"></i>
                 <input type="text" id="assignDesignatedSearch" class="form-control form-control-sm"
-                       placeholder="Search faculty or chair..." style="width: 240px;" onkeyup="filterDesignatedFacultyTable()">
+                       placeholder="Search faculty or chair..." style="width: 240px;" onkeyup="filterDesignatedFacultyTable()"
+                       aria-label="Search designated faculty by name">
             </div>
         </div>
         <div class="card-body p-0">
@@ -761,12 +720,12 @@
                 <table class="table table-hover align-middle mb-0" id="assignDesignatedTable">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4">Faculty / Chairperson</th>
-                            <th>Designation</th>
-                            <th>Program / Specialization</th>
-                            <th>Academic Rank</th>
-                            <th class="text-center" style="width: 170px;">College-Wide Assigned</th>
-                            <th class="text-end pe-4" style="width: 150px;">Action</th>
+                            <th scope="col" class="ps-4">Faculty / Chairperson</th>
+                            <th scope="col">Designation</th>
+                            <th scope="col">Program / Specialization</th>
+                            <th scope="col">Academic Rank</th>
+                            <th scope="col" class="text-center" style="width: 170px;">College-Wide Assigned</th>
+                            <th scope="col" class="text-end pe-4" style="width: 150px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -813,13 +772,13 @@
     </div>
 
     <!-- Modal for College-Wide Target Assignment to Designated Faculty -->
-    <div class="modal fade" id="designatedAssignmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="designatedAssignmentModal" tabindex="-1" aria-hidden="true" aria-labelledby="designatedAssignmentModalLabel">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form action="{{ url_for('dean.save_designated_assignments') }}" method="POST">
                     <input type="hidden" name="emp_id" id="designatedAssignEmpId">
                     <div class="modal-header bg-light">
-                        <h5 class="modal-title fw-bold text-dark">
+                        <h5 class="modal-title fw-bold text-dark" id="designatedAssignmentModalLabel">
                             <i class="ti ti-user-plus text-primary me-2"></i>Assign College-Wide Targets
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -904,15 +863,9 @@
                         }
                     }
 
-                    const descInp = assignModalForm.querySelector(`input[name="assign_description_${indId}"]`);
-                    if (descInp && !descInp.value.trim()) {
-                        descInp.classList.add('is-invalid');
-                        isValid = false;
-                        if (!firstInvalid) {
-                            firstInvalid = descInp;
-                            errorMsg = 'All assigned targets must have an IPCR target description.';
-                        }
-                    }
+                    // Description is no longer required client-side: it auto-mirrors the
+                    // indicator/quantity/duration (see wireAutoDescription in base.html), and
+                    // the backend auto-generates it too if it somehow arrives blank.
                 });
 
                 if (!isValid) {
@@ -956,11 +909,13 @@
             let html = '<div class="list-group mb-2">';
             data.targets.forEach(it => {
                 const qty = it.assigned_quantity != null ? it.assigned_quantity : 1;
-                const desc = (it.custom_description || it.indicator_description || '').replace(/"/g, '&quot;');
+                const desc = (it.custom_description || window.renderIndicatorPreview(it.indicator_description || '')).replace(/"/g, '&quot;');
+                const ariaDesc = escapeHtml(it.custom_description || window.renderIndicatorPreview(it.indicator_description || '') || 'this target');
                 const durVal = it.target_duration_value != null ? it.target_duration_value : 6;
                 const durUnit = it.target_duration_unit || 'months';
                 const checked = it.is_assigned ? 'checked' : '';
                 const disabledAttr = it.is_assigned ? '' : 'disabled';
+                const isAutoFlag = it.is_auto_description ? '1' : '0';
 
                 const units = ['days', 'weeks', 'months', 'semesters'];
                 let unitOptions = '';
@@ -976,25 +931,33 @@
                       '<input class="form-check-input m-0" type="checkbox" name="assign_indicator_ids[]" value="' + it.indicator_id + '" ' + checked + ' onchange="toggleDesignatedAssignRowInputs(' + it.indicator_id + ', this.checked)">' +
                       '<span class="flex-grow-1 fw-semibold small text-dark">' +
                         '<span class="badge bg-secondary small me-1">' + catLabel + '</span> ' +
-                        it.indicator_description +
+                        escapeHtml(window.renderIndicatorPreview(it.indicator_description)) +
                       '</span>' +
                       '<span class="badge bg-light text-dark border small">Quota: ' + it.total_quota + '</span>' +
                       '<span class="text-muted small ms-2">Qty:</span>' +
                       '<input type="number" min="1" class="form-control form-control-sm text-center dean-assign-input-' + it.indicator_id + '" style="width:80px;" ' +
-                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + '>' +
+                             'name="assign_quantity_' + it.indicator_id + '" value="' + qty + '" ' + disabledAttr + ' ' +
+                             'aria-label="Quantity for ' + ariaDesc + '">' +
                     '</div>' +
                     '<div class="row g-2 mt-2 ps-4">' +
                       '<div class="col-md-7">' +
-                        '<input type="text" class="form-control form-control-sm dean-assign-input-' + it.indicator_id + '" ' +
+                        '<input type="text" class="form-control form-control-sm dean-assign-input-' + it.indicator_id + ' dean-assign-desc-' + it.indicator_id + '" ' +
                                'name="assign_description_' + it.indicator_id + '" ' +
                                'placeholder="IPCR target description" ' +
-                               'value="' + desc + '" ' + disabledAttr + '>' +
+                               'value="' + desc + '" ' + disabledAttr + ' ' +
+                               'aria-label="Description for ' + ariaDesc + '">' +
+                        '<div class="d-flex align-items-center gap-2 mt-1">' +
+                          '<span class="badge bg-light text-secondary dean-assign-auto-badge-' + it.indicator_id + '"' + (it.is_auto_description ? '' : ' hidden') + '><i class="ti ti-wand"></i> Auto</span>' +
+                          '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 dean-assign-auto-reset-' + it.indicator_id + '"' + (it.is_auto_description ? ' hidden' : '') + '><i class="ti ti-rotate"></i> Reset to Auto</button>' +
+                        '</div>' +
+                        '<input type="hidden" name="is_auto_description_' + it.indicator_id + '" value="' + isAutoFlag + '" class="dean-assign-auto-flag-' + it.indicator_id + '">' +
                       '</div>' +
                       '<div class="col-md-5">' +
                         '<div class="d-flex gap-1">' +
                           '<input type="number" min="1" class="form-control form-control-sm text-center dean-assign-input-' + it.indicator_id + '" ' +
                                  'name="assign_dur_value_' + it.indicator_id + '" placeholder="Duration" ' +
-                                 'value="' + durVal + '" ' + disabledAttr + '>' +
+                                 'value="' + durVal + '" ' + disabledAttr + ' ' +
+                                 'aria-label="Duration value for ' + ariaDesc + '">' +
                           '<select class="form-select form-select-sm dean-assign-input-' + it.indicator_id + '" ' +
                                   'name="assign_dur_unit_' + it.indicator_id + '" ' + disabledAttr + '>' +
                             unitOptions +
@@ -1006,6 +969,25 @@
             });
             html += '</div>';
             body.innerHTML = html;
+
+            // Wire live auto-description mirroring for each row now that the markup exists.
+            if (window.wireAutoDescription) {
+                data.targets.forEach(it => {
+                    const flagInput = document.querySelector('.dean-assign-auto-flag-' + it.indicator_id);
+                    const descField = document.querySelector('.dean-assign-desc-' + it.indicator_id);
+                    if (!flagInput || !descField) return;
+                    window.wireAutoDescription({
+                        indicatorText: it.indicator_description,
+                        qtyInput: document.querySelector('input[name="assign_quantity_' + it.indicator_id + '"]'),
+                        durValueInput: document.querySelector('input[name="assign_dur_value_' + it.indicator_id + '"]'),
+                        durUnitInput: document.querySelector('select[name="assign_dur_unit_' + it.indicator_id + '"]'),
+                        descField: descField,
+                        autoFlagInput: flagInput,
+                        badgeEl: document.querySelector('.dean-assign-auto-badge-' + it.indicator_id),
+                        resetBtn: document.querySelector('.dean-assign-auto-reset-' + it.indicator_id)
+                    });
+                });
+            }
         })
         .catch(err => {
             body.innerHTML = '<div class="alert alert-danger">Error: ' + err + '</div>';
@@ -1013,13 +995,14 @@
     }
     </script>
 
-    <div class="card shadow-sm border-0" style="border-top: 3px solid var(--c-accent) !important;">
+    <div class="card shadow-sm border-0" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="fw-bold mb-0 text-primary">
                 <i class="ti ti-chart-pie me-2"></i>College-Wide Distribution Tracker
             </h5>
-            <small class="text-muted">Track how cascaded College-Wide targets are distributed across Designated Faculty
-                and if quotas are met.</small>
+            <small class="text-muted">Track how cascaded College-Wide targets are distributed across Designated
+                Faculty (assigned here) and Regular Faculty (cascaded by their Program Chair), and if quotas are
+                met.</small>
         </div>
         <div class="card-body p-3">
             {% for q in college_wide_quotas %}
@@ -1034,7 +1017,7 @@
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                     <div style="flex: 1; min-width: 250px;">
                         <h6 class="fw-bold text-dark mb-1">
-                            <i class="ti ti-target text-success me-1"></i> {{ q.indicator_description }}
+                            <i class="ti ti-target text-success me-1"></i> {{ q.indicator_description | ipcr_preview }}
                         </h6>
                         <span class="badge bg-secondary small">{% if 'Instruction' in q.category_name or 'Strategic' in q.category_name %}Instructions{% else %}{{ q.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') }}{% endif %}</span>
                     </div>
@@ -1071,10 +1054,10 @@
                     <table class="table table-sm table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Faculty Member</th>
-                                <th>Program</th>
-                                <th class="text-center" width="150">Allocated Qty</th>
-                                <th class="text-center" width="150">Review Status</th>
+                                <th scope="col">Faculty Member</th>
+                                <th scope="col">Program</th>
+                                <th scope="col" class="text-center" width="150">Allocated Qty</th>
+                                <th scope="col" class="text-center" width="150">Review Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1167,11 +1150,11 @@
                 <table class="table table-hover align-middle mb-0 text-start">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Name</th>
-                            <th class="text-center">Designation</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Evidence Status</th>
-                            <th class="text-center pe-4">Action</th>
+                            <th scope="col" class="ps-4 py-3">Name</th>
+                            <th scope="col" class="text-center">Designation</th>
+                            <th scope="col" class="text-center">Committed Targets</th>
+                            <th scope="col" class="text-center">Evidence Status</th>
+                            <th scope="col" class="text-center pe-4">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1242,12 +1225,12 @@
                 <table class="table table-hover align-middle mb-0 text-start">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Member</th>
-                            <th class="text-center">Academic Rank</th>
-                            <th class="text-center">Program / Dept</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Action</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Member</th>
+                            <th scope="col" class="text-center">Academic Rank</th>
+                            <th scope="col" class="text-center">Program / Dept</th>
+                            <th scope="col" class="text-center">Committed Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1287,7 +1270,7 @@
     </div>
 
     <!-- Approved Designated Faculty & Chairs Final Verifications Table -->
-    <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid var(--c-success) !important; border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold text-success mb-0">
@@ -1304,12 +1287,12 @@
                 <table class="table table-hover align-middle mb-0 text-start">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Member</th>
-                            <th class="text-center">Academic Rank</th>
-                            <th class="text-center">Program / Dept</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Member</th>
+                            <th scope="col" class="text-center">Academic Rank</th>
+                            <th scope="col" class="text-center">Program / Dept</th>
+                            <th scope="col" class="text-center">Committed Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1348,7 +1331,7 @@
     </div>
 
     <!-- Approved Regular Faculty Final Verifications Table -->
-    <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid var(--c-accent) !important; border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="fw-bold text-primary mb-0">
@@ -1365,12 +1348,12 @@
                 <table class="table table-hover align-middle mb-0 text-start">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-4 py-3">Faculty Member</th>
-                            <th class="text-center">Academic Rank</th>
-                            <th class="text-center">Program / Dept</th>
-                            <th class="text-center">Committed Targets</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th scope="col" class="ps-4 py-3">Faculty Member</th>
+                            <th scope="col" class="text-center">Academic Rank</th>
+                            <th scope="col" class="text-center">Program / Dept</th>
+                            <th scope="col" class="text-center">Committed Targets</th>
+                            <th scope="col" class="text-center">Status</th>
+                            <th scope="col" class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1412,11 +1395,11 @@
 <!-- ──────────────────────────────────────────────
      Dean Evidence Verification Modals
      ────────────────────────────────────────────── -->
-<div class="modal fade" id="deanEvidenceModal" tabindex="-1" aria-hidden="true" style="z-index: 1055;">
+<div class="modal fade" id="deanEvidenceModal" tabindex="-1" aria-hidden="true" aria-labelledby="deanEvidenceModalLabel" style="z-index: 1055;">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-primary text-white border-0 py-3 d-flex align-items-center" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold fs-6 mb-0">
+                <h5 class="modal-title fw-bold fs-6 mb-0" id="deanEvidenceModalLabel">
                     <i class="ti ti-file-text me-2"></i>Official IPCR Review: <span id="deanEvidenceModalFacultyName"></span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
@@ -1441,11 +1424,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="deanReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+<div class="modal fade" id="deanReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" aria-labelledby="deanReturnEvidenceReasonModalLabel" style="z-index: 1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-arrow-back-up me-2"></i>Reject &amp; Return IPCR to Faculty</h5>
+                <h5 class="modal-title fw-bold fs-6" id="deanReturnEvidenceReasonModalLabel"><i class="ti ti-arrow-back-up me-2"></i>Reject &amp; Return IPCR to Faculty</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 text-start">
@@ -1462,7 +1445,7 @@
 </div>
 
 <!-- Chair/Dean Evidence Verification Modal -->
-<div class="modal fade" id="designatedEvidenceVerificationModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="designatedEvidenceVerificationModal" tabindex="-1" aria-hidden="true" aria-labelledby="designatedEvidenceModalTitle">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
@@ -1484,12 +1467,12 @@
                     <table class="table align-middle border mb-0" style="border-radius: 10px; overflow: hidden;">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3" width="26%">Target Indicator</th>
-                                <th class="text-center" width="8%">Target Qty</th>
-                                <th class="text-center" width="10%">Accomplished Qty</th>
-                                <th width="22%">Reported &amp; Rating</th>
-                                <th class="text-center" width="12%">Status</th>
-                                <th class="ps-3" width="22%">Uploaded Evidences</th>
+                                <th scope="col" class="ps-3" width="26%">Target Indicator</th>
+                                <th scope="col" class="text-center" width="8%">Target Qty</th>
+                                <th scope="col" class="text-center" width="10%">Accomplished Qty</th>
+                                <th scope="col" width="22%">Reported &amp; Rating</th>
+                                <th scope="col" class="text-center" width="12%">Status</th>
+                                <th scope="col" class="ps-3" width="22%">Uploaded Evidences</th>
                             </tr>
                         </thead>
                         <tbody id="designatedModalEvidenceTableBody">
@@ -1505,12 +1488,12 @@
     </div>
 </div>
 
-<div class="modal fade" id="designatedEvidenceViewerModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="designatedEvidenceViewerModal" tabindex="-1" aria-hidden="true" aria-labelledby="designatedEvidenceViewerModalLabel">
     <!-- Full-width so PDF/image evidence is actually readable while verifying. -->
     <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white border-0 py-3" style="background: var(--c-accent);">
-                <h5 class="modal-title fw-bold fs-6"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
+                <h5 class="modal-title fw-bold fs-6" id="designatedEvidenceViewerModalLabel"><i class="ti ti-file-type-pdf me-2"></i>Uploaded Evidence</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="designatedEvidenceViewerBody"></div>
@@ -1521,11 +1504,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="designatedReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+<div class="modal fade" id="designatedReturnEvidenceReasonModal" tabindex="-1" aria-hidden="true" aria-labelledby="designatedReturnEvidenceReasonModalLabel" style="z-index: 1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header bg-danger text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                <h5 class="modal-title fw-bold"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence</h5>
+                <h5 class="modal-title fw-bold" id="designatedReturnEvidenceReasonModalLabel"><i class="ti ti-arrow-back-up me-2"></i>Return Evidence</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 text-start">
@@ -1542,6 +1525,11 @@
 </div>
 
 <script>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     let deanCurrentPendingEmpId = null;
 
     window.openDeanEvidenceModal = function(empId, facultyName, isPending, isChairDeanRow, isFullyReviewed) {
@@ -1610,10 +1598,10 @@
                 if (data.success) {
                     window.location.reload();
                 } else {
-                    alert(data.message);
+                    showToast('danger', data.message);
                 }
             })
-            .catch(err => alert('Error: ' + err));
+            .catch(err => showToast('danger', 'Error: ' + err));
         }
     };
 
@@ -1638,10 +1626,10 @@
                 if (data.success) {
                     window.location.reload();
                 } else {
-                    alert(data.message);
+                    showToast('danger', data.message);
                 }
             })
-            .catch(err => alert('Error: ' + err));
+            .catch(err => showToast('danger', 'Error: ' + err));
         }
     };
 
@@ -1765,9 +1753,9 @@
 
                         tr.innerHTML = `
                             <td class="ps-3 py-3">
-                                <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Standard'}</span>
-                                <p class="mb-1 small fw-semibold text-dark">${t.indicator_description}</p>
-                                ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${t.actual_accomplishment}</p>` : ''}
+                                <span class="badge bg-light text-dark border mb-1">${escapeHtml(t.category_name || 'Standard')}</span>
+                                <p class="mb-1 small fw-semibold text-dark">${escapeHtml(window.renderIndicatorPreview(t.indicator_description))}</p>
+                                ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${escapeHtml(t.actual_accomplishment)}</p>` : ''}
                             </td>
                             <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                             <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
@@ -1796,7 +1784,7 @@
             let html = '';
             evidenceList.forEach((ev) => {
                 const fileUrl = `/evidence_uploads/${ev.evidence_id}`;
-                const fileName = ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, '');
+                const fileName = escapeHtml(ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, ''));
                 const ext = ev.file_path.split('.').pop().toLowerCase();
                 const isImage = ext.match(/^(jpg|jpeg|png|gif|webp)$/i);
                 const isPdf = ext === 'pdf';
@@ -1827,7 +1815,7 @@
 
                 const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
                 const commentHtml = ev.supervisor_comment
-                    ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                    ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${escapeHtml(ev.supervisor_comment)}</div>`
                     : '';
 
                 html += `
@@ -1839,7 +1827,7 @@
                             </div>
                             <div class="small text-muted flex-shrink-0">
                                 <span><i class="ti ti-circle-check me-1"></i>Qty: ${ev.actual_qty_Q}</span>
-                                ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${ev.uploaded_by || 'Co-author'}</span>` : ''}
+                                ${ev.is_co_authored ? `<span class="badge bg-info bg-opacity-10 text-info border ms-1"><i class="ti ti-users me-1"></i>${escapeHtml(ev.uploaded_by || 'Co-author')}</span>` : ''}
                             </div>
                         </div>
                         ${commentHtml}
@@ -1869,7 +1857,7 @@
             const list = DESIGNATED_EVIDENCE_BY_TARGET[tid] || [];
             const item = list.find(e => String(e.evidence_id) === String(evidenceId));
             if (item && item.verification_status === 'Approved') {
-                alert('Approved evidence cannot be returned.');
+                showToast('warning', 'Approved evidence cannot be returned.');
                 return;
             }
         }
@@ -1918,7 +1906,7 @@
         })
         .then(r => r.json())
         .then(data => {
-            if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+            if (!data.success) { showToast('danger', data.message || 'Failed to update evidence.'); return; }
             designatedEvidenceVerificationChanged = true;
             const badge = document.getElementById('designated-evidence-status-' + evidenceId);
             const actions = document.getElementById('designated-evidence-actions-' + evidenceId);
@@ -1948,7 +1936,7 @@
                 updateDesignatedTargetStatusBadge(targetIdFound);
             }
         })
-        .catch(err => alert('Error: ' + err));
+        .catch(err => showToast('danger', 'Error: ' + err));
     };
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -1977,7 +1965,11 @@
         });
 
         if (!hasValue) {
-            alert('Please enter at least one quota value before cascading.');
+            if (window.showCustomAlert) {
+                showCustomAlert('No Quotas Entered', 'Please enter at least one quota value before cascading.', 'warning');
+            } else {
+                alert('Please enter at least one quota value before cascading.');
+            }
             return false;
         }
 
@@ -2015,10 +2007,15 @@
 
         // Reject button — show confirmation first
         document.getElementById('btnDeanReject')?.addEventListener('click', function () {
-            const remarks = document.getElementById('deanOverallRemarks').value.trim();
+            const remarksInput = document.getElementById('deanOverallRemarks');
+            const remarks = remarksInput.value.trim();
             if (!remarks) {
-                alert('Please provide overall remarks when rejecting.');
-                document.getElementById('deanOverallRemarks').focus();
+                if (window.showCustomAlert) {
+                    showCustomAlert('Remarks Required', 'Please provide overall remarks when rejecting.', 'warning', remarksInput);
+                } else {
+                    alert('Please provide overall remarks when rejecting.');
+                    remarksInput.focus();
+                }
                 return;
             }
             document.getElementById('confirmAction').value = 'Rejected';
@@ -2307,7 +2304,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    showToast('danger', data.error);
                     loader.style.display = 'none';
                     return;
                 }
@@ -2403,7 +2400,7 @@
             })
             .catch(err => {
                 console.error('Error:', err);
-                alert('Failed to load review data.');
+                showToast('danger', 'Failed to load review data.');
                 loader.style.display = 'none';
             });
     }
@@ -2429,19 +2426,30 @@
                 if (item.is_cascaded) {
                     badgeHtml += ' <span class="badge bg-info text-dark border mb-1 ms-1"><i class="ti ti-sitemap me-1"></i>Cascaded from Chair</span>';
                 }
-                const descText = item.target_description || item.indicator_description;
+                // target_description is the real, already-substituted text (regenerated
+                // server-side in get_dean_review_items whenever the row is still auto) — show
+                // that as the primary label, not a cosmetic preview of the raw indicator's own
+                // embedded example number, which would show a different (wrong) quantity than
+                // what was actually committed/cascaded.
+                const descText = item.target_description || window.renderIndicatorPreview(item.indicator_description);
 
                 coreBody.innerHTML += `
-                <tr class="table-active-row" style="background-color: rgba(13, 110, 253, 0.04);">
+                <tr class="table-active-row" style="background-color: var(--c-accent-tint);">
                     <td class="py-3 ps-4">
                         ${badgeHtml}
-                        <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
+                        <p class="mb-1 small text-secondary fw-semibold">${escapeHtml(descText)}</p>
                         ${item.original_quantity === -1 && !isLocked ? `
                         <input type="text" class="form-control form-control-sm review-desc mt-1"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                               value="${(item.target_description && item.target_description !== item.indicator_description) ? item.target_description.replace(/"/g, '&quot;') : ''}"
-                               placeholder="IPCR target description">
-                        ` : `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>`}
+                               value="${(item.target_description && item.target_description !== item.indicator_description) ? escapeHtml(item.target_description) : ''}"
+                               placeholder="IPCR target description"
+                               aria-label="Target description for ${escapeHtml(descText)}">
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="badge bg-light text-secondary review-auto-badge" data-key="${item._key}"${item.is_auto_description ? '' : ' hidden'}><i class="ti ti-wand"></i> Auto</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 review-auto-reset" data-key="${item._key}"${item.is_auto_description ? ' hidden' : ''}><i class="ti ti-rotate"></i> Reset to Auto</button>
+                        </div>
+                        <input type="hidden" class="review-auto-flag" data-key="${item._key}" value="${item.is_auto_description ? '1' : '0'}">
+                        ` : ''}
                     </td>
                     <td class="text-center">
                         <span class="fw-bold fs-5 text-primary">${origQtyDisplay}</span>
@@ -2450,6 +2458,7 @@
                         <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" data-original="${item.original_quantity}"
                                value="${item.reviewed_quantity}" min="0"
+                               aria-label="Reviewed quantity for ${escapeHtml(descText)}"
                                ${isLocked ? 'disabled' : ''}>
                     </td>
                     <td class="text-center">
@@ -2457,9 +2466,11 @@
                         <div class="d-flex gap-1 justify-content-center">
                             <input type="number" min="1" class="form-control form-control-sm text-center review-dur-value"
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;">
+                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;"
+                                   aria-label="Duration value for ${escapeHtml(descText)}">
                             <select class="form-select form-select-sm review-dur-unit"
-                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;">
+                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;"
+                                    aria-label="Duration unit for ${escapeHtml(descText)}">
                                 ${['days', 'weeks', 'months', 'semesters'].map(u => `<option value="${u}" ${(item.target_duration_unit || 'semesters') === u ? 'selected' : ''}>${u}</option>`).join('')}
                             </select>
                         </div>
@@ -2469,7 +2480,8 @@
                         <div class="d-flex align-items-center gap-2">
                             <input type="text" class="form-control form-control-sm review-remark shadow-sm"
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                                   value="${item.item_remarks || ''}"
+                                   value="${escapeHtml(item.item_remarks || '')}"
+                                   aria-label="Remarks for ${escapeHtml(descText)}"
                                    placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
                             ${!isLocked ? `
                             <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn"
@@ -2505,19 +2517,30 @@
                     badgeHtml += ' <span class="badge bg-info text-dark border mb-1 ms-1"><i class="ti ti-sitemap me-1"></i>Departmental Oversight</span>';
                 }
 
-                const descText = item.target_description || item.indicator_description;
+                // target_description is the real, already-substituted text (regenerated
+                // server-side in get_dean_review_items whenever the row is still auto) — show
+                // that as the primary label, not a cosmetic preview of the raw indicator's own
+                // embedded example number, which would show a different (wrong) quantity than
+                // what was actually committed/cascaded.
+                const descText = item.target_description || window.renderIndicatorPreview(item.indicator_description);
 
                 strategicBody.innerHTML += `
                 <tr>
                     <td class="py-3 ps-4">
                         ${badgeHtml}
-                        <p class="mb-1 small text-secondary fw-semibold">${item.indicator_description}</p>
+                        <p class="mb-1 small text-secondary fw-semibold">${escapeHtml(descText)}</p>
                         ${item.original_quantity === -1 && !isLocked ? `
                         <input type="text" class="form-control form-control-sm review-desc mt-1"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                               value="${(item.target_description && item.target_description !== item.indicator_description) ? item.target_description.replace(/"/g, '&quot;') : ''}"
-                               placeholder="IPCR target description">
-                        ` : (descText !== item.indicator_description ? `<p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> ${descText}</p>` : '')}
+                               value="${(item.target_description && item.target_description !== item.indicator_description) ? escapeHtml(item.target_description) : ''}"
+                               placeholder="IPCR target description"
+                               aria-label="Target description for ${escapeHtml(descText)}">
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="badge bg-light text-secondary review-auto-badge" data-key="${item._key}"${item.is_auto_description ? '' : ' hidden'}><i class="ti ti-wand"></i> Auto</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 review-auto-reset" data-key="${item._key}"${item.is_auto_description ? ' hidden' : ''}><i class="ti ti-rotate"></i> Reset to Auto</button>
+                        </div>
+                        <input type="hidden" class="review-auto-flag" data-key="${item._key}" value="${item.is_auto_description ? '1' : '0'}">
+                        ` : ''}
                     </td>
                     <td class="text-center">
                         <span class="fw-bold fs-5 text-warning">${origQtyDisplay}</span>
@@ -2526,6 +2549,7 @@
                         <input type="number" class="form-control form-control-sm text-center fw-bold review-qty shadow-sm"
                                data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" data-original="${item.original_quantity}"
                                value="${item.reviewed_quantity}" min="0"
+                               aria-label="Reviewed quantity for ${escapeHtml(descText)}"
                                ${isLocked ? 'disabled' : ''}>
                     </td>
                     <td class="text-center">
@@ -2533,9 +2557,11 @@
                         <div class="d-flex gap-1 justify-content-center">
                             <input type="number" min="1" class="form-control form-control-sm text-center review-dur-value"
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;">
+                                   value="${item.target_duration_value != null ? item.target_duration_value : 1}" style="width:60px;"
+                                   aria-label="Duration value for ${escapeHtml(descText)}">
                             <select class="form-select form-select-sm review-dur-unit"
-                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;">
+                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}" style="width:100px;"
+                                    aria-label="Duration unit for ${escapeHtml(descText)}">
                                 ${['days', 'weeks', 'months', 'semesters'].map(u => `<option value="${u}" ${(item.target_duration_unit || 'semesters') === u ? 'selected' : ''}>${u}</option>`).join('')}
                             </select>
                         </div>
@@ -2545,7 +2571,8 @@
                         <div class="d-flex align-items-center gap-2">
                             <input type="text" class="form-control form-control-sm review-remark shadow-sm"
                                    data-item-id="${item.item_id}" data-indicator-id="${item.indicator_id}" data-key="${item._key}"
-                                   value="${item.item_remarks || ''}"
+                                   value="${escapeHtml(item.item_remarks || '')}"
+                                   aria-label="Remarks for ${escapeHtml(descText)}"
                                    placeholder="Optional note..." ${isLocked ? 'disabled' : ''} style="flex: 1;">
                             ${!isLocked ? `
                             <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-review-item-btn"
@@ -2557,6 +2584,27 @@
                     </td>
                 </tr>
                 `;
+            });
+        }
+
+        // Wire live auto-description mirroring for Dean-added items now that the markup exists.
+        if (window.wireAutoDescription) {
+            items.forEach(item => {
+                if (item.original_quantity !== -1 || isLocked) return;
+                const key = item._key;
+                const flagInput = document.querySelector(`.review-auto-flag[data-key="${key}"]`);
+                const descField = document.querySelector(`.review-desc[data-key="${key}"]`);
+                if (!flagInput || !descField) return;
+                window.wireAutoDescription({
+                    indicatorText: item.indicator_description,
+                    qtyInput: document.querySelector(`.review-qty[data-key="${key}"]`),
+                    durValueInput: document.querySelector(`.review-dur-value[data-key="${key}"]`),
+                    durUnitInput: document.querySelector(`.review-dur-unit[data-key="${key}"]`),
+                    descField: descField,
+                    autoFlagInput: flagInput,
+                    badgeEl: document.querySelector(`.review-auto-badge[data-key="${key}"]`),
+                    resetBtn: document.querySelector(`.review-auto-reset[data-key="${key}"]`)
+                });
             });
         }
     }
@@ -2573,12 +2621,12 @@
         items.forEach(ind => {
             if (ind.category_name !== currentCat) {
                 currentCat = ind.category_name;
-                tbody.innerHTML += `<tr class="table-secondary"><td colspan="3" class="fw-bold text-uppercase text-dark small py-2">${currentCat}</td></tr>`;
+                tbody.innerHTML += `<tr class="table-secondary"><td colspan="3" class="fw-bold text-uppercase text-dark small py-2">${escapeHtml(currentCat)}</td></tr>`;
             }
             tbody.innerHTML += `
             <tr class="table-warning">
-                <td class="small text-muted">${ind.category_name || ''}</td>
-                <td>${ind.indicator_description}</td>
+                <td class="small text-muted">${escapeHtml(ind.category_name || '')}</td>
+                <td>${escapeHtml(window.renderIndicatorPreview(ind.indicator_description))}</td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-unpicked-btn fw-bold"
                             data-indicator-id="${ind.indicator_id}">
@@ -2601,12 +2649,12 @@
         items.forEach(ind => {
             if (ind.category_name !== currentCat) {
                 currentCat = ind.category_name;
-                tbody.innerHTML += `<tr class="table-secondary"><td colspan="4" class="fw-bold text-uppercase text-dark small py-2">${currentCat}</td></tr>`;
+                tbody.innerHTML += `<tr class="table-secondary"><td colspan="4" class="fw-bold text-uppercase text-dark small py-2">${escapeHtml(currentCat)}</td></tr>`;
             }
             tbody.innerHTML += `
             <tr class="table-info">
-                <td class="small text-muted">${ind.category_name || ''}</td>
-                <td>${ind.indicator_description}</td>
+                <td class="small text-muted">${escapeHtml(ind.category_name || '')}</td>
+                <td>${escapeHtml(window.renderIndicatorPreview(ind.indicator_description))}</td>
                 <td class="text-center"><span class="badge bg-success">${ind.total_target_value}</span></td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-college-wide-btn fw-bold"
@@ -2643,11 +2691,13 @@
                 const durValInp = document.querySelector(`.review-dur-value[data-item-id="${itemId}"]`);
                 const durUnitInp = document.querySelector(`.review-dur-unit[data-item-id="${itemId}"]`);
                 const descInp = document.querySelector(`.review-desc[data-item-id="${itemId}"]`);
+                const autoFlagInp = descInp ? document.querySelector(`.review-auto-flag[data-key="${descInp.getAttribute('data-key')}"]`) : null;
                 items.push({
                     item_id: itemId, reviewed_quantity: qty, item_remarks: remark,
                     target_duration_value: durValInp ? (parseInt(durValInp.value) || 1) : undefined,
                     target_duration_unit: durUnitInp ? durUnitInp.value : undefined,
-                    target_description: descInp ? descInp.value.trim() : undefined
+                    target_description: descInp ? descInp.value.trim() : undefined,
+                    is_auto_description: autoFlagInp ? autoFlagInp.value === '1' : undefined
                 });
             } else if (indIdAttr) {
                 const indicatorId = parseInt(indIdAttr);
@@ -2655,11 +2705,13 @@
                 const durValInp = document.querySelector(`.review-dur-value[data-indicator-id="${indicatorId}"]`);
                 const durUnitInp = document.querySelector(`.review-dur-unit[data-indicator-id="${indicatorId}"]`);
                 const descInp = document.querySelector(`.review-desc[data-indicator-id="${indicatorId}"]`);
+                const autoFlagInp = descInp ? document.querySelector(`.review-auto-flag[data-key="${descInp.getAttribute('data-key')}"]`) : null;
                 items.push({
                     indicator_id: indicatorId, reviewed_quantity: qty, item_remarks: remark, is_new: true,
                     target_duration_value: durValInp ? (parseInt(durValInp.value) || 1) : undefined,
                     target_duration_unit: durUnitInp ? durUnitInp.value : undefined,
-                    target_description: descInp ? descInp.value.trim() : undefined
+                    target_description: descInp ? descInp.value.trim() : undefined,
+                    is_auto_description: autoFlagInp ? autoFlagInp.value === '1' : undefined
                 });
             }
         });
@@ -2707,11 +2759,13 @@
                 const durValInp = document.querySelector(`.review-dur-value[data-item-id="${itemId}"]`);
                 const durUnitInp = document.querySelector(`.review-dur-unit[data-item-id="${itemId}"]`);
                 const descInp = document.querySelector(`.review-desc[data-item-id="${itemId}"]`);
+                const autoFlagInp = descInp ? document.querySelector(`.review-auto-flag[data-key="${descInp.getAttribute('data-key')}"]`) : null;
                 items.push({
                     item_id: itemId, reviewed_quantity: qty, item_remarks: remark,
                     target_duration_value: durValInp ? (parseInt(durValInp.value) || 1) : undefined,
                     target_duration_unit: durUnitInp ? durUnitInp.value : undefined,
-                    target_description: descInp ? descInp.value.trim() : undefined
+                    target_description: descInp ? descInp.value.trim() : undefined,
+                    is_auto_description: autoFlagInp ? autoFlagInp.value === '1' : undefined
                 });
             } else if (indIdAttr) {
                 const indicatorId = parseInt(indIdAttr);
@@ -2719,11 +2773,13 @@
                 const durValInp = document.querySelector(`.review-dur-value[data-indicator-id="${indicatorId}"]`);
                 const durUnitInp = document.querySelector(`.review-dur-unit[data-indicator-id="${indicatorId}"]`);
                 const descInp = document.querySelector(`.review-desc[data-indicator-id="${indicatorId}"]`);
+                const autoFlagInp = descInp ? document.querySelector(`.review-auto-flag[data-key="${descInp.getAttribute('data-key')}"]`) : null;
                 items.push({
                     indicator_id: indicatorId, reviewed_quantity: qty, item_remarks: remark, is_new: true,
                     target_duration_value: durValInp ? (parseInt(durValInp.value) || 1) : undefined,
                     target_duration_unit: durUnitInp ? durUnitInp.value : undefined,
-                    target_description: descInp ? descInp.value.trim() : undefined
+                    target_description: descInp ? descInp.value.trim() : undefined,
+                    is_auto_description: autoFlagInp ? autoFlagInp.value === '1' : undefined
                 });
             }
         });
@@ -2769,8 +2825,13 @@
         const remarks = document.getElementById('deanOverallRemarks').value.trim();
 
         if (action === 'Rejected' && !remarks) {
-            alert('Please provide overall remarks when rejecting.');
-            document.getElementById('deanOverallRemarks').focus();
+            const remarksInput = document.getElementById('deanOverallRemarks');
+            if (window.showCustomAlert) {
+                showCustomAlert('Remarks Required', 'Please provide overall remarks when rejecting.', 'warning', remarksInput);
+            } else {
+                alert('Please provide overall remarks when rejecting.');
+                remarksInput.focus();
+            }
 
             // Restore button state
             const btnApprove = document.getElementById('btnDeanApprove');
@@ -2836,6 +2897,7 @@
         if (!container) return;
         const div = document.createElement('div');
         div.className = `alert alert-${type} alert-dismissible fade show shadow-sm`;
+        div.setAttribute('role', 'alert');
         div.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
         container.prepend(div);
         setTimeout(() => div.remove(), 5000);
@@ -2845,7 +2907,7 @@
     window.showCustomConfirm = function ({ title, mainText, subText, confirmText, confirmClass, iconClass, onConfirm }) {
         const modal = new bootstrap.Modal(document.getElementById('customConfirmModal'));
 
-        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('customConfirmModalTitle').textContent = title;
         document.getElementById('confirmModalTextMain').innerHTML = mainText;
         document.getElementById('confirmModalTextSub').textContent = subText;
 
@@ -2872,7 +2934,7 @@
 
     function generateSummary() {
         // This would trigger PDF generation
-        alert('Generating Summary of Ratings for VPAA...');
+        showToast('info', 'Generating Summary of Ratings for VPAA...');
         // In production, this would call a backend endpoint
     }
 
@@ -2884,7 +2946,7 @@
 </script>
 
 <!-- Custom Confirmation Modal -->
-<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="customConfirmModalTitle" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
@@ -2892,7 +2954,7 @@
                     style="font-size: 0.85rem; opacity: 0.6;"></button>
             </div>
             <div class="modal-body text-center px-4 pb-4 pt-1">
-                <h5 class="modal-title fw-bold text-dark mb-3" id="confirmModalTitle"
+                <h5 class="modal-title fw-bold text-dark mb-3" id="customConfirmModalTitle"
                     style="font-size: 1.35rem; letter-spacing: -0.2px;">Title</h5>
                 <p class="mb-2 text-secondary fw-semibold px-2" id="confirmModalTextMain"
                     style="font-size: 0.95rem; line-height: 1.5; color: var(--c-text-sub) !important;">Main message</p>
@@ -2902,7 +2964,7 @@
             <div class="modal-footer border-0 justify-content-center pb-4 pt-0 gap-2 px-4">
                 <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" data-bs-dismiss="modal"
                     id="confirmModalCancelBtn"
-                    style="border-radius: 10px; background-color: var(--bs-secondary); font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
+                    style="border-radius: 10px; background-color: var(--c-text-sub); font-size: 0.9rem; min-width: 110px; transition: all 0.2s;">Cancel</button>
                 <button type="button"
                     class="btn px-4 py-2 fw-bold text-white shadow-sm d-inline-flex align-items-center justify-content-center gap-2"
                     id="confirmModalConfirmBtn"
@@ -2947,7 +3009,7 @@
         border-radius: 0;
         display: flex;
         flex-direction: column;
-        border-right: 1px solid rgba(0,0,0,0.1);
+        border-right: 1px solid var(--c-border);
     }
 
     #designatedEvidenceViewerModal .modal-body {

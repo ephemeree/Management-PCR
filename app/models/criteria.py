@@ -110,8 +110,12 @@ def _unique_slug(cursor, base, exclude_id=None):
         slug = f"{base}_{n}"
 
 
-def add_criteria(conn, cursor, name, slug, review_lane, is_core, display_order):
-    """Create a new criterion. Slug auto-derives from name when blank; kept unique."""
+def add_criteria(conn, cursor, name, slug, review_lane, display_order=None):
+    """Create a new criterion. Slug auto-derives from name when blank; kept unique.
+
+    Always created as core (is_core=1) — the admin UI no longer exposes a way to create a
+    free-form/non-core type like the existing "Custom" one (see
+    REVISION MDs/category_and_criteria_simplification_plan.md §0.2)."""
     name = (name or '').strip()
     if not name:
         return False, "Criterion name is required."
@@ -120,11 +124,14 @@ def add_criteria(conn, cursor, name, slug, review_lane, is_core, display_order):
     try:
         base = _slugify(slug) if (slug and slug.strip()) else _slugify(name)
         final_slug = _unique_slug(cursor, base)
+        if display_order is None:
+            cursor.execute("SELECT COALESCE(MAX(display_order), 0) + 10 FROM tbl_target_categories")
+            display_order = cursor.fetchone()[0]
         cursor.execute("""
             INSERT INTO tbl_target_categories
                 (category_name, slug, review_lane, is_core, display_order, is_active)
-            VALUES (%s, %s, %s, %s, %s, 1)
-        """, (name, final_slug, review_lane, 1 if is_core else 0, int(display_order or 100)))
+            VALUES (%s, %s, %s, 1, %s, 1)
+        """, (name, final_slug, review_lane, int(display_order)))
         conn.commit()
         return True, f"Criterion '{name}' added (slug: {final_slug})."
     except Exception as e:
@@ -132,8 +139,11 @@ def add_criteria(conn, cursor, name, slug, review_lane, is_core, display_order):
         return False, str(e)
 
 
-def update_criteria(conn, cursor, category_id, name, review_lane, is_core, display_order):
-    """Update a criterion. Slug is immutable (code/data reference it)."""
+def update_criteria(conn, cursor, category_id, name, review_lane):
+    """Update a criterion's name and review lane. Slug is immutable (code/data reference it).
+
+    Never touches is_core or display_order — those are preserved exactly as they were, so a
+    routine rename can't silently flip a criterion's review-routing behavior."""
     name = (name or '').strip()
     if not name:
         return False, "Criterion name is required."
@@ -142,11 +152,42 @@ def update_criteria(conn, cursor, category_id, name, review_lane, is_core, displ
     try:
         cursor.execute("""
             UPDATE tbl_target_categories
-            SET category_name = %s, review_lane = %s, is_core = %s, display_order = %s
+            SET category_name = %s, review_lane = %s
             WHERE category_id = %s
-        """, (name, review_lane, 1 if is_core else 0, int(display_order or 100), category_id))
+        """, (name, review_lane, category_id))
         conn.commit()
         return True, "Criterion updated."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
+def reorder_criteria(conn, cursor, category_id, direction):
+    """Swap this criterion's display_order with its immediate neighbor (up or down),
+    ordered the same way get_all_criteria() orders (display_order, category_name)."""
+    if direction not in ('up', 'down'):
+        return False, "Invalid direction."
+    try:
+        cursor.execute(
+            "SELECT category_id, display_order FROM tbl_target_categories "
+            "ORDER BY display_order, category_name")
+        rows = cursor.fetchall()
+        ids = [r[0] for r in rows]
+        try:
+            idx = ids.index(int(category_id))
+        except ValueError:
+            return False, "Criterion not found."
+        neighbor_idx = idx - 1 if direction == 'up' else idx + 1
+        if neighbor_idx < 0 or neighbor_idx >= len(rows):
+            return False, "Already at the edge."
+        this_id, this_order = rows[idx]
+        other_id, other_order = rows[neighbor_idx]
+        cursor.execute("UPDATE tbl_target_categories SET display_order = %s WHERE category_id = %s",
+                       (other_order, this_id))
+        cursor.execute("UPDATE tbl_target_categories SET display_order = %s WHERE category_id = %s",
+                       (this_order, other_id))
+        conn.commit()
+        return True, "Order updated."
     except Exception as e:
         conn.rollback()
         return False, str(e)
@@ -175,6 +216,13 @@ def set_criteria_active(conn, cursor, category_id, is_active):
 # at 25% for Designated) — see old MDS/DYNAMIC_CRITERIA.md for the source IPCR forms.
 # Values match tbl_employee_profiles.designation used elsewhere in the codebase.
 DESIGNATION_TYPES = ['Regular Faculty', 'Designated Faculty']
+
+# tbl_ipcr_categories also supports a third scope, 'Master Indicators', used solely to configure
+# how the Admin Dashboard's Master Indicators panel groups target types for display. It carries no
+# weight and must never be used anywhere weights/scoring/teaching-load are resolved — those stay
+# bounded to DESIGNATION_TYPES above. See REVISION MDs/category_and_criteria_simplification_plan.md.
+SCOPE_MASTER_INDICATORS = 'Master Indicators'
+CATEGORY_SCOPES = [SCOPE_MASTER_INDICATORS] + DESIGNATION_TYPES
 
 # tbl_employee_profiles.designation stores a person's *job title* — an open-ended set
 # ('Program Chair', 'RET Chair', 'Dean', 'Designated Faculty', and any other role the
@@ -294,26 +342,37 @@ def get_type_to_category(cursor, designation_type):
     return {type_id: cat_id for type_id, cat_id in cursor.fetchall()}
 
 
-def save_ipcr_category(conn, cursor, designation_type, category_name, display_order,
-                       type_ids, ipcr_category_id=None):
-    """Create or update one IPCR category and replace its assigned target types."""
+def save_ipcr_category(conn, cursor, designation_type, category_name, type_ids,
+                       ipcr_category_id=None, display_order=None):
+    """Create or update one IPCR category and replace its assigned target types.
+
+    `designation_type` may be any of CATEGORY_SCOPES (including 'Master Indicators'), not just
+    DESIGNATION_TYPES — weight/scoring code paths never read this table with that scope value, so
+    it's safe to allow here. display_order is only used on creation (auto-assigned within the
+    same scope when not given); an update never touches it, so removing the Display Order field
+    from the Edit modal can't silently reset an existing category's position."""
     name = (category_name or '').strip()
     if not name:
         return False, "Category name is required."
-    if designation_type not in DESIGNATION_TYPES:
-        return False, "Invalid designation type."
+    if designation_type not in CATEGORY_SCOPES:
+        return False, "Invalid category scope."
     try:
         if ipcr_category_id:
             cursor.execute("""
                 UPDATE tbl_ipcr_categories
-                SET category_name = %s, display_order = %s
+                SET category_name = %s
                 WHERE ipcr_category_id = %s
-            """, (name, int(display_order or 100), ipcr_category_id))
+            """, (name, ipcr_category_id))
         else:
+            if display_order is None:
+                cursor.execute(
+                    "SELECT COALESCE(MAX(display_order), 0) + 10 FROM tbl_ipcr_categories "
+                    "WHERE designation_type = %s", (designation_type,))
+                display_order = cursor.fetchone()[0]
             cursor.execute("""
                 INSERT INTO tbl_ipcr_categories (designation_type, category_name, display_order)
                 VALUES (%s, %s, %s)
-            """, (designation_type, name, int(display_order or 100)))
+            """, (designation_type, name, int(display_order)))
             ipcr_category_id = cursor.lastrowid
 
         cursor.execute("DELETE FROM tbl_ipcr_category_types WHERE ipcr_category_id = %s",
@@ -326,6 +385,43 @@ def save_ipcr_category(conn, cursor, designation_type, category_name, display_or
 
         conn.commit()
         return True, f"Category '{name}' saved."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
+def reorder_ipcr_category(conn, cursor, ipcr_category_id, direction):
+    """Swap this IPCR category's display_order with its immediate neighbor within the same
+    designation_type scope (up or down), ordered the same way get_ipcr_categories() orders
+    (display_order, category_name)."""
+    if direction not in ('up', 'down'):
+        return False, "Invalid direction."
+    try:
+        cursor.execute(
+            "SELECT designation_type FROM tbl_ipcr_categories WHERE ipcr_category_id = %s",
+            (ipcr_category_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False, "Category not found."
+        scope = row[0]
+
+        cursor.execute(
+            "SELECT ipcr_category_id, display_order FROM tbl_ipcr_categories "
+            "WHERE designation_type = %s ORDER BY display_order, category_name", (scope,))
+        rows = cursor.fetchall()
+        ids = [r[0] for r in rows]
+        idx = ids.index(int(ipcr_category_id))
+        neighbor_idx = idx - 1 if direction == 'up' else idx + 1
+        if neighbor_idx < 0 or neighbor_idx >= len(rows):
+            return False, "Already at the edge."
+        this_id, this_order = rows[idx]
+        other_id, other_order = rows[neighbor_idx]
+        cursor.execute("UPDATE tbl_ipcr_categories SET display_order = %s WHERE ipcr_category_id = %s",
+                       (other_order, this_id))
+        cursor.execute("UPDATE tbl_ipcr_categories SET display_order = %s WHERE ipcr_category_id = %s",
+                       (this_order, other_id))
+        conn.commit()
+        return True, "Order updated."
     except Exception as e:
         conn.rollback()
         return False, str(e)

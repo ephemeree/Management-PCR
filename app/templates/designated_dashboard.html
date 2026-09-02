@@ -36,7 +36,7 @@
     <span class="nav-text">Evidence Gathering</span>
 </button>
 {% endif %}
-{% if has_final_ipcr %}
+{% if is_committed or has_final_ipcr %}
 <button class="nav-item" data-section="nav-print-ipcr" onclick="showSection('nav-print-ipcr')">
     <i class="ti ti-printer"></i>
     <span class="nav-text">Print IPCR</span>
@@ -86,6 +86,23 @@
             </div>
         </div>
     </div>
+
+    {% if is_committed %}
+    <div class="alert border-0 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2"
+        style="background: var(--c-surface-alt); border-left: 4px solid var(--c-text) !important; border-radius: 10px;">
+        <div>
+            <i class="ti ti-lock me-2"></i>
+            {% if has_final_ipcr %}
+            Your IPCR has been finalized and approved by the Dean.
+            {% else %}
+            Your IPCR performance targets are approved and locked.
+            {% endif %}
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" onclick="window.open('{{ url_for('designated.designated_print_ipcr') }}', '_blank')">
+            <i class="ti ti-printer me-1"></i> View &amp; Print Approved IPCR
+        </button>
+    </div>
+    {% endif %}
 </div>
 
 <div id="designated-dpcr" class="dashboard-section">
@@ -144,12 +161,15 @@
                 <p class="mb-0 text-dark mt-1 small"><strong>Dean's Remarks:</strong> {{ dean_review.overall_remarks }}
                 </p>
                 {% endif %}
+                <button type="button" class="btn btn-outline-primary shadow-sm mt-2" onclick="window.open('{{ url_for('designated.designated_print_ipcr') }}', '_blank')">
+                    <i class="ti ti-printer me-1"></i> View &amp; Print Approved IPCR
+                </button>
             </div>
         </div>
     </div>
     {% elif dean_review and dean_review.overall_status == 'Approved' %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
-        style="background: rgba(63,125,88,0.06); border-left: 4px solid var(--c-success) !important; border-radius: 10px;">
+        style="background: var(--c-success-glow); border-left: 4px solid var(--c-success) !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
             <i class="ti ti-circle-check text-success fs-4 mt-1"></i>
             <div>
@@ -164,7 +184,7 @@
     </div>
     {% elif dean_review and dean_review.overall_status == 'Rejected' %}
     <div class="alert border-0 shadow-sm mb-4" role="alert"
-        style="background: rgba(184,132,46,0.08); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
+        style="background: var(--c-warning-glow); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
         <div class="d-flex align-items-start gap-3">
             <i class="ti ti-alert-circle text-warning fs-4 mt-1" style="color: var(--c-warning) !important;"></i>
             <div>
@@ -173,13 +193,15 @@
                 {% if dean_review.overall_remarks %}
                 <p class="mb-1 text-dark"><strong>Remarks:</strong> {{ dean_review.overall_remarks }}</p>
                 {% endif %}
-                <small class="text-muted">Review the Dean's adjusted target quantities and remarks below. Click <strong>"Re-submit IPCR for Approval"</strong> to send this draft back to the Dean for approval.</small>
+                <small class="text-muted">Your targets below are editable again — change quantities and deadlines, select or
+                    unselect targets, add or remove a custom target, then click
+                    <strong>"Re-submit IPCR for Approval"</strong> to send the corrected draft back to the Dean.</small>
             </div>
         </div>
     </div>
     {% elif has_submitted %}
     <div class="alert border-0 shadow-sm mb-4 text-center fw-bold"
-        style="background: rgba(184,132,46,0.08); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
+        style="background: var(--c-warning-glow); border-left: 4px solid var(--c-warning) !important; border-radius: 10px;">
         <i class="ti ti-hourglass me-2"></i> Submitted — awaiting review by the Dean.
     </div>
     {% endif %}
@@ -187,16 +209,8 @@
     <form id="dpcrForm" action="{{ url_for('designated.submit_designated_ipcr_route') }}" method="POST">
         <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
 
-        {% set categories = [
-        {'id': 'instructions', 'name': 'A. Instructions', 'display_name': 'Strategic Priorities', 'icon':
-        'bi-star-fill',
-        'subtitle': 'Assigned teaching and instructional workloads'},
-        {'id': 'support', 'name': 'Support Functions', 'display_name': 'Support Functions', 'icon': 'bi-tools',
-        'subtitle': 'Assigned administrative and support workloads'}
-        ] %}
-
         {# Table 1: Core Functions (Mandatory 10hrs Teaching Load + Cascaded Instruction from Program Chair) #}
-        <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+        <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
             <div class="card-header border-0 py-3 bg-light">
                 <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-star-filled text-warning me-2"></i>1. Core Functions</h5>
                 <p class="small mb-0 text-muted">Mandatory teaching load target (10 hrs) and cascaded instruction targets assigned by Program Chair (Locked)</p>
@@ -222,10 +236,10 @@
                             {% for target in dpcr_targets %}
                             {% if target.is_core %}
                             {% set ns_core.count = ns_core.count + 1 %}
-                            <tr class="table-active-row" style="background-color: rgba(13, 110, 253, 0.04);">
+                            <tr class="table-active-row" style="background-color: var(--c-accent-tint);">
                                 {% if can_edit %}
                                 <td class="text-center">
-                                    <input type="checkbox" class="form-check-input" checked disabled style="transform: scale(1.3);">
+                                    <input type="checkbox" class="form-check-input" checked disabled style="width: 1.3em; height: 1.3em;">
                                     <input type="hidden" name="selected_indicators[]" value="{{ target.indicator_id }}">
                                 </td>
                                 {% endif %}
@@ -234,15 +248,18 @@
                                     {% if target.is_cascaded %}
                                     <span class="badge bg-info text-dark border mb-1 ms-1"><i class="ti ti-sitemap me-1"></i>Cascaded from Chair</span>
                                     {% endif %}
-                                    <p class="mb-1 small text-secondary fw-semibold">{{ target.indicator_description }}</p>
-                                    <p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> {{ target.target_description or target.indicator_description }}</p>
+                                    {# Core Function rows have no editable description input of their own (the row is
+                                       locked to the Program Chair's own allocation), so this has to be the real
+                                       generated text — not the raw indicator, which would show the indicator's own
+                                       embedded example number instead of what was actually assigned. #}
+                                    <p class="mb-1 small text-secondary fw-semibold">{{ (target.target_description or target.indicator_description) | ipcr_preview }}</p>
                                     {% if can_edit %}
-                                    <input type="hidden" name="target_desc_{{ target.indicator_id }}" value="{{ target.target_description or target.indicator_description }}">
+                                    <input type="hidden" name="target_desc_{{ target.indicator_id }}" value="{{ (target.target_description or target.indicator_description) | ipcr_preview }}">
                                     {% endif %}
 
                                     {# Show Dean's per-item remark if present #}
                                     {% if target.dean_remarks %}
-                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 3px solid var(--c-indigo);">
+                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 2px solid color-mix(in srgb, var(--c-indigo) 55%, var(--c-border));">
                                         <small class="text-dark"><i class="ti ti-message me-1" style="color: var(--c-indigo);"></i><strong>Dean's note:</strong> {{ target.dean_remarks }}</small>
                                     </div>
                                     {% endif %}
@@ -292,7 +309,7 @@
         </div>
 
         {# Table 2: Strategic Priorities & Support Functions (Uncascaded Instruction Targets, Support Functions & Custom Items) #}
-        <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+        <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
             <div class="card-header border-0 py-3 bg-light">
                 <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-tools text-primary me-2"></i>2. Strategic Priorities &amp; Support Functions</h5>
                 <p class="small mb-0 text-muted">Uncascaded instructional options, support functions, and custom DPCR target items</p>
@@ -319,14 +336,28 @@
                             {% if not target.is_core %}
                             {% if can_edit or target.is_selected %}
                             {% set ns_strat.count = ns_strat.count + 1 %}
-                            <tr {% if target.is_selected and can_edit %}class="table-active-row" style="background-color: rgba(13, 110, 253, 0.05);" {% endif %}>
+                            <tr {% if target.is_selected and can_edit %}class="table-active-row" style="background-color: var(--c-accent-tint);" {% endif %} data-indicator-text="{{ target.indicator_description | e }}">
                                 {% if can_edit %}
                                 <td class="text-center">
+                                    {% if target.is_custom %}
+                                    {# A custom target already saved to the draft (this screen is editable again
+                                       because the Dean returned the IPCR). It must round-trip through the same
+                                       custom_*[] fields the Add Custom Target modal writes — submitting it as a
+                                       selected_indicators[] checkbox instead would send an indicator with no
+                                       target_qty_<id> field, which fails the "quantity greater than 0" check and
+                                       blocks the whole re-submission. custom_descriptions[] carries the *raw*
+                                       indicator text so the three-branch compose rule reproduces the same
+                                       sentence it produced the first time. #}
+                                    <input type="checkbox" class="form-check-input" checked disabled style="width: 1.3em; height: 1.3em;">
+                                    <input type="hidden" name="custom_descriptions[]" value="{{ target.indicator_description }}">
+                                    <input type="hidden" name="custom_categories[]" value="{{ target.custom_category_name or 'Support Functions' }}">
+                                    {% else %}
                                     <input type="checkbox" name="selected_indicators[]"
                                         class="form-check-input strategic-checkbox" value="{{ target.indicator_id }}"
-                                        style="transform: scale(1.3);" {% if target.is_selected %}checked{% endif %}>
+                                        style="width: 1.3em; height: 1.3em;" {% if target.is_selected %}checked{% endif %}>
                                     {% if target.is_oversight_cascade %}
                                     <input type="hidden" name="admin_indicator_ids[]" value="{{ target.indicator_id }}">
+                                    {% endif %}
                                     {% endif %}
                                 </td>
                                 {% endif %}
@@ -343,28 +374,60 @@
                                     {% if target.is_oversight_cascade %}
                                     <span class="badge bg-info text-dark border mb-1 ms-1"><i class="ti ti-sitemap me-1"></i>Departmental Oversight — Fixed Quota</span>
                                     {% endif %}
-                                    <p class="mb-1 small text-secondary fw-semibold">{{ target.indicator_description }}</p>
                                     {% if can_edit and not target.is_custom and not target.is_oversight_cascade %}
+                                    {# The editable input just below already shows the real description, so this label
+                                       is purely informational — safe to show the raw indicator here. #}
+                                    <p class="mb-1 small text-secondary fw-semibold">{{ target.indicator_description | ipcr_preview }}</p>
+                                    {% else %}
+                                    {# No editable description input will render for this row (locked/returned view,
+                                       an oversight row, or a custom item), so this has to be the real generated
+                                       text — not the raw indicator, which would show its own embedded example number
+                                       instead of what was actually assigned/cascaded. #}
+                                    <p class="mb-1 small text-secondary fw-semibold">{{ (target.target_description or target.indicator_description) | ipcr_preview }}</p>
+                                    {% endif %}
+                                    {% if can_edit and not target.is_custom and not target.is_oversight_cascade %}
+                                    {% set is_auto = (target.is_auto_description is none) or (target.is_auto_description == 1) %}
                                     <div class="mt-1">
                                         <label class="form-label text-muted mb-0 style-xs" style="font-size: 11px;">IPCR Target Description:</label>
-                                        <input type="text" class="form-control form-control-sm text-dark shadow-sm"
+                                        <input type="text" class="form-control form-control-sm text-dark shadow-sm target-desc-input"
                                                name="target_desc_{{ target.indicator_id }}"
-                                               value="{{ target.target_description or target.indicator_description }}"
+                                               value="{{ (target.target_description or target.indicator_description) | ipcr_preview }}"
                                                placeholder="Specify custom target description">
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <span class="badge bg-light text-secondary target-auto-badge" {% if not is_auto %}hidden{% endif %}><i class="ti ti-wand"></i> Auto</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 target-auto-reset" {% if is_auto %}hidden{% endif %}><i class="ti ti-rotate"></i> Reset to Auto</button>
+                                        </div>
+                                        <input type="hidden" name="is_auto_description_{{ target.indicator_id }}" value="{{ '1' if is_auto else '0' }}" class="target-auto-flag">
                                     </div>
-                                    {% elif target.target_description and target.target_description != target.indicator_description %}
-                                    <p class="mb-0 small text-dark"><i class="ti ti-align-left text-primary me-1"></i><strong>Target Description:</strong> {{ target.target_description }}</p>
+                                    {% endif %}
+
+                                    {% if can_edit and target.is_custom %}
+                                    {# Removing the row drops every custom_*[] field it carries, so the target simply
+                                       is not re-submitted — which is how a returned custom target gets withdrawn. #}
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 mt-1" style="padding: 0.25rem 0.5rem;"
+                                            aria-label="Remove this custom target"
+                                            onclick="this.closest('tr').remove(); checkEmptyTable('support');">
+                                        <i class="ti ti-trash me-1"></i>Remove
+                                    </button>
                                     {% endif %}
 
                                     {# Show Dean's per-item remark if present #}
                                     {% if target.dean_remarks %}
-                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 3px solid var(--c-indigo);">
+                                    <div class="mt-1 p-2 rounded" style="background: var(--c-accent-glow); border-left: 2px solid color-mix(in srgb, var(--c-indigo) 55%, var(--c-border));">
                                         <small class="text-dark"><i class="ti ti-message me-1" style="color: var(--c-indigo);"></i><strong>Dean's note:</strong> {{ target.dean_remarks }}</small>
                                     </div>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
-                                    {% if can_edit and not target.is_oversight_cascade %}
+                                    {% if can_edit and target.is_custom %}
+                                    {# custom_quantities[] rather than target_qty_<id>: this row submits through the
+                                       custom_*[] lists, which the route zips positionally. Every custom row emits
+                                       exactly one entry per list and the browser submits in DOM order, so the
+                                       description in the cell before this one and this quantity stay paired. #}
+                                    <input type="number" class="form-control form-control-sm text-center fw-bold shadow-sm"
+                                        name="custom_quantities[]" value="{{ target.total_target_value or 1 }}" min="1"
+                                        style="background-color: var(--c-accent-glow); border-color: var(--c-accent);">
+                                    {% elif can_edit and not target.is_oversight_cascade %}
                                     <input type="number" class="form-control form-control-sm text-center fw-bold shadow-sm"
                                         name="target_qty_{{ target.indicator_id }}"
                                         value="{{ target.total_target_value or 0 }}" min="0" {% if target.is_selected %}style="background-color: var(--c-accent-glow); border-color: var(--c-accent);" {% endif %}>
@@ -373,12 +436,20 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
-                                    {% if can_edit and not target.is_custom %}
+                                    {% if can_edit %}
                                     {# Departmental Oversight rows use a distinct _adm field name: their indicator_id can be
                                        the same as a personal Core Function row above (e.g. the chair's own Instruction share),
-                                       and a shared name would collide in the submitted form. See submit_designated_ipcr. #}
+                                       and a shared name would collide in the submitted form. See submit_designated_ipcr.
+                                       Custom rows use the positional custom_duration_*[] lists instead, like their
+                                       description and quantity — a returned IPCR is often returned precisely because a
+                                       deadline is missing, so this has to be correctable here. #}
+                                    {% if target.is_custom %}
+                                    {% set dur_value_name = 'custom_duration_values[]' %}
+                                    {% set dur_unit_name = 'custom_duration_units[]' %}
+                                    {% else %}
                                     {% set dur_value_name = 'target_dur_value_' ~ target.indicator_id ~ ('_adm' if target.is_oversight_cascade else '') %}
                                     {% set dur_unit_name = 'target_dur_unit_' ~ target.indicator_id ~ ('_adm' if target.is_oversight_cascade else '') %}
+                                    {% endif %}
                                     <div class="d-flex gap-1 justify-content-center">
                                         <input type="number" class="form-control form-control-sm text-center shadow-sm"
                                                name="{{ dur_value_name }}"
@@ -486,18 +557,18 @@
     {% endif %}
 </div>
 
-<div class="modal fade" id="addTargetModal" tabindex="-1">
+<div class="modal fade" id="addTargetModal" tabindex="-1" aria-hidden="true" aria-labelledby="addTargetModalLabel">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="ti ti-circle-plus me-2"></i> Add Custom Target</h5>
+                <h5 class="modal-title fw-bold" id="addTargetModalLabel"><i class="ti ti-circle-plus me-2"></i> Add Custom Target</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <form id="addTargetForm">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Target Type</label>
-                        <select class="form-select" name="Indicator" required>
+                        <label class="form-label small fw-bold" for="targetType">Target Type</label>
+                        <select class="form-select" id="targetType" name="Indicator" required>
                             <option value="Support">Support Functions</option>
                             <option value="Instructions">Instruction</option>
                         </select>
@@ -512,6 +583,12 @@
                                 class="text-danger">*</span></label>
                         <input type="text" class="form-control form-control-lg" id="targetDescription"
                             placeholder="e.g., Number of workshops conducted" required>
+                        <div class="form-text small">
+                            Either type a plain activity phrase and let the quantity and deadline
+                            below be added to it for you, or write the full sentence with its own
+                            numbers and tag them below.
+                        </div>
+                        <div id="targetDescriptionTagger" class="mt-2"></div>
                     </div>
 
                     <div class="mb-3">
@@ -519,6 +596,9 @@
                                 class="text-danger">*</span></label>
                         <input type="number" class="form-control form-control-lg" id="targetQuantity" min="1" value="1"
                             placeholder="e.g., 5" required>
+                        <div class="form-text small text-primary" id="targetQuantitySynced" hidden>
+                            <i class="ti ti-link me-1"></i>Taken from the number you tagged as Quantity.
+                        </div>
                     </div>
 
                     <div class="mb-0">
@@ -533,8 +613,13 @@
                                 <option value="semesters">semesters</option>
                             </select>
                         </div>
+                        <div class="form-text small text-primary" id="targetDurationSynced" hidden>
+                            <i class="ti ti-link me-1"></i>Taken from the number you tagged as Duration.
+                        </div>
                         <div class="form-text small">Used to compute the Timeliness rating and deadline.</div>
                     </div>
+                    <div id="customTargetPreview" class="small text-success mt-2 fst-italic"></div>
+                    <div id="customTargetWarning" class="alert alert-warning py-2 px-3 small mt-2 mb-0" hidden></div>
                 </form>
             </div>
             <div class="modal-footer border-0 bg-light">
@@ -547,22 +632,6 @@
     </div>
 </div>
 
-<style>
-    .strategic-checkbox {
-        cursor: pointer;
-    }
-
-    .strategic-checkbox:checked {
-        background-color: var(--c-accent);
-        border-color: var(--c-accent);
-    }
-
-    .form-control-sm:focus {
-        border-color: var(--c-accent);
-        box-shadow: 0 0 0 0.2rem var(--c-accent-glow);
-    }
-</style>
-
 {% if is_committed %}
 <div id="nav-evidence" class="dashboard-section">
     <div class="page-header d-flex justify-content-between align-items-center">
@@ -570,15 +639,26 @@
             <h2>Evidence Gathering</h2>
             <p>Upload your evidence and report accomplishment details for your locked commitment targets.</p>
         </div>
-        <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
-            <i class="ti ti-lock me-2"></i>Locked &amp; Committed
-        </span>
+        <div class="d-flex align-items-center gap-2">
+            {% if has_final_ipcr %}
+            <span class="badge bg-success px-3 py-2 fs-6 shadow-sm">
+                <i class="ti ti-circle-check me-2"></i>IPCR is approved by Dean and is ready for print
+            </span>
+            {% else %}
+            <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
+                <i class="ti ti-lock me-2"></i>Locked &amp; Committed
+            </span>
+            {% endif %}
+            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" onclick="window.open('{{ url_for('designated.designated_print_ipcr') }}', '_blank')">
+                <i class="ti ti-printer me-1"></i> View &amp; Print
+            </button>
+        </div>
     </div>
 
     <div class="row g-4">
         <!-- Accomplishments Column -->
         <div class="col-lg-12">
-            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+            <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                 <div
                     class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="mb-0 fw-bold"><i class="ti ti-file-check me-2"></i>My Evidence Submission Checklist</h5>
@@ -619,7 +699,7 @@
                                         <span class="badge bg-light text-dark border mb-1">{{ target.category_name | replace('A. ', '') | replace('B. ', '') | replace('C. ', '') if target.category_name else 'Standard' }}</span>
                                         {% endif %}
                                         {% endif %}
-                                        <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description }}
+                                        <p class="mb-0 small fw-semibold text-dark">{{ target.indicator_description | ipcr_preview }}
                                         </p>
                                     </td>
                                     <td class="text-center fw-bold fs-5 text-primary">
@@ -639,7 +719,12 @@
                                     <td class="text-center pe-4 py-4">
                                         <button type="button"
                                             class="btn {% if has_final_ipcr %}btn-outline-secondary{% elif evidence_readiness and evidence_readiness.evidence_submitted %}btn-secondary{% else %}btn-primary{% endif %} btn-sm px-4 py-2 fw-bold shadow-sm transition-all hover-shadow"
-                                            onclick="openEvidenceModal('{{ target.target_id }}', '{{ target.indicator_id }}', '{{ target.indicator_description|replace('\'', '\\\'')|replace('\"', '\\\"') }}', '{{ target.total_target_value or 0 }}', '{{ target.actual_quantity or 0 }}')">
+                                            data-target-id="{{ target.target_id }}"
+                                            data-indicator-id="{{ target.indicator_id }}"
+                                            data-desc="{{ target.indicator_description | ipcr_preview }}"
+                                            data-target-qty="{{ target.total_target_value or 0 }}"
+                                            data-actual-qty="{{ target.actual_quantity or 0 }}"
+                                            onclick="openEvidenceModal(this.dataset.targetId, this.dataset.indicatorId, this.dataset.desc, this.dataset.targetQty, this.dataset.actualQty)">
                                             {% if has_final_ipcr %}
                                             <i class="ti ti-eye me-1"></i>View Evidences (Approved)
                                             {% elif evidence_readiness and evidence_readiness.evidence_submitted %}
@@ -660,7 +745,7 @@
 
             <!-- IPCR Summary of Ratings (uses the Designated Faculty weight table) -->
             {% if ipcr_score %}
-            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+            <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
                 <div class="card-header bg-white border-0 py-3">
                     <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-calculator me-2 text-primary"></i>Summary of Ratings</h5>
                     <small class="text-muted">Live preview — updates as you report accomplishments.</small>
@@ -743,16 +828,28 @@
 </div>
 {% endif %}
 
-{% if has_final_ipcr %}
+{% if is_committed or has_final_ipcr %}
 <div id="nav-print-ipcr" class="dashboard-section">
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <div>
+            {% if has_final_ipcr %}
             <h2><i class="ti ti-printer me-2 text-primary"></i>Finalized IPCR Details</h2>
             <p class="text-muted mb-0">Your IPCR has been finalized and verified by the Dean. You may now review and print the final document.</p>
+            {% else %}
+            <h2><i class="ti ti-printer me-2 text-primary"></i>Approved Performance Commitment</h2>
+            <p class="text-muted mb-0">Your IPCR performance targets are approved and locked. You may review and print your official Performance Commitment form. Ratings will populate once evaluated at the end of the term.</p>
+            {% endif %}
         </div>
-        <button class="btn btn-primary px-4 fw-bold shadow-sm" onclick="window.open('{{ url_for('designated.designated_print_ipcr') }}', '_blank');">
-            <i class="ti ti-printer me-2"></i>Print IPCR
-        </button>
+        <div class="d-flex align-items-center gap-2">
+            {% if not has_final_ipcr %}
+            <span class="badge bg-dark px-3 py-2 fs-6 shadow-sm">
+                <i class="ti ti-lock me-2"></i>Locked &amp; Committed
+            </span>
+            {% endif %}
+            <button class="btn btn-primary px-4 fw-bold shadow-sm" onclick="window.open('{{ url_for('designated.designated_print_ipcr') }}', '_blank');">
+                <i class="ti ti-printer me-2"></i>Print IPCR
+            </button>
+        </div>
     </div>
 
     <div class="row g-4">
@@ -776,26 +873,35 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% set current_category = namespace(name='') %}
-                        {% for t in dpcr_targets %}
-                            {% set cat_name = t.category_name or 'General' %}
-                            {% if cat_name != current_category.name %}
-                                <tr style="background-color: var(--c-surface-alt);">
-                                    <td colspan="8" class="text-start fw-bold py-3 px-4" style="color: var(--c-text); font-size: 0.95rem;">{{ cat_name }}</td>
-                                </tr>
-                                {% set current_category.name = cat_name %}
-                            {% endif %}
-                            <tr>
-                                <td class="text-start px-4 text-muted border-end" style="font-size: 0.85rem;">{{ cat_name }}</td>
-                                <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ t.indicator_description }}</td>
-                                <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ t.actual_accomplishment or '' }}</td>
-                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.q if t.rating and t.rating.q is not none else '-' }}</td>
-                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.e if t.rating and t.rating.e is not none else '-' }}</td>
-                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.t if t.rating and t.rating.t is not none else '-' }}</td>
-                                <td class="text-center fw-bold border-end" style="background-color: var(--c-surface-alt); color: var(--c-text);">{{ t.rating.average if t.rating and t.rating.average is not none else '-' }}</td>
-                                <td class="text-start px-3"></td>
+                        {% if ipcr_form_preview %}
+                        {% for section in ipcr_form_preview.sections %}
+                            <tr style="background-color: var(--c-surface-alt);">
+                                <td colspan="8" class="text-start fw-bold py-3 px-4" style="color: var(--c-text); font-size: 0.95rem;">
+                                    {{ section.numeral }}. {{ section.name }}
+                                    {% if section.weight_pct is not none %}({{ section.weight_pct | round(0) | int }}%){% endif %}
+                                </td>
                             </tr>
+                            {% for sub in section.subsections %}
+                            {% for t in sub.targets %}
+                            <tr>
+                                <td class="text-start px-4 text-muted border-end" style="font-size: 0.85rem;">{{ sub.letter }}. {{ sub.label }}</td>
+                                <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ (t.target_description or t.indicator_description) | ipcr_preview }}</td>
+                                <td class="text-start px-4 border-end" style="color: var(--c-text-sub);">{{ t.actual_accomplishment or '' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.q if has_final_ipcr and t.rating and t.rating.q is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.e if has_final_ipcr and t.rating and t.rating.e is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-primary border-end">{{ t.rating.t if has_final_ipcr and t.rating and t.rating.t is not none else '-' }}</td>
+                                <td class="text-center fw-bold border-end" style="background-color: var(--c-surface-alt); color: var(--c-text);">{{ t.rating.average if has_final_ipcr and t.rating and t.rating.average is not none else '-' }}</td>
+                                <td class="text-start px-3">{{ t.print_remarks or '' }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% endfor %}
+                            {% if section.target_count == 0 %}
+                            <tr>
+                                <td colspan="8" class="text-start px-4 text-muted small">No targets under this category.</td>
+                            </tr>
+                            {% endif %}
                         {% endfor %}
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -822,21 +928,21 @@
                             <tr>
                                 <td class="text-start px-4 fw-medium border-end" style="color: var(--c-text);">{{ b.category_name }}</td>
                                 <td class="text-center text-muted border-end">{{ b.weight_pct }}%</td>
-                                <td class="text-center fw-semibold text-dark border-end">{{ b.raw_avg if b.raw_avg is not none else '-' }}</td>
-                                <td class="text-center fw-bold text-primary">{{ b.weighted_value if b.weighted_value is not none else '-' }}</td>
+                                <td class="text-center fw-semibold text-dark border-end">{{ b.raw_avg if has_final_ipcr and b.raw_avg is not none else '-' }}</td>
+                                <td class="text-center fw-bold text-primary">{{ b.weighted_value if has_final_ipcr and b.weighted_value is not none else '-' }}</td>
                             </tr>
                             {% endfor %}
                             <tr style="background-color: var(--c-surface-alt);">
                                 <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-text-sub);">Total Overall Rating</td>
-                                <td colspan="2" class="text-center fw-bold fs-6 py-3" style="color: var(--c-text);">{{ ipcr_score.total_overall_rating if ipcr_score.total_overall_rating is not none else '-' }}</td>
+                                <td colspan="2" class="text-center fw-bold fs-6 py-3" style="color: var(--c-text);">{{ ipcr_score.total_overall_rating if has_final_ipcr and ipcr_score.total_overall_rating is not none else '-' }}</td>
                             </tr>
                             <tr style="background-color: var(--c-surface-alt);">
                                 <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-text);">Final Weighted Rating</td>
-                                <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">{{ ipcr_score.final_weighted_rating if ipcr_score.final_weighted_rating is not none else '-' }}</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 text-primary py-3">{{ ipcr_score.final_weighted_rating if has_final_ipcr and ipcr_score.final_weighted_rating is not none else '-' }}</td>
                             </tr>
-                            <tr style="background-color: rgba(63,125,88,0.08);">
+                            <tr style="background-color: var(--c-success-glow);">
                                 <td colspan="2" class="text-end fw-bold px-4 py-3 border-end" style="color: var(--c-success);">Adjectival Rating</td>
-                                <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: var(--c-success);">{{ ipcr_score.adjectival_rating or '-' }}</td>
+                                <td colspan="2" class="text-center fw-bold fs-5 py-3" style="color: var(--c-success);">{{ ipcr_score.adjectival_rating if has_final_ipcr else '-' }}</td>
                             </tr>
                         {% else %}
                             <tr>
@@ -858,9 +964,151 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        // Auto-generated IPCR target description for Table 2 (Strategic Priorities & Support
+        // Functions) rows. Table 1 (Core Functions) and oversight/custom rows don't render
+        // this editable field at all, so nothing to wire there.
+        if (window.wireAutoDescription) {
+            document.querySelectorAll('#tbody-support tr[data-indicator-text]').forEach(function (row) {
+                const descField = row.querySelector('.target-desc-input');
+                const flagInput = row.querySelector('.target-auto-flag');
+                if (!descField || !flagInput) return;
+                window.wireAutoDescription({
+                    indicatorText: row.dataset.indicatorText,
+                    qtyInput: row.querySelector('input[name^="target_qty_"]'),
+                    durValueInput: row.querySelector('input[name^="target_dur_value_"]'),
+                    durUnitInput: row.querySelector('select[name^="target_dur_unit_"]'),
+                    descField: descField,
+                    autoFlagInput: flagInput,
+                    badgeEl: row.querySelector('.target-auto-badge'),
+                    resetBtn: row.querySelector('.target-auto-reset')
+                });
+            });
+        }
+
         const addTargetBtn = document.getElementById('addTargetBtn');
         const addTargetForm = document.getElementById('addTargetForm');
         const modalElement = document.getElementById('addTargetModal');
+
+        // Mirrors the three-branch rule in submit_designated_ipcr() exactly — see the long
+        // comment there for why each branch is what it is. Used for both the live preview
+        // and the text shown on the row that gets added, so the person sees the same
+        // sentence the server will store.
+        window.composeCustomTargetDescription = function (text, qty, durValue, durUnit) {
+            const tagged = /\{qty(?::[^}]*)?\}/.test(text) ||
+                           /\{duration(?::[^:}]*(?::[^}]*)?)?\}/.test(text);
+            if (tagged || !/\d/.test(text)) {
+                return window.generateIpcrDescription(text, qty, durValue, durUnit);
+            }
+            return text;  // untagged numbers already in the sentence — never prepend on top
+        };
+
+        // Live preview + click-to-tag. Tagging a number binds it to the Quantity or Duration
+        // field beside it, which is what makes a quantity sitting mid-sentence ("Report 3
+        // activities...") work: the person states which number is which instead of the system
+        // guessing, so the two can never disagree.
+        (function () {
+            const descEl = document.getElementById('targetDescription');
+            const qtyEl = document.getElementById('targetQuantity');
+            const durValEl = document.getElementById('targetDurationValue');
+            const durUnitEl = document.getElementById('targetDurationUnit');
+            const previewEl = document.getElementById('customTargetPreview');
+            const qtySyncedEl = document.getElementById('targetQuantitySynced');
+            const durSyncedEl = document.getElementById('targetDurationSynced');
+            const warningEl = document.getElementById('customTargetWarning');
+            if (!descEl || !previewEl || !window.generateIpcrDescription) return;
+
+            function previewText(text) {
+                text = (text || '').trim();
+                if (!text) return '';
+                const combined = window.composeCustomTargetDescription(
+                    text, qtyEl.value, durValEl.value, durUnitEl.value);
+                return combined ? ('Will be saved as: "' + combined + '"') : '';
+            }
+
+            function updatePreview() {
+                previewEl.textContent = previewText(descEl.value);
+            }
+
+            // Catches the one case tagging can still get wrong: a number left untagged in the
+            // sentence while the Target Quantity field says something else. The preview reads
+            // perfectly in that state — the untagged number just looks like an ordinary word —
+            // so nothing else would flag it, and the target saves with a description and a
+            // quantity that disagree. Both numbers are named rather than one being assumed
+            // correct; the person decides which to change.
+            //
+            // Add is blocked only when a {duration} tag exists without a {qty} tag, which is a
+            // half-finished tagging pass rather than a deliberate choice. An entirely untagged
+            // description is left submittable: that is the documented verbatim branch.
+            function updateMismatchWarning(tags) {
+                if (!warningEl) return;
+                const qtyVal = (qtyEl.value || '').trim();
+                const durVal = (durValEl.value || '').trim();
+                // A number already accounted for by either field is not a conflict — without
+                // excluding the deadline's number too, "Accomplish 3 activities in 6 months"
+                // with quantity 3 would still nag about the 6.
+                const conflicting = (tags.untagged || []).filter(function (n) {
+                    const bare = n.replace(/%$/, '');
+                    return bare !== qtyVal && bare !== durVal;
+                });
+                const halfTagged = tags.hasDuration && !tags.hasQty;
+
+                if (!tags.hasQty && conflicting.length) {
+                    warningEl.innerHTML =
+                        'Your description says <strong>' + conflicting.join('</strong>, <strong>') +
+                        '</strong> but Target Quantity is <strong>' + (qtyVal || '—') + '</strong>. ' +
+                        (halfTagged
+                            ? 'Tag the number that is your quantity as <strong>Qty</strong>, or change the quantity to match.'
+                            : 'Tag it as <strong>Qty</strong> to link the two, or leave it and the sentence saves exactly as typed.');
+                    warningEl.hidden = false;
+                } else {
+                    warningEl.hidden = true;
+                }
+                if (addTargetBtn) {
+                    addTargetBtn.disabled = halfTagged && conflicting.length > 0;
+                }
+            }
+
+            window.wirePlaceholderTagger('targetDescription', 'targetDescriptionTagger', 'customTargetPreview', {
+                emptyHint: 'No numbers in your description — the quantity and deadline below will be ' +
+                           'added to it automatically.',
+                renderPreview: previewText,
+                // Pull the tagged number straight into the matching field, so the sentence and
+                // the field can't drift apart. Read-only while a tag is in place: the tagged
+                // text is the single source of that number, and editing the field on its own
+                // would silently desync the two. Untagging (Undo) hands the field back.
+                // Keyed on the tag's embedded value, not merely on the tag being present: a
+                // hand-typed bare "{qty}" carries no number to sync from, and locking the
+                // field on that would leave no way to enter the quantity at all. Every tag
+                // the helper itself writes embeds its matched text, so this is the normal path.
+                onTagsChange: function (text, tags) {
+                    if (tags.qty) qtyEl.value = tags.qty.replace(/%$/, '');
+                    qtyEl.readOnly = !!tags.qty;
+                    if (qtySyncedEl) qtySyncedEl.hidden = !tags.qty;
+
+                    if (tags.durationValue) durValEl.value = tags.durationValue;
+                    if (tags.durationUnit) durUnitEl.value = tags.durationUnit;
+                    durValEl.readOnly = !!tags.durationValue;
+                    durUnitEl.disabled = !!tags.durationUnit;
+                    if (durSyncedEl) durSyncedEl.hidden = !tags.durationValue;
+
+                    updateMismatchWarning(tags);
+                }
+            });
+
+            // Editing the quantity or deadline by hand has to re-run the tagger's render, not
+            // just the preview: the mismatch warning compares those fields against the numbers
+            // left untagged in the text, and only render() knows which those are. Re-dispatching
+            // the description's own input event reuses that one path. No loop — assigning
+            // .value programmatically (as onTagsChange does) fires no input event.
+            function refresh() {
+                updatePreview();
+                descEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            [qtyEl, durValEl, durUnitEl].forEach(function (el) {
+                if (el) el.addEventListener('input', refresh);
+            });
+            if (durUnitEl) durUnitEl.addEventListener('change', refresh);
+        })();
 
         // Checkbox highlighting logic
         function highlightQtyInput(cb) {
@@ -869,9 +1117,9 @@
             if (qtyInput) {
                 if (cb.checked) {
                     row.classList.add('table-active-row');
-                    row.style.backgroundColor = 'rgba(62, 92, 130, 0.06)';
+                    row.style.backgroundColor = 'var(--c-accent-tint)';
                     qtyInput.classList.add('border-primary');
-                    qtyInput.style.backgroundColor = 'rgba(62, 92, 130, 0.14)';
+                    qtyInput.style.backgroundColor = 'var(--c-accent-glow)';
                 } else {
                     row.classList.remove('table-active-row');
                     row.style.backgroundColor = '';
@@ -895,6 +1143,10 @@
             addTargetBtn.addEventListener('click', function () {
                 // Collect custom payload values
                 const categorySelect = addTargetForm.querySelector('[name="Indicator"]').value; // 'Instructions' or 'Support'
+                // `description` is the raw text, placeholder tokens and all — that is what the
+                // server stores as the custom indicator, so a tagged item can be re-substituted
+                // later exactly like an Admin-authored one. `displayDescription` is the same
+                // text run through the shared compose rule, i.e. what the sentence reads as.
                 const description = document.getElementById('targetDescription').value.trim();
                 const quantity = document.getElementById('targetQuantity').value;
                 const durValue = (document.getElementById('targetDurationValue')?.value || '').trim();
@@ -912,11 +1164,15 @@
                     return;
                 }
 
-                // Client-side Duplicate Description Check
+                const displayDescription = window.composeCustomTargetDescription(
+                    description, quantity, durValue, durUnit);
+
+                // Client-side Duplicate Description Check — compares the composed sentence,
+                // since that is what the existing rows display.
                 let isDuplicate = false;
                 document.querySelectorAll('#dpcrForm tbody tr').forEach(row => {
                     const descEl = row.querySelector('p.mb-0.small.text-secondary');
-                    if (descEl && descEl.textContent.trim().toLowerCase() === description.toLowerCase()) {
+                    if (descEl && descEl.textContent.trim().toLowerCase() === displayDescription.toLowerCase()) {
                         isDuplicate = true;
                     }
                 });
@@ -961,19 +1217,19 @@
                 customRow.className = 'custom-target-row';
                 customRow.innerHTML = `
                     <td class="text-center">
-                        <input type="checkbox" class="form-check-input" checked disabled style="transform: scale(1.3);">
+                        <input type="checkbox" class="form-check-input" checked disabled style="width: 1.3em; height: 1.3em;">
                     </td>
                     <td class="py-3">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <span class="badge bg-warning text-dark border mb-1">Custom</span>
-                                <p class="mb-0 small text-secondary">${description}</p>
+                                <p class="mb-0 small text-secondary">${displayDescription}</p>
                                 <input type="hidden" name="custom_descriptions[]" value="${description}">
                                 <input type="hidden" name="custom_categories[]" value="${categoryName}">
                                 <input type="hidden" name="custom_duration_values[]" value="${durValue}">
                                 <input type="hidden" name="custom_duration_units[]" value="${durUnit}">
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('tr').remove(); checkEmptyTable('support');">
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0" style="padding: 0.5rem;" aria-label="Remove this custom target" onclick="this.closest('tr').remove(); checkEmptyTable('support');">
                                 <i class="ti ti-trash"></i>
                             </button>
                         </div>
@@ -996,6 +1252,24 @@
                 const bootstrapModal = bootstrap.Modal.getInstance(modalElement);
                 bootstrapModal.hide();
                 addTargetForm.reset();
+                // form.reset() restores values but not the readOnly/disabled state the tagger
+                // applied, and doesn't fire an input event — so clear both by hand and let the
+                // tagger re-render itself against the now-empty description.
+                const qtyField = document.getElementById('targetQuantity');
+                const durValField = document.getElementById('targetDurationValue');
+                const durUnitField = document.getElementById('targetDurationUnit');
+                if (qtyField) qtyField.readOnly = false;
+                if (durValField) durValField.readOnly = false;
+                if (durUnitField) durUnitField.disabled = false;
+                ['targetQuantitySynced', 'targetDurationSynced', 'customTargetWarning'].forEach(function (id) {
+                    const el = document.getElementById(id);
+                    if (el) el.hidden = true;
+                });
+                addTargetBtn.disabled = false;
+                document.getElementById('targetDescription')
+                        .dispatchEvent(new Event('input', { bubbles: true }));
+                const previewEl = document.getElementById('customTargetPreview');
+                if (previewEl) previewEl.textContent = '';
             });
         }
 
@@ -1158,7 +1432,7 @@
             {% if target.is_selected %}
             {% set target_qty = target.assigned_quantity or target.total_target_value or 0 %}
             {% if (target.actual_quantity or 0) < target_qty %}
-            { name: {{ (target.indicator_description or '') | tojson }}, actual: {{ target.actual_quantity or 0 }}, target: {{ target_qty }} },
+            { name: {{ (target.indicator_description or '') | ipcr_preview | tojson }}, actual: {{ target.actual_quantity or 0 }}, target: {{ target_qty }} },
             {% endif %}
             {% endif %}
             {% endfor %}
@@ -1248,7 +1522,8 @@
         const effRow = document.getElementById('efficiencyRow');
         const effSelect = document.getElementById('evidenceEfficiency');
         const effErr = document.getElementById('efficiencyErrorMsg');
-        
+        const msg = document.getElementById('accomplishmentSaveMsg');
+
         if (effRow && effRow.style.display !== 'none' && !effRaw) {
             if (effSelect) effSelect.classList.add('is-invalid');
             if (effErr) effErr.style.display = 'block';
@@ -1261,7 +1536,6 @@
         if (effSelect) effSelect.classList.remove('is-invalid');
         if (effErr) effErr.style.display = 'none';
 
-        const msg = document.getElementById('accomplishmentSaveMsg');
         if (msg) {
             msg.className = 'small me-2 text-muted';
             msg.textContent = 'Saving...';
@@ -1449,7 +1723,7 @@
                             let actionHtml = '';
                             if (ev.verification_status !== 'Approved' && !HAS_FINAL_IPCR) {
                                 actionHtml = `
-                                    <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
+                                    <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger border-0 align-middle" style="padding: 0.5rem;" title="Delete evidence file" aria-label="Delete evidence file">
                                         <i class="ti ti-trash"></i>
                                     </button>
                                 `;
@@ -1582,12 +1856,12 @@
 </script>
 
 <!-- Unified Evidence Gathering Modal -->
-<div class="modal fade" id="evidenceGatheringModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="evidenceGatheringModal" tabindex="-1" aria-hidden="true" aria-labelledby="evidenceGatheringModalLabel">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header text-white border-0 py-3"
                 style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: var(--c-accent);">
-                <h5 class="modal-title fw-bold"><i class="ti ti-file-check me-2"></i>Evidence Gathering
+                <h5 class="modal-title fw-bold" id="evidenceGatheringModalLabel"><i class="ti ti-file-check me-2"></i>Evidence Gathering
                     Checklist</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
@@ -1620,8 +1894,7 @@
                     <!-- Left Column: Actions (Upload) -->
                     <div class="col-lg-6">
                         <!-- Upload Form -->
-                        <div class="card border border-light shadow-xs mb-0 h-100"
-                            style="border-radius: 12px; overflow: hidden;">
+                        <div class="card border border-light shadow-xs mb-0 h-100 card-rounded-clip">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i
                                         class="ti ti-cloud-upload me-2 text-primary"></i>Upload New Evidence</h6>
@@ -1656,8 +1929,7 @@
 
                     <!-- Right Column: Submissions View -->
                     <div class="col-lg-6">
-                        <div class="card border border-light shadow-xs h-100"
-                            style="border-radius: 12px; overflow: hidden;">
+                        <div class="card border border-light shadow-xs h-100 card-rounded-clip">
                             <div class="card-header bg-white border-0 pt-3 pb-0 text-start">
                                 <h6 class="fw-bold text-dark mb-0"><i class="ti ti-files me-2 text-success"></i>Current
                                     Submissions</h6>
@@ -1769,7 +2041,7 @@
 </div>
 
 <!-- Custom Confirmation Modal -->
-<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="confirmModalTitle" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-0 pb-0 pe-3 pt-3 justify-content-end">
