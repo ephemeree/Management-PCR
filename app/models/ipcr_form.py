@@ -80,12 +80,19 @@ def _target_type_meta(cursor):
     return {row[0]: (_strip_leading_letter(row[1]), row[2] or 0) for row in cursor.fetchall()}
 
 
-def build_ipcr_form(cursor, emp_id, term_id):
+def build_ipcr_form(cursor, emp_id, term_id, force_final=False):
     """
     Everything the printed IPCR needs for one employee and term.
 
     Returns None when the employee has no committed targets — there is nothing to print
     before an IPCR is locked.
+
+    force_final: skips the "all targets are Dean Approved" gate on is_final. Used by the
+    Dean's own Final Verification review, where the package has already reached the Dean
+    (status 'Submitted to Dean' or later) and the scores computed below are exactly what the
+    Dean is being asked to approve -- withholding them until after approval would show the
+    reviewer the wrong form. Faculty-facing print views must NOT pass this: for them,
+    "Final Evaluation" genuinely means the Dean has already approved.
     """
     cursor.execute("""
         SELECT first_name, last_name, academic_rank, designation, specialization, college
@@ -173,9 +180,11 @@ def build_ipcr_form(cursor, emp_id, term_id):
     full_name = f"{first_name} {last_name}".strip().upper()
     period = format_rating_period(period_start, period_end)
 
-    # Only a Dean-approved IPCR is final; anything earlier prints as a locked commitment.
-    is_final = bool(targets) and all(
-        (t.get('status') or '') == STATUS_DEAN_APPROVED for t in targets)
+    # Only a Dean-approved IPCR is final; anything earlier prints as a locked commitment --
+    # except for the Dean's own review of a package already submitted for final verification,
+    # where the ratings being reviewed are exactly this term's final scores.
+    is_final = bool(targets) and (force_final or all(
+        (t.get('status') or '') == STATUS_DEAN_APPROVED for t in targets))
     form_stage = 'final_evaluation' if is_final else 'commitment'
     stage_title = ('INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR) - FINAL EVALUATION'
                    if is_final else

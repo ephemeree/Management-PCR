@@ -90,8 +90,18 @@ def dean_dashboard():
         approved_regular_dean_evidence_list = [f for f in approved_dean_evidence_list if not _is_designated_or_chair_or_dean(f)]
         # Every Designated Faculty member -- plain or a chair/Dean's own IPCR -- has no
         # Program Chair review before landing here, so all of them need the dedicated
-        # Evidence Verification panel, not just chairs/Dean.
-        pending_designated_dean_evidence_list = [f for f in pending_dean_evidence_list if _is_designated_or_chair_or_dean(f)]
+        # Evidence Verification panel, not just chairs/Dean. They stay in that panel (not
+        # Final Verification) until every one of their evidence files is actually reviewed
+        # and approved (is_both_approved) -- Regular Faculty already carry that same flag
+        # from Program Chair/RET Chair review before 'Submitted to Dean' is ever set.
+        pending_designated_dean_evidence_list = [f for f in pending_dean_evidence_list
+                                                  if _is_designated_or_chair_or_dean(f) and not f.get('is_both_approved')]
+        # Final Verification is the Dean's package-level sign-off, so a faculty member --
+        # regular or designated -- only belongs here once their evidence has actually been
+        # reviewed and approved (by the Program Chair/RET Chair for Regular Faculty, by the
+        # Dean via the Evidence Verification panel for designated faculty/chairs/Dean), not
+        # merely because their package status reached 'Submitted to Dean'.
+        pending_dean_evidence_list = [f for f in pending_dean_evidence_list if f.get('is_both_approved')]
 
         departments = get_departments(cursor)
 
@@ -585,7 +595,20 @@ def dean_preview_ipcr(emp_id):
             flash('No active academic term found.', 'warning')
             return redirect(url_for('dean.dean_dashboard'))
 
-        form = build_ipcr_form(cursor, emp_id, active_term['term_id'])
+        # Once a package has reached the Dean at all (submitted for final verification, or
+        # already approved), the Dean's own review should always show the computed Q/E/T
+        # ratings and Final Weighted Rating -- that's what final verification IS -- rather
+        # than the pre-approval "Approved Commitment" view faculty see while still gathering
+        # evidence.
+        cursor.execute("""
+            SELECT COUNT(*) FROM tbl_committed_targets ct
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            WHERE ct.emp_id = %s AND mi.term_id = %s
+              AND ct.status IN ('Submitted to Dean', 'Dean Approved')
+        """, (emp_id, active_term['term_id']))
+        reached_dean = cursor.fetchone()[0] > 0
+
+        form = build_ipcr_form(cursor, emp_id, active_term['term_id'], force_final=reached_dean)
         if not form or not form['has_targets']:
             flash('No committed IPCR targets found for this faculty member.', 'warning')
             return redirect(url_for('dean.dean_dashboard'))
