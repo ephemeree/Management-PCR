@@ -1,5 +1,5 @@
 # Trigger reload 19
-from app.models.criteria import SLUG_RESEARCH, SLUG_EXTENSION
+from app.models.criteria import SLUG_RESEARCH, SLUG_EXTENSION, rank_band
 from app.models.scoring import format_duration
 
 
@@ -34,6 +34,10 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
                    ) as assigned_quantity,
                    dt.review_status as status,
                    COALESCE(dt.target_description, da.custom_description, mi.indicator_description) as indicator_description,
+                   mi.indicator_description as raw_indicator_description,
+                   COALESCE(dt.is_auto_description, da.is_auto_description) as is_auto_description,
+                   COALESCE(dt.target_duration_value, da.target_duration_value) as target_duration_value,
+                   COALESCE(dt.target_duration_unit, da.target_duration_unit) as target_duration_unit,
                    COALESCE(dt.target_deadline, da.target_deadline) as target_deadline,
                    tc.category_name,
                    ri.item_remarks as chair_item_remarks,
@@ -59,6 +63,10 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
         query = """
             SELECT MIN(da.allocation_id) as target_id, da.indicator_id, MAX(da.assigned_quantity) as assigned_quantity, 'Draft' as status,
                    COALESCE(MAX(da.custom_description), mi.indicator_description) as indicator_description,
+                   mi.indicator_description as raw_indicator_description,
+                   MAX(da.is_auto_description) as is_auto_description,
+                   MAX(da.target_duration_value) as target_duration_value,
+                   MAX(da.target_duration_unit) as target_duration_unit,
                    MAX(da.target_deadline) as target_deadline,
                    tc.category_name,
                    NULL as chair_item_remarks, NULL as chair_reviewed_quantity
@@ -75,6 +83,19 @@ def get_faculty_assigned_targets(cursor, emp_id, term_id):
     targets = timed_query(cursor, query, (emp_id, term_id), label="get_faculty_assigned_targets_load")
     # Filter out designated 10 hours teaching load target for Regular Faculty
     targets = [t for t in targets if '10 hours' not in str(t.get('indicator_description', '')) and '10 hrs' not in str(t.get('indicator_description', ''))]
+
+    # Never trust a stored description for an auto row — regenerate from the raw indicator and
+    # the actually-assigned quantity/duration every time this is read. Regular Faculty never
+    # type this field themselves (it's filled in upstream by Program Chair/RET Chair), so
+    # there's nothing to lose by always recomputing it, and it self-corrects any row saved
+    # before this substitution logic existed.
+    from app.models.ipcr_description import format_ipcr_target_description
+    for t in targets:
+        is_auto = t.get('is_auto_description') is None or t.get('is_auto_description') == 1
+        if is_auto and t.get('raw_indicator_description'):
+            t['indicator_description'] = format_ipcr_target_description(
+                t.get('raw_indicator_description'), t.get('assigned_quantity'),
+                t.get('target_duration_value'), t.get('target_duration_unit'))
 
     # Ensure the mandatory Teaching Load target is present. Hours and duration come from
     # the Admin's teaching-load configuration rather than a hardcoded literal.
@@ -154,6 +175,9 @@ def get_faculty_chair_review_status(cursor, emp_id, term_id):
 
 def get_faculty_ret_menu(cursor, academic_rank, term_id):
     from app.models.connection import timed_query
+    # Rules are configured against the canonical Academic Rank Band ('Instructor'), not a
+    # faculty member's specific sub-rank ('Instructor II') — normalize before matching.
+    band = rank_band(academic_rank)
     query = """
         SELECT r.required_selections, mi.indicator_id, mi.indicator_description, tc.category_name, tc.slug,
                rri.target_quantity, rri.target_description, rri.target_duration_value, rri.target_duration_unit
@@ -163,7 +187,7 @@ def get_faculty_ret_menu(cursor, academic_rank, term_id):
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
         WHERE r.academic_rank = %s AND mi.term_id = %s
     """
-    results = timed_query(cursor, query, (academic_rank, term_id), label="get_faculty_ret_menu")
+    results = timed_query(cursor, query, (band, term_id), label="get_faculty_ret_menu")
 
     ret_menu = {
         'research_required': 0,
@@ -202,6 +226,7 @@ def is_faculty_ret_eligible(cursor, emp_id, term_id):
     academic_rank = row[0] if row else None
     if not academic_rank:
         return False
+    band = rank_band(academic_rank)
     cursor.execute("""
         SELECT COUNT(*)
         FROM tbl_ret_rules r
@@ -214,7 +239,7 @@ def is_faculty_ret_eligible(cursor, emp_id, term_id):
               OR LOWER(COALESCE(tc.category_name, '')) LIKE '%%research%%'
               OR LOWER(COALESCE(tc.review_lane, '')) = 'ret'
           )
-    """, (academic_rank, term_id))
+    """, (band, term_id))
     return cursor.fetchone()[0] > 0
 
 
@@ -232,6 +257,12 @@ def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets
     active_term_id = int(term_id)
     conn.autocommit = False
     try:
+        # Resolve once: RET rank rules are keyed by canonical Academic Rank Band, not a
+        # faculty member's specific sub-rank — every rank-band lookup below uses this.
+        cursor.execute("SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s", (emp_id,))
+        rank_row = cursor.fetchone()
+        emp_rank_band = rank_band(rank_row[0] if rank_row else None)
+
         # Check if they are resubmitting (meaning a review record already exists for the active term)
         is_resubmission = False
         cursor.execute("""
@@ -389,10 +420,9 @@ def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets
                                rri.target_duration_value, rri.target_duration_unit
                         FROM tbl_ret_rule_indicators rri
                         JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
-                        JOIN tbl_employee_profiles ep ON ep.academic_rank = r.academic_rank
-                        WHERE ep.emp_id = %s AND rri.indicator_id = %s
+                        WHERE r.academic_rank = %s AND rri.indicator_id = %s
                         LIMIT 1
-                    """, (emp_id, res_ind_id))
+                    """, (emp_rank_band, res_ind_id))
                     row = cursor.fetchone()
                     res_qty = row[0] if (row and row[0] is not None) else 1
                     res_desc = row[1] if row else None
@@ -420,9 +450,9 @@ def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets
                     FROM tbl_ret_assignments ra
                     LEFT JOIN tbl_ret_rule_indicators rri ON rri.indicator_id = ra.indicator_id
                     LEFT JOIN tbl_ret_rules r ON rri.rule_id = r.rule_id
-                        AND r.academic_rank = (SELECT academic_rank FROM tbl_employee_profiles WHERE emp_id = %s)
+                        AND r.academic_rank = %s
                     WHERE ra.emp_id = %s AND ra.term_id = %s
-                """, (emp_id, emp_id, active_term_id))
+                """, (emp_rank_band, emp_id, active_term_id))
                 for assign_ind_id, assign_qty, a_desc, a_dur_value, a_dur_unit in cursor.fetchall():
                     a_deadline = format_duration(a_dur_value, a_dur_unit)
                     cursor.execute("""
@@ -463,10 +493,10 @@ def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets
                           AND tc.slug = 'research'
                     """, (target_status, emp_id))
 
-        # 7b. Materialize distributed Extension targets — uniform to ALL regular faculty,
-        # locked (not self-selectable), independent of Research eligibility. Rewrite from
-        # the term's distribution so removed distributions disappear on resubmit. Extension
-        # auto-flows to the Program Chair (it never enters RET review).
+        # 7b. Materialize rank-band Extension targets — locked (not self-selectable),
+        # independent of Research eligibility. Rewrite from the rank band's configured menu
+        # so a removed/reconfigured indicator disappears on resubmit. Extension auto-flows to
+        # the Program Chair (it never enters RET review).
         if active_term_id:
             cursor.execute("""
                 DELETE dt FROM tbl_draft_targets dt
@@ -475,16 +505,19 @@ def submit_faculty_ipcr(conn, cursor, emp_id, term_id, selected_research_targets
                 WHERE dt.emp_id = %s AND tc.slug = 'extension'
             """, (emp_id,))
             cursor.execute("""
-                SELECT indicator_id, target_quantity, target_description,
-                       target_duration_value, target_duration_unit
-                FROM tbl_ret_extension_distribution
-                WHERE term_id = %s
-            """, (active_term_id,))
+                SELECT rri.indicator_id, rri.target_quantity, rri.target_description,
+                       rri.target_duration_value, rri.target_duration_unit
+                FROM tbl_ret_rules r
+                JOIN tbl_ret_rule_indicators rri ON r.rule_id = rri.rule_id
+                JOIN tbl_master_indicators mi ON rri.indicator_id = mi.indicator_id
+                JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
+                WHERE r.academic_rank = %s AND mi.term_id = %s AND tc.slug = 'extension'
+            """, (emp_rank_band, active_term_id))
             for ext_ind_id, ext_qty, ext_desc, ext_dur_value, ext_dur_unit in cursor.fetchall():
-                # Extension is chair-distributed and auto-flows (never enters RET review),
-                # so it is materialized already 'Approved' — this lets the Program Chair see
-                # it as RET-approved and covers faculty who have extension but no research.
-                # The duration carries over so Timeliness can be scored.
+                # Extension is RET-Chair-configured per rank band and auto-flows (never enters
+                # RET review), so it is materialized already 'Approved' — this lets the Program
+                # Chair see it as RET-approved and covers faculty who have extension but no
+                # research. The duration carries over so Timeliness can be scored.
                 cursor.execute("""
                     INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status,
                                                    target_description, target_deadline,
@@ -582,6 +615,7 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
     query = """
         SELECT ct.target_id, ct.indicator_id, ct.assigned_quantity, ct.actual_quantity, ct.status,
                COALESCE(ct.target_description, mi.indicator_description) as indicator_description,
+               mi.indicator_description as raw_indicator_description, ct.is_auto_description,
                ct.target_deadline, ct.target_duration_value, ct.target_duration_unit,
                ct.actual_duration_value, ct.completion_status, ct.efficiency_rating_E,
                ct.is_admin_function, ct.print_remarks,
@@ -600,13 +634,27 @@ def get_faculty_committed_targets(cursor, emp_id, term_id):
     rows = timed_query(cursor, query, (emp_id, term_id), label="get_faculty_committed_targets")
     # Compose the IPCR "Actual Accomplishments" sentence and derive Q/E/T for each target.
     from app.models.scoring import compute_target_rating
+    from app.models.ipcr_description import format_ipcr_target_description
     for r in rows:
+        is_auto = r.get('is_auto_description') is None or r.get('is_auto_description') == 1
+        if is_auto:
+            # Never trust the stored description for an auto row — regenerate from the raw
+            # indicator and the actually-assigned quantity/duration every time this is read.
+            # A row saved before this substitution logic existed (or one whose allocation
+            # later changed) would otherwise keep showing stale text indefinitely; Regular
+            # Faculty never type this field themselves, so there's nothing to lose by always
+            # recomputing it.
+            r['indicator_description'] = format_ipcr_target_description(
+                r.get('raw_indicator_description'), r.get('assigned_quantity'),
+                r.get('target_duration_value'), r.get('target_duration_unit'))
         r['actual_accomplishment'] = build_actual_accomplishment(
             r.get('indicator_description'),
             r.get('actual_quantity'),
             r.get('actual_duration_value'),
             r.get('target_duration_unit'),
             client_satisfaction_label(r.get('efficiency_rating_E')),
+            raw_indicator_description=r.get('raw_indicator_description'),
+            is_auto_description=r.get('is_auto_description'),
         )
         r['rating'] = compute_target_rating(r)
     return rows

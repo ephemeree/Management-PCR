@@ -58,7 +58,7 @@
         <div class="col-md-6">
             <div class="card card-elevated p-4">
                 <div class="card-body p-0">
-                    <h6 class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">ROSTER ADOPTION RATE</h6>
+                    <h6 role="heading" aria-level="4" class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">ROSTER ADOPTION RATE</h6>
                     <h3 class="text-dark fw-bold mb-0" style="font-size: 2rem;">{{ kpis.adoption_rate }}%
                         <span class="fs-6 text-muted ps-2 fw-normal">{{ kpis.claimed_accounts }} / {{ kpis.total_roster }} Accounts Claimed</span>
                     </h3>
@@ -68,7 +68,7 @@
         <div class="col-md-6">
             <div class="card card-elevated p-4">
                 <div class="card-body p-0">
-                    <h6 class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">TERM DEADLINE</h6>
+                    <h6 role="heading" aria-level="4" class="text-muted fw-bold mb-2" style="font-size: 0.82rem; letter-spacing: 0.5px;">TERM DEADLINE</h6>
                     <h3 class="text-dark fw-bold mb-0" style="font-size: 2rem;">{{ kpis.term_status }}</h3>
                 </div>
             </div>
@@ -186,37 +186,37 @@
         <div class="col-md-5">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-2">
-                    <h5 class="fw-bold text-dark mb-0">Open New Term</h5>
+                    <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Open New Term</h5>
                 </div>
                 <div class="card-body">
                     <form action="{{ url_for('admin.admin_open_term') }}" method="POST">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Academic Year</label>
-                            <input type="text" class="form-control" name="academic_year" placeholder="e.g. 2024-2025"
+                            <label class="form-label small fw-bold" for="openTermAcademicYear">Academic Year</label>
+                            <input type="text" class="form-control" id="openTermAcademicYear" name="academic_year" placeholder="e.g. 2024-2025"
                                 required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Semester</label>
-                            <select class="form-select" name="semester" required>
+                            <label class="form-label small fw-bold" for="openTermSemester">Semester</label>
+                            <select class="form-select" id="openTermSemester" name="semester" required>
                                 <option value="1st Semester">1st Semester</option>
                                 <option value="2nd Semester">2nd Semester</option>
                                 <option value="Mid Year">Mid Year</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Submission Deadline</label>
-                            <input type="date" class="form-control" name="deadline_date" required>
+                            <label class="form-label small fw-bold" for="openTermDeadline">Submission Deadline</label>
+                            <input type="date" class="form-control" id="openTermDeadline" name="deadline_date" required>
                         </div>
                         {# The rating period printed on the IPCR header —
                            "...for the period JANUARY to JUNE 2026." #}
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Rating Period From</label>
-                                <input type="date" class="form-control" name="period_start">
+                                <label class="form-label small fw-bold" for="openTermPeriodStart">Rating Period From</label>
+                                <input type="date" class="form-control" id="openTermPeriodStart" name="period_start">
                             </div>
                             <div class="col-6">
-                                <label class="form-label small fw-bold">Rating Period To</label>
-                                <input type="date" class="form-control" name="period_end">
+                                <label class="form-label small fw-bold" for="openTermPeriodEnd">Rating Period To</label>
+                                <input type="date" class="form-control" id="openTermPeriodEnd" name="period_end">
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 fw-bold">Open Term & Deactivate
@@ -228,7 +228,7 @@
         <div class="col-md-7">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-2">
-                    <h5 class="fw-bold text-dark mb-0">Term History</h5>
+                    <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Term History</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -284,19 +284,19 @@
         <div class="col-md-4">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-2">
-                    <h5 class="fw-bold text-dark mb-0">Add Criterion</h5>
+                    <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Add Criterion</h5>
                 </div>
                 <div class="card-body">
                     <form action="{{ url_for('admin.admin_add_criteria') }}" method="POST">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Name</label>
-                            <input type="text" class="form-control" name="name" required
+                            <label class="form-label small fw-bold" for="addCritName">Name</label>
+                            <input type="text" class="form-control" id="addCritName" name="name" required
                                    placeholder="e.g. Innovation">
                             <div class="form-text small">A stable slug is generated automatically from the name.</div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Slug <span class="text-muted fw-normal">(optional)</span></label>
-                            <input type="text" class="form-control" name="slug"
+                            <label class="form-label small fw-bold" for="addCritSlug">Slug <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="text" class="form-control" id="addCritSlug" name="slug"
                                    placeholder="leave blank to generate from the name">
                             <div class="form-text small">
                                 Only set this when rebuilding one of the built-in types. The
@@ -307,19 +307,11 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Review Lane</label>
-                            <select class="form-select" name="review_lane" required>
+                            <label class="form-label small fw-bold" for="addCritLane">Review Lane</label>
+                            <select class="form-select" id="addCritLane" name="review_lane" required>
                                 <option value="CHAIR">Program Chair (Instruction / Support / Admin)</option>
                                 <option value="RET">RET Chair (Research / Extension)</option>
                             </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Display Order</label>
-                            <input type="number" class="form-control" name="display_order" value="100" min="0">
-                        </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" name="is_core" id="addCritCore" checked>
-                            <label class="form-check-label small" for="addCritCore">Core criterion (participates in scoring)</label>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="ti ti-plus me-1"></i>Add Criterion</button>
                     </form>
@@ -339,7 +331,7 @@
                                     <th>Slug</th>
                                     <th>Lane</th>
                                     <th class="text-center">Core</th>
-                                    <th class="text-center">Order</th>
+                                    <th class="text-center" style="width: 70px;">Order</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
@@ -355,13 +347,25 @@
                                     <td class="{{ dim }}"><code class="small">{{ c.slug }}</code></td>
                                     <td class="{{ dim }}"><span class="badge {% if c.review_lane == 'RET' %}bg-warning text-dark{% else %}bg-primary{% endif %}">{{ c.review_lane }}</span></td>
                                     <td class="text-center {{ dim }}">{% if c.is_core %}<i class="ti ti-circle-check text-success"></i>{% else %}<i class="ti ti-minus text-muted"></i>{% endif %}</td>
-                                    <td class="text-center {{ dim }}">{{ c.display_order }}</td>
+                                    <td class="text-center">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <form action="{{ url_for('admin.admin_reorder_criteria') }}" method="POST" class="d-inline">
+                                                <input type="hidden" name="category_id" value="{{ c.category_id }}">
+                                                <input type="hidden" name="direction" value="up">
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" {% if loop.first %}disabled{% endif %} title="Move up">&#9650;</button>
+                                            </form>
+                                            <form action="{{ url_for('admin.admin_reorder_criteria') }}" method="POST" class="d-inline">
+                                                <input type="hidden" name="category_id" value="{{ c.category_id }}">
+                                                <input type="hidden" name="direction" value="down">
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" {% if loop.last %}disabled{% endif %} title="Move down">&#9660;</button>
+                                            </form>
+                                        </div>
+                                    </td>
                                     <td class="text-end">
                                         <div class="d-flex justify-content-end gap-2">
                                             <button type="button" class="btn btn-sm btn-outline-primary"
                                                     data-cid="{{ c.category_id }}" data-name="{{ c.category_name | e }}"
-                                                    data-lane="{{ c.review_lane }}" data-core="{{ 1 if c.is_core else 0 }}"
-                                                    data-order="{{ c.display_order }}"
+                                                    data-lane="{{ c.review_lane }}"
                                                     onclick="fillCriteriaEditModal(this)">Edit</button>
                                             <form action="{{ url_for('admin.admin_toggle_criteria') }}" method="POST" class="d-inline">
                                                 <input type="hidden" name="category_id" value="{{ c.category_id }}">
@@ -384,64 +388,91 @@
         </div>
     </div>
 
-    <!-- Category Management: the weighted IPCR categories per designation type -->
+    <!-- Category Management: the categories per scope (Master Indicators display grouping,
+         plus the weighted IPCR categories per designation type) -->
     <div class="card shadow-sm border-0 mb-4" id="nav-categories">
         <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0">Category Management</h5>
-            <small class="text-muted">The categories that appear on the printed IPCR and carry the
-                weight (e.g. Strategic Priorities, Core Functions). Each one groups the target types
-                above — and the grouping differs per designation type.</small>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Category Management</h5>
+            <small class="text-muted">Master Indicators controls how target types are grouped on the
+                Master Indicators panel. Regular Faculty / Designated Faculty categories additionally
+                appear on the printed IPCR and carry the scoring weight — the grouping differs per
+                scope.</small>
         </div>
         <div class="card-body">
-            {% for dt in designation_types %}
-            <h6 class="fw-bold text-dark mt-2 mb-2">{{ dt }}</h6>
+            {% for scope in category_scopes %}
+            <h6 role="heading" aria-level="4" class="fw-bold text-dark mt-2 mb-2">{{ scope }}</h6>
             <div class="table-responsive mb-3">
                 <table class="table table-sm align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th>Category</th>
                             <th>Target Types Included</th>
-                            <th class="text-center" style="width: 90px;">Order</th>
+                            <th class="text-center" style="width: 70px;">Order</th>
                             <th class="text-end" style="width: 190px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for c in ipcr_categories.get(dt, []) %}
-                        {% set assigned = category_types.get(dt, {}).get(c.ipcr_category_id, []) %}
+                        {% for c in ipcr_categories.get(scope, []) %}
+                        {% set assigned = category_types.get(scope, {}).get(c.ipcr_category_id, []) %}
+                        {# Dim only the descriptive cells when inactive — the action buttons
+                           stay at full opacity so they don't read as disabled. #}
+                        {% set dim = 'opacity-50' if not c.is_active else '' %}
+                        {% set toggle_verb = 'Reactivate' if not c.is_active else 'Deactivate' %}
+                        {% set toggle_effect = 'This category groups target types on the Master Indicators panel.' if scope == 'Master Indicators' else ('This category carries scoring weights for ' + scope + '.') %}
+                        {% set toggle_confirm = toggle_verb + ' the ' + c.category_name + ' category? ' + toggle_effect %}
                         <tr>
-                            <td class="fw-semibold">{{ c.category_name }}</td>
-                            <td>
+                            <td class="fw-semibold {{ dim }}">{{ c.category_name }}
+                                {% if not c.is_active %}<span class="badge bg-secondary ms-1">Inactive</span>{% endif %}
+                            </td>
+                            <td class="{{ dim }}">
                                 {% for t in criteria if t.category_id in assigned %}
                                 <span class="badge bg-light text-dark border me-1">{{ t.category_name }}</span>
                                 {% else %}
                                 <span class="text-muted small">none assigned</span>
                                 {% endfor %}
                             </td>
-                            <td class="text-center">{{ c.display_order }}</td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-1">
+                                    <form action="{{ url_for('admin.admin_reorder_category') }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="ipcr_category_id" value="{{ c.ipcr_category_id }}">
+                                        <input type="hidden" name="direction" value="up">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" {% if loop.first %}disabled{% endif %} title="Move up">&#9650;</button>
+                                    </form>
+                                    <form action="{{ url_for('admin.admin_reorder_category') }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="ipcr_category_id" value="{{ c.ipcr_category_id }}">
+                                        <input type="hidden" name="direction" value="down">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" {% if loop.last %}disabled{% endif %} title="Move down">&#9660;</button>
+                                    </form>
+                                </div>
+                            </td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                        data-cid="{{ c.ipcr_category_id }}"
-                                        data-dt="{{ dt }}"
-                                        data-name="{{ c.category_name | e }}"
-                                        data-order="{{ c.display_order }}"
-                                        data-types="{{ assigned | join(',') }}"
-                                        onclick="fillCategoryModal(this)">Edit</button>
-                                <form action="{{ url_for('admin.admin_toggle_category') }}" method="POST" class="d-inline">
-                                    <input type="hidden" name="ipcr_category_id" value="{{ c.ipcr_category_id }}">
-                                    <input type="hidden" name="is_active" value="0">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
-                                </form>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-cid="{{ c.ipcr_category_id }}"
+                                            data-dt="{{ scope }}"
+                                            data-name="{{ c.category_name | e }}"
+                                            data-types="{{ assigned | join(',') }}"
+                                            onclick="fillCategoryModal(this)">Edit</button>
+                                    <form action="{{ url_for('admin.admin_toggle_category') }}" method="POST" class="d-inline"
+                                          onsubmit='return confirm({{ toggle_confirm | tojson }});'>
+                                        <input type="hidden" name="ipcr_category_id" value="{{ c.ipcr_category_id }}">
+                                        <input type="hidden" name="is_active" value="{{ 0 if c.is_active else 1 }}">
+                                        <button type="submit" class="btn btn-sm {% if c.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                            {% if c.is_active %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" class="text-center text-muted py-3">No categories defined for {{ dt }}.</td></tr>
+                        <tr><td colspan="4" class="text-center text-muted py-3">No categories defined for {{ scope }}.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             <button type="button" class="btn btn-sm btn-primary mb-4"
-                    onclick="newCategory('{{ dt }}')">
-                <i class="ti ti-plus me-1"></i>Add Category for {{ dt }}
+                    onclick="newCategory('{{ scope }}')">
+                <i class="ti ti-plus me-1"></i>Add Category for {{ scope }}
             </button>
             {% endfor %}
         </div>
@@ -460,13 +491,9 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Category Name</label>
+                            <label class="form-label small fw-bold" for="catName">Category Name</label>
                             <input type="text" class="form-control" name="category_name" id="catName" required
                                    placeholder="e.g. Strategic Priorities">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Display Order</label>
-                            <input type="number" class="form-control" name="display_order" id="catOrder" min="0" value="100">
                         </div>
                         <div class="mb-1">
                             <label class="form-label small fw-bold">Target Types Under This Category</label>
@@ -501,7 +528,6 @@
         document.getElementById('catDesignation').value = designationType;
         document.getElementById('catDesignationLabel').textContent = designationType;
         document.getElementById('catName').value = '';
-        document.getElementById('catOrder').value = 100;
         new bootstrap.Modal(document.getElementById('categoryModal')).show();
     }
     function fillCategoryModal(btn) {
@@ -510,7 +536,6 @@
         document.getElementById('catDesignation').value = btn.dataset.dt;
         document.getElementById('catDesignationLabel').textContent = btn.dataset.dt;
         document.getElementById('catName').value = btn.dataset.name;
-        document.getElementById('catOrder').value = btn.dataset.order;
         (btn.dataset.types || '').split(',').filter(Boolean).forEach(id => {
             const cb = document.getElementById('cattype_' + id.trim());
             if (cb) cb.checked = true;
@@ -522,7 +547,7 @@
     <!-- Weight Allocation by Rank -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0">Weight Allocation by Rank</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Weight Allocation by Rank</h5>
             <small class="text-muted">Percentage each criterion group contributes to the final score, per
                 academic rank band, for the active term. Each configured row must total 100%. Regular and
                 Designated faculty are configured independently — the same criterion can carry a different
@@ -549,7 +574,7 @@
 
             {% for dt in designation_types %}
             {% set slug = dt | lower | replace(' ', '_') %}
-            {% set cats = ipcr_categories.get(dt, []) %}
+            {% set cats = ipcr_categories.get(dt, []) | selectattr('is_active') | list %}
             <div class="weight-tab-panel" id="weightTabPanel_{{ slug }}" style="{% if not loop.first %}display:none;{% endif %}">
                 <div class="d-flex justify-content-end mb-2">
                     <form action="{{ url_for('admin.admin_copy_weights') }}" method="POST" class="d-inline">
@@ -566,8 +591,8 @@
                     <input type="hidden" name="designation_type" value="{{ dt }}">
                     <input type="hidden" name="mode" id="weightMode_{{ slug }}" value="{{ cur_mode }}">
 
-                    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-                        <span class="small fw-semibold text-muted">Allocation:</span>
+                    <fieldset class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                        <legend class="small fw-semibold text-muted mb-0 w-auto">Allocation:</legend>
                         <div class="form-check form-check-inline mb-0">
                             <input class="form-check-input" type="radio" name="mode_toggle_{{ slug }}"
                                    id="modeGeneral_{{ slug }}" value="GENERAL"
@@ -586,7 +611,7 @@
                                 Specific per Academic Rank
                             </label>
                         </div>
-                    </div>
+                    </fieldset>
 
                     <!-- GENERAL: one set of weights for every rank -->
                     <div class="weight-mode-general" id="weightGeneral_{{ slug }}"
@@ -595,16 +620,16 @@
                             <table class="table table-bordered align-middle mb-3" id="weightGeneralTable_{{ slug }}">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Applies to</th>
+                                        <th scope="col">Applies to</th>
                                         {% for c in cats %}
-                                        <th class="text-center">{{ c.category_name }}</th>
+                                        <th scope="col" class="text-center">{{ c.category_name }}</th>
                                         {% endfor %}
-                                        <th class="text-center" style="width: 110px;">Total</th>
+                                        <th scope="col" class="text-center" style="width: 110px;">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td class="fw-semibold">All Academic Ranks</td>
+                                        <th scope="row" class="fw-semibold">All Academic Ranks</th>
                                         {% for c in cats %}
                                         <td>
                                             <input type="number" class="form-control form-control-sm text-center weight-input"
@@ -629,18 +654,18 @@
                             <table class="table table-bordered align-middle mb-3" id="weightMatrixTable_{{ slug }}">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Academic Rank</th>
+                                        <th scope="col">Academic Rank</th>
                                         {% for c in cats %}
-                                        <th class="text-center">{{ c.category_name }}</th>
+                                        <th scope="col" class="text-center">{{ c.category_name }}</th>
                                         {% endfor %}
-                                        <th class="text-center" style="width: 110px;">Total</th>
+                                        <th scope="col" class="text-center" style="width: 110px;">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for band in rank_bands %}
                                     {% set row_idx = loop.index0 %}
                                     <tr>
-                                        <td class="fw-semibold">{{ band }}</td>
+                                        <th scope="row" class="fw-semibold">{{ band }}</th>
                                         {% for c in cats %}
                                         <td>
                                             <input type="number" class="form-control form-control-sm text-center weight-input"
@@ -700,7 +725,7 @@
                 const rows = table.querySelectorAll('tbody tr');
                 rows.forEach(tr => {
                     let total = 0;
-                    let rankName = tr.querySelector('td:first-child')?.textContent?.trim() || 'Row';
+                    let rankName = tr.querySelector('td:first-child, th:first-child')?.textContent?.trim() || 'Row';
                     tr.querySelectorAll('.weight-input').forEach(inp => {
                         total += parseFloat(inp.value) || 0;
                     });
@@ -777,24 +802,16 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Name</label>
+                            <label class="form-label small fw-bold" for="editCritName">Name</label>
                             <input type="text" class="form-control" name="name" id="editCritName" required>
                             <div class="form-text small">The slug is fixed and cannot be changed.</div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Review Lane</label>
+                            <label class="form-label small fw-bold" for="editCritLane">Review Lane</label>
                             <select class="form-select" name="review_lane" id="editCritLane" required>
                                 <option value="CHAIR">Program Chair (Instruction / Support / Admin)</option>
                                 <option value="RET">RET Chair (Research / Extension)</option>
                             </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Display Order</label>
-                            <input type="number" class="form-control" name="display_order" id="editCritOrder" min="0">
-                        </div>
-                        <div class="form-check mb-1">
-                            <input class="form-check-input" type="checkbox" name="is_core" id="editCritCore">
-                            <label class="form-check-label small" for="editCritCore">Core criterion (participates in scoring)</label>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -811,8 +828,6 @@
         document.getElementById('editCritId').value = btn.dataset.cid;
         document.getElementById('editCritName').value = btn.dataset.name;
         document.getElementById('editCritLane').value = btn.dataset.lane;
-        document.getElementById('editCritOrder').value = btn.dataset.order;
-        document.getElementById('editCritCore').checked = btn.dataset.core === '1';
         new bootstrap.Modal(document.getElementById('editCriteriaModal')).show();
     }
     </script>
@@ -831,22 +846,29 @@
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="fw-bold text-dark mb-0">Departments / Programs</h5>
+                <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Departments / Programs</h5>
                 <small class="text-muted">Drives the Dean's cascade columns and the faculty roster's
                     specialization. Renaming one updates the faculty and quota rows that reference it.</small>
             </div>
-            <button type="button" class="btn btn-sm btn-primary" onclick="newDepartment()">
-                <i class="ti ti-plus me-1"></i>Add Department
-            </button>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-search text-muted"></i>
+                    <input type="text" id="departmentSearchInput" class="form-control form-control-sm"
+                           placeholder="Search departments..." style="width: 220px;" onkeyup="filterDepartmentsTable()">
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="newDepartment()">
+                    <i class="ti ti-plus me-1"></i>Add Department
+                </button>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0" id="departmentsTable">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Department</th>
                             <th style="width: 15%;">Code</th>
-                            <th class="text-center" style="width: 12%;">Order</th>
+                            <th class="text-center" style="width: 70px;">Order</th>
                             <th class="text-center" style="width: 12%;">Status</th>
                             <th class="text-end" style="width: 22%;">Actions</th>
                         </tr>
@@ -857,7 +879,20 @@
                         <tr>
                             <td class="ps-4 fw-semibold {{ dim }}">{{ d.department_name }}</td>
                             <td class="{{ dim }}">{{ d.department_code or '—' }}</td>
-                            <td class="text-center {{ dim }}">{{ d.display_order }}</td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-1">
+                                    <form action="{{ url_for('admin.admin_reorder_department') }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="department_id" value="{{ d.department_id }}">
+                                        <input type="hidden" name="direction" value="up">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" {% if loop.first %}disabled{% endif %} title="Move up">&#9650;</button>
+                                    </form>
+                                    <form action="{{ url_for('admin.admin_reorder_department') }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="department_id" value="{{ d.department_id }}">
+                                        <input type="hidden" name="direction" value="down">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" {% if loop.last %}disabled{% endif %} title="Move down">&#9660;</button>
+                                    </form>
+                                </div>
+                            </td>
                             <td class="text-center {{ dim }}">
                                 {% if d.is_active %}
                                 <span class="badge bg-success-subtle text-success border border-success">Active</span>
@@ -871,7 +906,6 @@
                                             data-did="{{ d.department_id }}"
                                             data-name="{{ d.department_name | e }}"
                                             data-code="{{ d.department_code or '' }}"
-                                            data-order="{{ d.display_order }}"
                                             onclick="fillDepartmentModal(this)">Edit</button>
                                     <form action="{{ url_for('admin.admin_toggle_department') }}" method="POST" class="d-inline">
                                         <input type="hidden" name="department_id" value="{{ d.department_id }}">
@@ -895,7 +929,7 @@
     <!-- Teaching load -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0">Teaching Load</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Teaching Load</h5>
             <small class="text-muted">The mandatory teaching load target added to every IPCR. The duration
                 drives its Timeliness rating. Configured per designation type, either the same for all ranks
                 or per academic rank band.</small>
@@ -926,8 +960,8 @@
                     <input type="hidden" name="designation_type" value="{{ dt }}">
                     <input type="hidden" name="mode" id="tlMode_{{ tslug }}" value="{{ cur_mode }}">
 
-                    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-                        <span class="small fw-semibold text-muted">Applies:</span>
+                    <fieldset class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                        <legend class="small fw-semibold text-muted mb-0 w-auto">Applies:</legend>
                         <div class="form-check form-check-inline mb-0">
                             <input class="form-check-input" type="radio" name="tl_mode_{{ tslug }}"
                                    id="tlGeneral_{{ tslug }}" {% if cur_mode == 'GENERAL' %}checked{% endif %}
@@ -944,24 +978,24 @@
                                 Per academic rank
                             </label>
                         </div>
-                    </div>
+                    </fieldset>
 
                     {% set gen = grid.get(general_band, {}) %}
                     <div id="tlGeneralBlock_{{ tslug }}" style="{% if cur_mode != 'GENERAL' %}display:none;{% endif %}">
                         <div class="row g-2 align-items-end mb-3">
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold">Hours</label>
-                                <input type="number" min="1" class="form-control" name="tl_general_hours"
+                                <label class="form-label small fw-bold" for="tlGeneralHours_{{ tslug }}">Hours</label>
+                                <input type="number" min="1" class="form-control" id="tlGeneralHours_{{ tslug }}" name="tl_general_hours"
                                        value="{{ gen.get('hours', '') }}">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold">Duration</label>
-                                <input type="number" min="1" class="form-control" name="tl_general_duration"
+                                <label class="form-label small fw-bold" for="tlGeneralDuration_{{ tslug }}">Duration</label>
+                                <input type="number" min="1" class="form-control" id="tlGeneralDuration_{{ tslug }}" name="tl_general_duration"
                                        value="{{ gen.get('duration_value', 6) }}">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold">Unit</label>
-                                <select class="form-select" name="tl_general_unit">
+                                <label class="form-label small fw-bold" for="tlGeneralUnit_{{ tslug }}">Unit</label>
+                                <select class="form-select" id="tlGeneralUnit_{{ tslug }}" name="tl_general_unit">
                                     {% for u in ['days', 'weeks', 'months', 'semesters'] %}
                                     <option value="{{ u }}" {% if gen.get('duration_unit', 'months') == u %}selected{% endif %}>{{ u }}</option>
                                     {% endfor %}
@@ -975,17 +1009,17 @@
                             <table class="table table-bordered align-middle mb-3">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Academic Rank</th>
-                                        <th class="text-center" style="width: 20%;">Hours</th>
-                                        <th class="text-center" style="width: 20%;">Duration</th>
-                                        <th class="text-center" style="width: 20%;">Unit</th>
+                                        <th scope="col">Academic Rank</th>
+                                        <th scope="col" class="text-center" style="width: 20%;">Hours</th>
+                                        <th scope="col" class="text-center" style="width: 20%;">Duration</th>
+                                        <th scope="col" class="text-center" style="width: 20%;">Unit</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for band in rank_bands %}
                                     {% set row = grid.get(band, {}) %}
                                     <tr>
-                                        <td class="fw-semibold">{{ band }}</td>
+                                        <th scope="row" class="fw-semibold">{{ band }}</th>
                                         <td><input type="number" min="0" class="form-control form-control-sm text-center"
                                                    name="tl_{{ loop.index0 }}_hours" value="{{ row.get('hours', '') }}"></td>
                                         <td><input type="number" min="1" class="form-control form-control-sm text-center"
@@ -1026,7 +1060,7 @@
     <!-- Printed IPCR: institution text + who signs each block -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0">Printed IPCR</h5>
+            <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0">Printed IPCR</h5>
             <small class="text-muted">The header text and signature blocks on the generated
                 IPCR form. Two blocks follow the org chart automatically; the rest are people
                 you name here.</small>
@@ -1035,15 +1069,15 @@
             <form action="{{ url_for('admin.admin_save_institution') }}" method="POST" class="mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-8">
-                        <label class="form-label small fw-bold">College Full Name</label>
-                        <input type="text" class="form-control" name="college_full_name"
+                        <label class="form-label small fw-bold" for="collegeFullName">College Full Name</label>
+                        <input type="text" class="form-control" id="collegeFullName" name="college_full_name"
                                value="{{ institution.get('college_full_name', '') }}"
                                placeholder="College of Information and Communications Technology">
                         <div class="form-text small">Printed in the commitment sentence.</div>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small fw-bold">Code</label>
-                        <input type="text" class="form-control" name="college_code"
+                        <label class="form-label small fw-bold" for="collegeCode">Code</label>
+                        <input type="text" class="form-control" id="collegeCode" name="college_code"
                                value="{{ institution.get('college_code', '') }}" placeholder="CICT">
                     </div>
                     <div class="col-md-2">
@@ -1122,19 +1156,15 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Department Name</label>
+                            <label class="form-label small fw-bold" for="deptName">Department Name</label>
                             <input type="text" class="form-control" name="department_name" id="deptName" required
                                    placeholder="e.g. DST Program">
                             <div class="form-text small">Must match the value used as the faculty's specialization.</div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Short Code</label>
+                            <label class="form-label small fw-bold" for="deptCode">Short Code</label>
                             <input type="text" class="form-control" name="department_code" id="deptCode"
                                    placeholder="e.g. DST">
-                        </div>
-                        <div class="mb-1">
-                            <label class="form-label small fw-bold">Display Order</label>
-                            <input type="number" class="form-control" name="display_order" id="deptOrder" min="0" value="100">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -1158,15 +1188,20 @@
         document.getElementById('deptId').value = '';
         document.getElementById('deptName').value = '';
         document.getElementById('deptCode').value = '';
-        document.getElementById('deptOrder').value = 100;
         new bootstrap.Modal(document.getElementById('departmentModal')).show();
     }
     function fillDepartmentModal(btn) {
         document.getElementById('deptId').value = btn.dataset.did;
         document.getElementById('deptName').value = btn.dataset.name;
         document.getElementById('deptCode').value = btn.dataset.code;
-        document.getElementById('deptOrder').value = btn.dataset.order;
         new bootstrap.Modal(document.getElementById('departmentModal')).show();
+    }
+    function filterDepartmentsTable() {
+        const input = document.getElementById('departmentSearchInput').value.toLowerCase();
+        document.querySelectorAll('#departmentsTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // "No departments defined yet." row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
     }
     function showTlTab(slug) {
         document.querySelectorAll('.tl-tab-panel').forEach(p => { p.style.display = 'none'; });
@@ -1217,18 +1252,24 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h2 class="fw-bold text-dark mb-0" style="font-size: 1.85rem; letter-spacing: -0.5px;">Master Indicators</h2>
-            <p class="text-muted small mb-0">Targets cascaded from the DPCR, grouped by IPCR category the same
-                way the DPCR is structured. Categories are configured under
-                <strong>Criteria &rarr; Category Management</strong>.</p>
+            <p class="text-muted small mb-0">Master indicators, grouped by the categories configured under
+                <strong>Criteria &rarr; Category Management &rarr; Master Indicators</strong>.</p>
         </div>
-        {% if active_term and not indicators %}
-        <form action="{{ url_for('admin.admin_import_indicators') }}" method="POST">
-            <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
-            <button type="submit" class="btn btn-outline-secondary btn-sm">
-                <i class="ti ti-cloud-download me-1"></i> Import from Previous Term
-            </button>
-        </form>
-        {% endif %}
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="indicatorSearchInput" class="form-control form-control-sm"
+                       placeholder="Search indicators..." style="width: 240px;" onkeyup="filterMasterIndicators()">
+            </div>
+            {% if active_term and not indicators %}
+            <form action="{{ url_for('admin.admin_import_indicators') }}" method="POST">
+                <input type="hidden" name="term_id" value="{{ active_term.term_id }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-cloud-download me-1"></i> Import from Previous Term
+                </button>
+            </form>
+            {% endif %}
+        </div>
     </div>
 
     {% if not active_term %}
@@ -1242,25 +1283,19 @@
         Active Term: <strong>{{ active_term.academic_year }} &mdash; {{ active_term.semester }}</strong>
     </div>
 
-    {# The DPCR mirrors the Regular Faculty category structure (Strategic Priorities /
-       Core Functions / Support Functions), so the panel groups by those. #}
-    {% set dpcr_dt = 'Regular Faculty' %}
-    {% set dpcr_cats = ipcr_categories.get(dpcr_dt, []) %}
-    {% set mapped_type_ids = [] %}
-    {% for c in dpcr_cats %}
-    {% for tid in category_types.get(dpcr_dt, {}).get(c.ipcr_category_id, []) %}
-    {% set _ = mapped_type_ids.append(tid) %}
-    {% endfor %}
-    {% endfor %}
+    {# Grouping and order are configured under Criteria -> Category Management -> Master
+       Indicators, not hardcoded here. #}
+    {% set mi_scope = 'Master Indicators' %}
+    {% set mi_categories = ipcr_categories.get(mi_scope, []) | selectattr('is_active') | list %}
 
-    {% for cat in dpcr_cats %}
-    {% set cat_type_ids = category_types.get(dpcr_dt, {}).get(cat.ipcr_category_id, []) %}
+    {% for cat in mi_categories %}
+    {% set cat_type_ids = category_types.get(mi_scope, {}).get(cat.ipcr_category_id, []) %}
     {% set cat_types = criteria | selectattr('category_id', 'in', cat_type_ids) | list %}
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2"
-             style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-accent) !important;">
+             style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
             <div>
-                <h5 class="fw-bold text-primary mb-0">{{ cat.category_name }}</h5>
+                <h5 role="heading" aria-level="3" class="fw-bold text-primary mb-0">{{ cat.category_name }}</h5>
                 <div class="text-muted small">
                     {% for t in cat_types %}
                     <span class="badge bg-light text-dark border me-1">{{ t.category_name }}</span>
@@ -1279,7 +1314,7 @@
         <div class="card-body p-0">
             {% for t in cat_types %}
             <div class="px-3 pt-3">
-                <h6 class="fw-bold text-dark small mb-2"><i class="ti ti-point-filled"></i>{{ t.category_name }}</h6>
+                <h6 role="heading" aria-level="4" class="fw-bold text-dark small mb-2"><i class="ti ti-point-filled"></i>{{ t.category_name }}</h6>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -1294,11 +1329,11 @@
                         {% set ns = namespace(found=false) %}
                         {% for ind in indicators if ind.category_name == t.category_name %}
                         {% set ns.found = true %}
-                        <tr>
-                            <td class="small ps-3">{{ ind.indicator_description }}</td>
+                        <tr class="indicator-row">
+                            <td class="small ps-3">{{ ind.indicator_description | ipcr_preview }}</td>
                             <td class="text-center"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
                             <td class="text-center">
-                                <div class="d-flex gap-1 justify-content-center">
+                                <div class="d-flex gap-2 justify-content-center">
                                     <button class="btn btn-outline-secondary btn-sm px-2 py-1"
                                         data-bs-toggle="modal" data-bs-target="#editIndicatorModal"
                                         data-ind-id="{{ ind.indicator_id }}"
@@ -1330,77 +1365,24 @@
     </div>
     {% endfor %}
 
-    {# Target types not part of the DPCR structure (e.g. Administrative Functions, which
-       only applies to Designated faculty) still need somewhere to be managed. #}
-    {% set other_types = criteria | selectattr('is_active') | selectattr('is_core')
-                                  | rejectattr('category_id', 'in', mapped_type_ids) | list %}
-    {% if other_types %}
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header border-0 py-3"
-             style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-text-muted) !important;">
-            <h5 class="fw-bold text-secondary mb-0">Other Target Types</h5>
-            <div class="text-muted small">Not part of the DPCR category structure — used by Designated Faculty
-                or not yet assigned to a category.</div>
-        </div>
-        <div class="card-body p-0">
-            {% for t in other_types %}
-            <div class="px-3 pt-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold text-dark small mb-2"><i class="ti ti-point-filled"></i>{{ t.category_name }}</h6>
-                <button type="button" class="btn btn-sm btn-outline-secondary mb-2"
-                        onclick='openAddIndicator({{ t.category_name | tojson }}, {{ [t.category_name] | tojson }})'>
-                    <i class="ti ti-plus me-1"></i>Add Target
-                </button>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 65%;" class="ps-3">Success Indicator (Target + Measure)</th>
-                            <th style="width: 18%;" class="text-center">Efficiency Type</th>
-                            <th style="width: 17%;" class="text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% set ns2 = namespace(found=false) %}
-                        {% for ind in indicators if ind.category_name == t.category_name %}
-                        {% set ns2.found = true %}
-                        <tr>
-                            <td class="small ps-3">{{ ind.indicator_description }}</td>
-                            <td class="text-center"><span class="badge bg-info text-dark">{{ ind.efficiency_type }}</span></td>
-                            <td class="text-center">
-                                <div class="d-flex gap-1 justify-content-center">
-                                    <button class="btn btn-outline-secondary btn-sm px-2 py-1"
-                                        data-bs-toggle="modal" data-bs-target="#editIndicatorModal"
-                                        data-ind-id="{{ ind.indicator_id }}"
-                                        data-ind-category="{{ ind.category_name | e }}"
-                                        data-ind-desc="{{ ind.indicator_description | e }}"
-                                        data-ind-type="{{ ind.efficiency_type | e }}"
-                                        onclick="fillEditModal(this)">Edit</button>
-                                    <form action="{{ url_for('admin.admin_delete_indicator') }}" method="POST"
-                                        onsubmit="return confirm('Delete this indicator?');" class="d-inline">
-                                        <input type="hidden" name="indicator_id" value="{{ ind.indicator_id }}">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm px-2 py-1">Delete</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        {% if not ns2.found %}
-                        <tr>
-                            <td colspan="3" class="text-center text-muted py-3">
-                                <i class="ti ti-inbox me-1"></i> No targets under this type yet.
-                            </td>
-                        </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-            {% endfor %}
-        </div>
+    {% if not mi_categories %}
+    <div class="alert alert-warning border-0 small">
+        <i class="ti ti-alert-triangle me-1"></i>
+        No categories configured yet for Master Indicators — add them under
+        <strong>Criteria &rarr; Category Management</strong>.
     </div>
     {% endif %}
     {% endif %}
 </div>
+
+<script>
+function filterMasterIndicators() {
+    const input = document.getElementById('indicatorSearchInput').value.toLowerCase();
+    document.querySelectorAll('#nav-indicators tr.indicator-row').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+    });
+}
+</script>
 
 <!-- Add Master Indicator Modal (opened from a category header) -->
 <div class="modal fade" id="addIndicatorModal" tabindex="-1" aria-hidden="true">
@@ -1414,18 +1396,29 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Target Type</label>
+                        <label class="form-label small fw-bold" for="addIndicatorType">Target Type</label>
                         <select class="form-select" name="category_name" id="addIndicatorType" required></select>
                         <div class="form-text small">Target types available under this category.</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Success Indicator (Target + Measure)</label>
-                        <textarea class="form-control" name="description" rows="4" required
-                            placeholder="e.g. Complete 5 Research outputs in 6 months"></textarea>
+                        <label class="form-label small fw-bold" for="addIndicatorDesc">Success Indicator (Target + Measure)</label>
+                        <textarea class="form-control" name="description" id="addIndicatorDesc" rows="4" required
+                            placeholder="e.g. Submit {qty} accurate report of grades within {duration} after the final examination period"></textarea>
+                        <div class="form-text small">
+                            Type the target as a complete sentence with the real numbers in it, then click a
+                            detected number below to tag it — no need to type <code>{qty}</code>/<code>{duration}</code>
+                            by hand, and the number stays visible everywhere this indicator is shown (this list,
+                            the edit form) — only the *actual* value substituted in when it's assigned changes.
+                            A target whose wording already states its own count (like the report-of-grades example)
+                            needs its number tagged so it's replaced in place when cascaded, not duplicated; a bare
+                            activity name with no number of its own can be left as-is.
+                        </div>
+                        <div id="addIndicatorTagger" class="mt-2"></div>
+                        <div id="addIndicatorPreview" class="small text-success mt-1 fst-italic"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Efficiency Type</label>
-                        <select class="form-select" name="efficiency_type" required>
+                        <label class="form-label small fw-bold" for="addIndicatorEfficiency">Efficiency Type</label>
+                        <select class="form-select" name="efficiency_type" id="addIndicatorEfficiency" required>
                             <option value="Quantity-Based">Quantity-Based</option>
                             <option value="Adjectival">Adjectival</option>
                             <option value="Client Satisfaction">Client Satisfaction</option>
@@ -1467,7 +1460,7 @@ function openAddIndicator(categoryName, targetTypes) {
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="fw-bold text-dark mb-0"><i class="ti ti-user-shield me-2 text-danger"></i>Emergency
+                <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0"><i class="ti ti-user-shield me-2 text-danger"></i>Emergency
                     Access Controls</h5>
                 <p class="text-muted small mb-0">Use with caution. All actions below are permanently
                     recorded in the audit log.</p>
@@ -1547,14 +1540,21 @@ function openAddIndicator(categoryName, targetTypes) {
 
     <!-- Section 2: Activity Audit Log -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white border-0 pt-4 pb-2">
-            <h5 class="fw-bold text-dark mb-0"><i class="ti ti-notes me-2 text-secondary"></i>Activity Audit Log
-            </h5>
-            <p class="text-muted small mb-0">Last 50 system actions, most recent first. Read-only.</p>
+        <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h5 role="heading" aria-level="3" class="fw-bold text-dark mb-0"><i class="ti ti-notes me-2 text-secondary"></i>Activity Audit Log
+                </h5>
+                <p class="text-muted small mb-0">Last 50 system actions, most recent first. Read-only.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="auditLogSearchInput" class="form-control form-control-sm"
+                       placeholder="Search audit log..." style="width: 220px;" onkeyup="filterAuditLogTable()">
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle">
+                <table class="table table-sm table-hover align-middle" id="auditLogTable">
                     <thead class="table-light">
                         <tr>
                             <th>Timestamp</th>
@@ -1609,7 +1609,7 @@ function openAddIndicator(categoryName, targetTypes) {
                 <div class="modal-body">
                     <input type="hidden" name="indicator_id" id="editIndicatorId">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Category (OPCR Group)</label>
+                        <label class="form-label small fw-bold" for="editIndicatorCategory">Category (OPCR Group)</label>
                         <select class="form-select" name="category_name" id="editIndicatorCategory" required>
                             {# Non-core criteria excluded — see the add form above. #}
                             {% for c in criteria if c.is_active and c.is_core %}
@@ -1618,12 +1618,20 @@ function openAddIndicator(categoryName, targetTypes) {
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Indicator Description</label>
+                        <label class="form-label small fw-bold" for="editIndicatorDesc">Indicator Description</label>
                         <textarea class="form-control" name="description" id="editIndicatorDesc" rows="4"
                             required></textarea>
+                        <div class="form-text small">
+                            Click a detected number below to tag it as the quantity or duration slot, so it's
+                            replaced in place whenever this target is cascaded, instead of typing
+                            <code>{qty}</code>/<code>{duration}</code> by hand — the tagged number still shows
+                            normally in this list and here; only the substituted value changes per assignment.
+                        </div>
+                        <div id="editIndicatorTagger" class="mt-2"></div>
+                        <div id="editIndicatorPreview" class="small text-success mt-1 fst-italic"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Efficiency Type</label>
+                        <label class="form-label small fw-bold" for="editIndicatorType">Efficiency Type</label>
                         <select class="form-select" name="efficiency_type" id="editIndicatorType" required>
                             <option value="Quantity-Based">Quantity-Based</option>
                             <option value="Adjectival">Adjectival</option>
@@ -1651,28 +1659,28 @@ function openAddIndicator(categoryName, targetTypes) {
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Employee ID Number</label>
+                        <label class="form-label small fw-bold" for="emp_id_input">Employee ID Number</label>
                         <input type="text" class="form-control" name="employee_id_number" id="emp_id_input" required>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="form-label small fw-bold">First Name</label>
+                            <label class="form-label small fw-bold" for="first_name_input">First Name</label>
                             <input type="text" class="form-control" name="first_name" id="first_name_input" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Last Name</label>
+                            <label class="form-label small fw-bold" for="last_name_input">Last Name</label>
                             <input type="text" class="form-control" name="last_name" id="last_name_input" required>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="form-label small fw-bold">College</label>
+                            <label class="form-label small fw-bold" for="college_input">College</label>
                             <select class="form-select" name="college" id="college_input">
                                 <option value="CICT">CICT</option>
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Assigned Program</label>
+                            <label class="form-label small fw-bold" for="program_input">Assigned Program</label>
                             <select class="form-select" name="assigned_program" id="program_input">
                                 <option value="BSIT">BSIT</option>
                                 <option value="BSCS">BSCS</option>
@@ -1681,7 +1689,7 @@ function openAddIndicator(categoryName, targetTypes) {
                     </div>
                     <div class="row mb-3">
                         <div class="col-12">
-                            <label class="form-label small fw-bold">Specialization</label>
+                            <label class="form-label small fw-bold" for="specialization_input">Specialization</label>
                             <select class="form-select" name="specialization" id="specialization_input">
                                 <option value="">None</option>
                                 <option value="WST Program">Web Systems and Technologies (WST)</option>
@@ -1693,7 +1701,7 @@ function openAddIndicator(categoryName, targetTypes) {
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Academic Rank</label>
+                            <label class="form-label small fw-bold" for="rank_input">Academic Rank</label>
                             <select class="form-select" name="academic_rank" id="rank_input">
                                 <option value="Instructor I">Instructor I</option>
                                 <option value="Instructor II">Instructor II</option>
@@ -1710,7 +1718,7 @@ function openAddIndicator(categoryName, targetTypes) {
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Employment Status</label>
+                            <label class="form-label small fw-bold" for="status_input">Employment Status</label>
                             <select class="form-select" name="employment_status" id="status_input">
                                 <option value="Regular">Regular</option>
                                 <option value="Part-Time">Part-Time</option>
@@ -1721,7 +1729,7 @@ function openAddIndicator(categoryName, targetTypes) {
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Leave Status</label>
+                            <label class="form-label small fw-bold" for="leave_status_input">Leave Status</label>
                             <select class="form-select" name="leave_status" id="leave_status_input">
                                 <option value="Active">Active</option>
                                 <option value="On-Leave">On-Leave</option>
@@ -1731,7 +1739,7 @@ function openAddIndicator(categoryName, targetTypes) {
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold">Designation</label>
+                            <label class="form-label small fw-bold" for="designation_input">Designation</label>
                             <select class="form-select" name="designation" id="designation_input">
                                 <option value="">None</option>
                                 <option value="Program Chair">Program Chair</option>
@@ -1769,8 +1777,8 @@ function openAddIndicator(categoryName, targetTypes) {
                             leave_status, designation</em>.
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Select File</label>
-                        <input class="form-control form-control-lg" type="file" name="csv_file" accept=".csv" required>
+                        <label class="form-label fw-bold small" for="csvFileInput">Select File</label>
+                        <input class="form-control form-control-lg" type="file" id="csvFileInput" name="csv_file" accept=".csv" required>
                     </div>
                 </div>
                 <div class="modal-footer border-0">
@@ -1832,13 +1840,30 @@ function openAddIndicator(categoryName, targetTypes) {
     document.getElementById('securitySearch').addEventListener('keyup', filterSecurity);
     document.getElementById('securityStatusFilter').addEventListener('change', filterSecurity);
 
+    // Live Search - Audit Log
+    function filterAuditLogTable() {
+        const input = document.getElementById('auditLogSearchInput').value.toLowerCase();
+        document.querySelectorAll('#auditLogTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // "No audit log entries yet." row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
     // Populate Indicator Edit Modal
     function fillEditModal(btn) {
         document.getElementById('editIndicatorId').value = btn.dataset.indId;
         let cat = btn.dataset.indCategory;
         if (cat === 'A. Research') cat = 'B. Research';
-        document.getElementById('editIndicatorCategory').value = cat;
-        document.getElementById('editIndicatorDesc').value = btn.dataset.indDesc;
+        const editIndicatorCategorySelect = document.getElementById('editIndicatorCategory');
+        if (!editIndicatorCategorySelect.querySelector(`option[value="${cat}"]`)) {
+            console.warn(`Category "${cat}" has no matching option in the indicator category select — the field will render unselected.`);
+        }
+        editIndicatorCategorySelect.value = cat;
+        const editDescField = document.getElementById('editIndicatorDesc');
+        editDescField.value = btn.dataset.indDesc;
+        // Setting .value directly doesn't fire 'input' — nudge the placeholder tagger below
+        // to re-scan the freshly-populated text.
+        editDescField.dispatchEvent(new Event('input'));
         document.getElementById('editIndicatorType').value = btn.dataset.indType;
     }
 
@@ -1875,6 +1900,20 @@ function openAddIndicator(categoryName, targetTypes) {
         document.getElementById('leave_status_input').value = 'Active';
         document.getElementById('designation_input').value = '';
     }
+</script>
+
+<script>
+    // Click-to-tag placeholder helper for the Add/Edit Master Indicator forms.
+    // window.wirePlaceholderTagger lives in base.html — the Add Custom Target modal
+    // (designated_dashboard.html) wires the same helper against its own fields.
+    //
+    // Deferred to DOMContentLoaded: this script sits in the content block, which base.html
+    // renders above the block that defines the helper, so the function does not exist yet
+    // at parse time.
+    document.addEventListener('DOMContentLoaded', function () {
+        window.wirePlaceholderTagger('addIndicatorDesc', 'addIndicatorTagger', 'addIndicatorPreview');
+        window.wirePlaceholderTagger('editIndicatorDesc', 'editIndicatorTagger', 'editIndicatorPreview');
+    });
 </script>
 
 

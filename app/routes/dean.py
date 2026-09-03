@@ -90,8 +90,18 @@ def dean_dashboard():
         approved_regular_dean_evidence_list = [f for f in approved_dean_evidence_list if not _is_designated_or_chair_or_dean(f)]
         # Every Designated Faculty member -- plain or a chair/Dean's own IPCR -- has no
         # Program Chair review before landing here, so all of them need the dedicated
-        # Evidence Verification panel, not just chairs/Dean.
-        pending_designated_dean_evidence_list = [f for f in pending_dean_evidence_list if _is_designated_or_chair_or_dean(f)]
+        # Evidence Verification panel, not just chairs/Dean. They stay in that panel (not
+        # Final Verification) until every one of their evidence files is actually reviewed
+        # and approved (is_both_approved) -- Regular Faculty already carry that same flag
+        # from Program Chair/RET Chair review before 'Submitted to Dean' is ever set.
+        pending_designated_dean_evidence_list = [f for f in pending_dean_evidence_list
+                                                  if _is_designated_or_chair_or_dean(f) and not f.get('is_both_approved')]
+        # Final Verification is the Dean's package-level sign-off, so a faculty member --
+        # regular or designated -- only belongs here once their evidence has actually been
+        # reviewed and approved (by the Program Chair/RET Chair for Regular Faculty, by the
+        # Dean via the Evidence Verification panel for designated faculty/chairs/Dean), not
+        # merely because their package status reached 'Submitted to Dean'.
+        pending_dean_evidence_list = [f for f in pending_dean_evidence_list if f.get('is_both_approved')]
 
         departments = get_departments(cursor)
 
@@ -431,9 +441,14 @@ def designated_assignment_editor(emp_id):
 
             is_assigned = ind_id in assigned_map
             qty = asg['assigned_quantity'] if (asg and asg.get('assigned_quantity') is not None) else 1
-            desc = asg['custom_description'] if (asg and asg.get('custom_description')) else q['indicator_description']
             dur_val = asg['target_duration_value'] if (asg and asg.get('target_duration_value') is not None) else 6
             dur_unit = asg['target_duration_unit'] if (asg and asg.get('target_duration_unit')) else 'months'
+            is_auto_desc = asg.get('is_auto_description') if asg else None
+            is_auto = is_auto_desc is None or is_auto_desc == 1
+            if asg and asg.get('custom_description') and not is_auto:
+                desc = asg['custom_description']
+            else:
+                desc = format_ipcr_target_description(q['indicator_description'], qty, dur_val, dur_unit)
 
             targets.append({
                 'indicator_id': ind_id,
@@ -446,7 +461,8 @@ def designated_assignment_editor(emp_id):
                 'custom_description': desc,
                 'target_duration_value': dur_val,
                 'target_duration_unit': dur_unit,
-                'target_deadline': asg.get('target_deadline') if asg else None
+                'target_deadline': asg.get('target_deadline') if asg else None,
+                'is_auto_description': is_auto,
             })
 
         return jsonify({
@@ -479,6 +495,10 @@ def save_designated_assignments():
     for ind_id in indicator_ids:
         qty_val = request.form.get(f'assign_quantity_{ind_id}', 1)
         desc_val = request.form.get(f'assign_description_{ind_id}', '').strip() or None
+        # Explicit auto/customized flag from wireAutoDescription (base.html) — see Decision 1
+        # in target_desc.md. Absent (None) falls back to inferring from blank-ness.
+        raw_auto_flag = request.form.get(f'is_auto_description_{ind_id}')
+        is_auto_flag = (raw_auto_flag == '1') if raw_auto_flag is not None else None
         dur_val_raw = request.form.get(f'assign_dur_value_{ind_id}', '').strip()
         dur_unit_val = request.form.get(f'assign_dur_unit_{ind_id}', 'months').strip() or 'months'
 
@@ -496,15 +516,13 @@ def save_designated_assignments():
             flash("Assigned quantity must be greater than 0.", "danger")
             return redirect(url_for('dean.dean_dashboard'))
 
-        if not desc_val:
-            flash("All assigned targets must have an IPCR target description.", "danger")
-            return redirect(url_for('dean.dean_dashboard'))
-
+        # Blank is valid here — save_designated_faculty_assignments auto-generates the
+        # standard description from the indicator/quantity/duration when this is None.
         if not dur_val or dur_val <= 0:
             flash("All assigned targets must have a valid deadline (target duration) specified.", "danger")
             return redirect(url_for('dean.dean_dashboard'))
 
-        assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val))
+        assignments.append((int(ind_id), qty, desc_val, dur_val, dur_unit_val, is_auto_flag))
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -577,7 +595,20 @@ def dean_preview_ipcr(emp_id):
             flash('No active academic term found.', 'warning')
             return redirect(url_for('dean.dean_dashboard'))
 
-        form = build_ipcr_form(cursor, emp_id, active_term['term_id'])
+        # Once a package has reached the Dean at all (submitted for final verification, or
+        # already approved), the Dean's own review should always show the computed Q/E/T
+        # ratings and Final Weighted Rating -- that's what final verification IS -- rather
+        # than the pre-approval "Approved Commitment" view faculty see while still gathering
+        # evidence.
+        cursor.execute("""
+            SELECT COUNT(*) FROM tbl_committed_targets ct
+            JOIN tbl_master_indicators mi ON ct.indicator_id = mi.indicator_id
+            WHERE ct.emp_id = %s AND mi.term_id = %s
+              AND ct.status IN ('Submitted to Dean', 'Dean Approved')
+        """, (emp_id, active_term['term_id']))
+        reached_dean = cursor.fetchone()[0] > 0
+
+        form = build_ipcr_form(cursor, emp_id, active_term['term_id'], force_final=reached_dean)
         if not form or not form['has_targets']:
             flash('No committed IPCR targets found for this faculty member.', 'warning')
             return redirect(url_for('dean.dean_dashboard'))

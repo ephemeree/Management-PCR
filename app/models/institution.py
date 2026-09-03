@@ -40,9 +40,12 @@ def get_departments(cursor, active_only=True):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
-def save_department(conn, cursor, name, code, display_order, department_id=None):
+def save_department(conn, cursor, name, code, department_id=None, display_order=None):
     """Create or rename a department. The name is what targets are routed by, so
-    renaming one also updates the rows that reference it."""
+    renaming one also updates the rows that reference it.
+
+    display_order is only used on creation (auto-assigned when not given); an update never
+    touches it, so a rename can't silently reset a department's position."""
     name = (name or '').strip()
     if not name:
         return False, "Department name is required."
@@ -55,9 +58,9 @@ def save_department(conn, cursor, name, code, display_order, department_id=None)
 
             cursor.execute("""
                 UPDATE tbl_departments
-                SET department_name = %s, department_code = %s, display_order = %s
+                SET department_name = %s, department_code = %s
                 WHERE department_id = %s
-            """, (name, (code or '').strip() or None, int(display_order or 100), department_id))
+            """, (name, (code or '').strip() or None, department_id))
 
             # Keep the rows that route by name in step with the rename.
             if old_name and old_name != name:
@@ -68,10 +71,13 @@ def save_department(conn, cursor, name, code, display_order, department_id=None)
                     "UPDATE tbl_cascaded_quotas SET assigned_to_role = %s WHERE assigned_to_role = %s",
                     (name, old_name))
         else:
+            if display_order is None:
+                cursor.execute("SELECT COALESCE(MAX(display_order), 0) + 10 FROM tbl_departments")
+                display_order = cursor.fetchone()[0]
             cursor.execute("""
                 INSERT INTO tbl_departments (department_name, department_code, display_order)
                 VALUES (%s, %s, %s)
-            """, (name, (code or '').strip() or None, int(display_order or 100)))
+            """, (name, (code or '').strip() or None, int(display_order)))
 
         conn.commit()
         return True, f"Department '{name}' saved."
@@ -88,6 +94,37 @@ def set_department_active(conn, cursor, department_id, is_active):
                        (1 if is_active else 0, department_id))
         conn.commit()
         return True, ("Department activated." if is_active else "Department deactivated.")
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+
+def reorder_department(conn, cursor, department_id, direction):
+    """Swap this department's display_order with its immediate neighbor (up or down),
+    ordered the same way get_departments() orders (display_order, department_name)."""
+    if direction not in ('up', 'down'):
+        return False, "Invalid direction."
+    try:
+        cursor.execute(
+            "SELECT department_id, display_order FROM tbl_departments "
+            "ORDER BY display_order, department_name")
+        rows = cursor.fetchall()
+        ids = [r[0] for r in rows]
+        try:
+            idx = ids.index(int(department_id))
+        except ValueError:
+            return False, "Department not found."
+        neighbor_idx = idx - 1 if direction == 'up' else idx + 1
+        if neighbor_idx < 0 or neighbor_idx >= len(rows):
+            return False, "Already at the edge."
+        this_id, this_order = rows[idx]
+        other_id, other_order = rows[neighbor_idx]
+        cursor.execute("UPDATE tbl_departments SET display_order = %s WHERE department_id = %s",
+                       (other_order, this_id))
+        cursor.execute("UPDATE tbl_departments SET display_order = %s WHERE department_id = %s",
+                       (this_order, other_id))
+        conn.commit()
+        return True, "Order updated."
     except Exception as e:
         conn.rollback()
         return False, str(e)

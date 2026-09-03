@@ -20,6 +20,10 @@
             --c-text-sub:    #6B6459;
             --c-border:      #E7E4DD;
             --c-surface-alt: #FAFAF9;
+            /* Same warning hue used app-wide (base.html's --c-warning/.badge.bg-warning),
+               so the HR notice below reads as part of one system, not an unrelated yellow. */
+            --c-warning-bg:   rgba(184,132,46,0.12);
+            --c-warning-text: #8F6421;
             --font-heading:  'Lora', Georgia, 'Times New Roman', serif;
             --font-body:     'Public Sans', 'Segoe UI', system-ui, sans-serif;
         }
@@ -173,14 +177,16 @@
         }
         .toggle-password-btn {
             position: absolute;
-            right: 12px;
+            right: 6px;
             top: 50%;
             transform: translateY(-50%);
             background: transparent;
             border: none;
             color: var(--c-text-sub);
             cursor: pointer;
-            padding: 4px;
+            /* Padding grows the tappable area toward 44px without enlarging the
+               visible icon (the icon itself stays centered inside). */
+            padding: 12px;
             z-index: 10;
             display: flex;
             align-items: center;
@@ -241,10 +247,10 @@
             </div>
 
             <div class="my-auto py-4">
-                <h2 class="hero-headline">
-                    Efficiently manage your individual performance commitments with D-IPCR. Secure, transparent, and easy to use.
-                </h2>
-            </div>
+            <h2 class="hero-headline">
+                Efficiently manage your individual performance commitments with D-IPCR. Secure, transparent, and easy to use.
+            </h2>
+        </div>
 
             <div style="opacity: 0.5; font-size: 0.75rem;">
                 D-IPCR Institutional Security
@@ -273,7 +279,7 @@
 
             <!-- Footer -->
             <div class="text-center pt-3" style="border-top: 1px solid var(--c-border);">
-                <p class="text-muted small mb-0" style="font-size: 0.76rem;">&copy; 2026 D-IPCR Performance Management. Institutional Security Level: <strong>HIGH</strong></p>
+                <p class="text-muted small mb-0" style="font-size: 0.76rem;">&copy; 2026 D-IPCR Performance Management</p>
             </div>
         </div>
     </div>

@@ -101,6 +101,12 @@ Run each file in `old MDS/`. Order matters — later ones assume the earlier sch
 | 3 | `MIGRATION_group5.sql` | Departments, teaching load config, extension durations |
 | 4 | `MIGRATION_group7.sql` | `is_admin_function` + backfill, collation repair |
 | 5 | `MIGRATION_group8.sql` | Rating period, institution settings, signatories, remarks |
+| 6 | `MIGRATION_group9.sql` | `target_description`/`target_duration_value`/`target_duration_unit` on `tbl_ret_assignments` |
+| 7 | `MIGRATION_group10.sql` | `tbl_ipcr_approval_notifications` — tracks Tier 1/2 email dispatches for idempotency |
+
+> `MIGRATION_update_emails.sql` is **not** part of this sequence — it's a one-off data fixup that
+> overwrites specific seeded test accounts' emails with particular addresses, not a schema
+> change. Skip it unless you know it applies to your own seeded accounts.
 
 In **DBeaver**, open the file and use **Execute Script** (`Alt+X`) — not Execute Statement
 (`Ctrl+Enter`), which runs only the statement under the cursor.

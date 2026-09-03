@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPCR — {{ form.full_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
     <style>
         /* Short bond paper, 8.5 x 11 inches, landscape. The on-screen preview uses the same
            width so what is shown matches what comes out of the printer. */
@@ -36,7 +37,7 @@
         .right { text-align: right; }
         .bold { font-weight: bold; }
         .small { font-size: 8.5pt; }
-        .title { text-align: center; font-weight: bold; font-size: 12pt; margin: 0 0 8px; }
+        .title { text-align: center; font: inherit; font-weight: bold; font-size: 12pt; margin: 0 0 8px; }
         .commitment { margin: 0 0 8px; line-height: 1.3; text-align: justify; }
         .ratee { text-align: right; margin-bottom: 8px; line-height: 1.2; }
         .ratee .name { font-weight: bold; text-decoration: underline; }
@@ -48,17 +49,31 @@
             border: 1px solid #b00; background: #fff4f4; color: #b00;
             padding: 8px 12px; margin-bottom: 12px; font-weight: bold;
         }
+        .commitment-notice {
+            border: 1px solid #1a7a3c; background: #f0fbf4; color: #1a7a3c;
+            padding: 8px 12px; margin-bottom: 12px; font-weight: bold;
+        }
         .toolbar { max-width: 1100px; margin: 0 auto 12px; display: flex; gap: 8px; }
         .toolbar button, .toolbar a {
-            font-family: system-ui, sans-serif; font-size: 13px; padding: 8px 16px;
-            border: 1px solid #0d6efd; border-radius: 6px; cursor: pointer;
-            text-decoration: none; background: #0d6efd; color: #fff;
+            font-family: 'Public Sans', 'Segoe UI', system-ui, sans-serif; font-size: 13px; padding: 8px 16px;
+            border: 1px solid #3E5C82; border-radius: 6px; cursor: pointer;
+            text-decoration: none; background: #3E5C82; color: #fff;
         }
-        .toolbar a.secondary { background: #fff; color: #0d6efd; }
+        .toolbar a.secondary { background: #fff; color: #3E5C82; }
+        .visually-hidden {
+            position: absolute; width: 1px; height: 1px; overflow: hidden;
+            clip: rect(0,0,0,0); white-space: nowrap;
+        }
 
         /* Only the form itself goes on paper. */
         @media print {
-            body { background: #fff; padding: 0; font-size: 9pt; }
+            body {
+                background: #fff; padding: 0; font-size: 9pt;
+                /* Without this, Chrome/Edge drop the .section-row shading by default
+                   unless the user manually checks "Background graphics" in the print dialog. */
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
             .toolbar { display: none !important; }
             .sheet {
                 box-shadow: none;
@@ -74,7 +89,6 @@
             .summary-block { page-break-inside: avoid; }
             .small { font-size: 8pt; }
             .title { font-size: 11pt; }
-            .page-break { page-break-before: always; }
             thead { display: table-header-group; }
             tr { page-break-inside: avoid; }
         }
@@ -87,14 +101,16 @@
     <a class="secondary" href="{{ back_url }}">Back</a>
 </div>
 
-<div class="sheet">
-    {% if not form.is_final %}
-    <div class="draft-notice">
-        DRAFT — this IPCR has not been approved by the Dean yet. Figures may still change.
+<main class="sheet">
+    {% if form.form_stage == 'commitment' %}
+    <div class="commitment-notice">
+        <i class="ti ti-circle-check"></i>
+        Approved Performance Commitment — targets are locked and approved. Actual accomplishments
+        and Q/E/T ratings will be completed at the end of the rating period.
     </div>
     {% endif %}
 
-    <div class="title">INDIVIDUAL PERFORMANCE COMMITMENT AND REVIEW (IPCR)</div>
+    <h1 class="title">{{ form.stage_title }}</h1>
 
     <p class="commitment">{{ form.commitment }}</p>
 
@@ -106,6 +122,7 @@
 
     <!-- Reviewed by / Approved by -->
     <table style="margin-bottom: 8px;">
+        <caption class="visually-hidden">Reviewed by and approved by signatories</caption>
         <tr>
             <td style="width: 42%;">
                 <div>Reviewed by:</div>
@@ -128,19 +145,20 @@
 
     <!-- Main target table -->
     <table>
+        <caption class="visually-hidden">IPCR target ratings by category</caption>
         <thead>
             <tr>
-                <th rowspan="2" style="width: 16%;">{{ form.output_column_label }}</th>
-                <th rowspan="2" style="width: 26%;">Success Indicator<br><span class="small">(Target + Measure)</span></th>
-                <th rowspan="2" style="width: 26%;">Actual Accomplishments</th>
-                <th colspan="4">Rating</th>
-                <th rowspan="2" style="width: 12%;">Remarks</th>
+                <th scope="col" rowspan="2" style="width: 16%;">{{ form.output_column_label }}</th>
+                <th scope="col" rowspan="2" style="width: 26%;">Success Indicator<br><span class="small">(Target + Measure)</span></th>
+                <th scope="col" rowspan="2" style="width: 26%;">Actual Accomplishments</th>
+                <th scope="col" colspan="4">Rating</th>
+                <th scope="col" rowspan="2" style="width: 12%;">Remarks</th>
             </tr>
             <tr>
-                <th class="rating-col small">Q<sup>1</sup></th>
-                <th class="rating-col small">E<sup>2</sup></th>
-                <th class="rating-col small">T<sup>3</sup></th>
-                <th class="rating-col small">A<sup>4</sup></th>
+                <th scope="col" class="rating-col small">Q<sup>1</sup></th>
+                <th scope="col" class="rating-col small">E<sup>2</sup></th>
+                <th scope="col" class="rating-col small">T<sup>3</sup></th>
+                <th scope="col" class="rating-col small">A<sup>4</sup></th>
             </tr>
         </thead>
         <tbody>
@@ -158,12 +176,12 @@
                 {% if loop.first %}
                 <td rowspan="{{ sub.targets | length }}" class="bold">{{ sub.letter }}. {{ sub.label }}</td>
                 {% endif %}
-                <td>{{ t.target_description or t.indicator_description }}</td>
+                <td>{{ (t.target_description or t.indicator_description) | ipcr_preview }}</td>
                 <td>{{ t.actual_accomplishment or '' }}</td>
-                <td class="rating-col">{{ t.rating.q if t.rating and t.rating.q is not none else '' }}</td>
-                <td class="rating-col">{{ t.rating.e if t.rating and t.rating.e is not none else '' }}</td>
-                <td class="rating-col">{{ t.rating.t if t.rating and t.rating.t is not none else '' }}</td>
-                <td class="rating-col">{{ t.rating.average if t.rating and t.rating.average is not none else '' }}</td>
+                <td class="rating-col">{{ t.rating.q if form.is_final and t.rating and t.rating.q is not none else '' }}</td>
+                <td class="rating-col">{{ t.rating.e if form.is_final and t.rating and t.rating.e is not none else '' }}</td>
+                <td class="rating-col">{{ t.rating.t if form.is_final and t.rating and t.rating.t is not none else '' }}</td>
+                <td class="rating-col">{{ t.rating.average if form.is_final and t.rating and t.rating.average is not none else '' }}</td>
                 <td class="small">{{ t.print_remarks or '' }}</td>
             </tr>
             {% endfor %}
@@ -183,7 +201,7 @@
                 <td class="rating-col"></td>
                 <td class="rating-col"></td>
                 <td class="rating-col bold">
-                    {{ form.score.total_overall_rating if form.score.total_overall_rating is not none else '' }}
+                    {{ form.score.total_overall_rating if form.is_final and form.score.total_overall_rating is not none else '' }}
                 </td>
                 <td></td>
             </tr>
@@ -193,6 +211,7 @@
     <!-- Summary box -->
     <div class="summary-block">
     <table style="margin-top: 10px;">
+        <caption class="visually-hidden">IPCR category weights, ratings, and comments summary</caption>
         <tr>
             <td rowspan="{{ 5 + (form.score.breakdown | length) }}" style="width: 46%; vertical-align: top;">
                 <div class="center bold">Comments and Recommendations for Development Purposes</div>
@@ -212,26 +231,26 @@
             <td>{{ form.sections[loop.index0].numeral if loop.index0 < (form.sections | length) else '' }}.
                 {{ b.category_name }}</td>
             <td class="center">{{ b.weight_pct | round(0) | int }}%</td>
-            <td class="center">{{ b.raw_avg if b.raw_avg is not none else '' }}</td>
-            <td class="center">{{ b.weighted_value if b.weighted_value is not none else '' }}</td>
+            <td class="center">{{ b.raw_avg if form.is_final and b.raw_avg is not none else '' }}</td>
+            <td class="center">{{ b.weighted_value if form.is_final and b.weighted_value is not none else '' }}</td>
         </tr>
         {% endfor %}
 
         <tr>
             <td colspan="2" class="center">Total Overall Rating</td>
             <td colspan="2" class="center bold">
-                {{ form.score.total_overall_rating if form.score.total_overall_rating is not none else '' }}
+                {{ form.score.total_overall_rating if form.is_final and form.score.total_overall_rating is not none else '' }}
             </td>
         </tr>
         <tr>
             <td colspan="2" class="center">Final Weighted Rating</td>
             <td colspan="2" class="center bold">
-                {{ form.score.final_weighted_rating if form.score.final_weighted_rating is not none else '' }}
+                {{ form.score.final_weighted_rating if form.is_final and form.score.final_weighted_rating is not none else '' }}
             </td>
         </tr>
         <tr>
             <td colspan="2" class="center">Adjectival Rating</td>
-            <td colspan="2" class="center bold">{{ form.score.adjectival_rating or '' }}</td>
+            <td colspan="2" class="center bold">{{ form.score.adjectival_rating if form.is_final else '' }}</td>
         </tr>
     </table>
 
@@ -241,6 +260,7 @@
 
     <!-- Signature footer -->
     <table>
+        <caption class="visually-hidden">Signatories for discussion, assessment, and final rating</caption>
         <tr>
             <th style="width: 24%;">Discussed with</th>
             <th style="width: 8%;">Date</th>
@@ -274,7 +294,7 @@
         </tr>
     </table>
     </div>
-</div>
+</main>
 
 </body>
 </html>

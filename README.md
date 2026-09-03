@@ -20,7 +20,7 @@ D-IPCR digitizes the faculty performance cycle; from target cascading through mu
 
 ## What It Does
 
-The system routes faculty performance targets through a **multi-role cascade**:
+The system routes faculty performance targets through a multi-role cascade:
 
 ```
 Admin → Dean → Program Chair / RET Chair → Faculty → Review → Lock → Evidence → Scoring → Print
@@ -91,7 +91,7 @@ docker compose up -d
 
 The first start pulls the web + database images, applies the schema automatically, and creates the first admin account from env's `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
 
-**Step 4 — Access**
+**Step 4: Access**
 
 Open `http://localhost:5000` (or `http://<server-ip>:<port>` if you changed the port) and log in with the admin credentials.
 
@@ -130,7 +130,7 @@ docker push username/dipcr-db:latest
 
 Requires Python 3.10+ and a reachable MySQL 8 instance.
 
-**Step 1 — Clone & install**
+**Step 1: Clone & install**
 
 ```bash
 git clone https://github.com/yaspartame/Management-PCR
@@ -145,7 +145,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**Step 2 — Configure `.env`**
+**Step 2: Configure `.env`**
 
 ```bash
 cp .env-example .env
@@ -153,7 +153,7 @@ cp .env-example .env
 
 Point `DB_HOST`/`DB_PORT`/`DB_NAME` at your MySQL instance and set `SECRET_KEY`.
 
-**Step 3 — Run**
+**Step 3: Run**
 
 ```bash
 python run.py

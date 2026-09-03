@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from app.models.criteria import SLUG_INSTRUCTION
+from app.models.criteria import SLUG_INSTRUCTION, SLUG_SUPPORT
+from app.models.ipcr_description import format_ipcr_target_description
 
 
 # ─────────────────────────────────────────────
@@ -8,18 +9,41 @@ from app.models.criteria import SLUG_INSTRUCTION
 # ─────────────────────────────────────────────
 
 def get_chair_indicators(cursor, term_id, specialization):
+    """
+    Indicators the Program Chair can allocate: those quota'd specifically for their own
+    specialization, PLUS any Support Function indicator the Dean cascaded College-Wide instead
+    (e.g. "Conduct/attend N Professional meetings," which isn't split per department in the
+    DPCR). A dept-specific quota takes priority over a College-Wide one for the same indicator,
+    if both happen to exist. `quota_source` tells the UI which bucket the number came from,
+    since a College-Wide figure is a whole-college target, not this department's own pool to
+    divide.
+
+    The College-Wide fallback is deliberately restricted to Support (tc.slug = 'support').
+    College-Wide Instruction/Strategic-Priorities indicators are institution-level rollup
+    metrics (e.g. "80% of undergraduate programs with valid accreditation") that no individual
+    faculty member personally commits to — they must never be offered to a Program Chair for
+    per-faculty distribution.
+    """
     from app.models.connection import timed_query
     query = """
-        SELECT mi.indicator_id, mi.indicator_description, mi.efficiency_type, tc.category_name, tc.slug, cq.total_target_value as dept_quota
+        SELECT mi.indicator_id, mi.indicator_description, mi.efficiency_type, tc.category_name, tc.slug,
+               COALESCE(dept_cq.total_target_value, cw_cq.total_target_value) as dept_quota,
+               CASE WHEN dept_cq.quota_id IS NOT NULL THEN 'DEPT' ELSE 'COLLEGE_WIDE' END as quota_source
         FROM tbl_master_indicators mi
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
-        JOIN tbl_cascaded_quotas cq ON mi.indicator_id = cq.indicator_id AND cq.term_id = mi.term_id
+        LEFT JOIN tbl_cascaded_quotas dept_cq
+            ON dept_cq.indicator_id = mi.indicator_id AND dept_cq.term_id = mi.term_id
+           AND dept_cq.assigned_to_role = %s
+        LEFT JOIN tbl_cascaded_quotas cw_cq
+            ON cw_cq.indicator_id = mi.indicator_id AND cw_cq.term_id = mi.term_id
+           AND cw_cq.assigned_to_role = 'College-Wide'
+           AND tc.slug = %s
         WHERE mi.term_id = %s
           AND tc.review_lane = 'CHAIR' AND tc.is_core = 1
-          AND cq.assigned_to_role = %s
+          AND (dept_cq.quota_id IS NOT NULL OR cw_cq.quota_id IS NOT NULL)
         ORDER BY tc.category_name, mi.indicator_id
     """
-    return timed_query(cursor, query, (term_id, specialization), label="get_chair_indicators")
+    return timed_query(cursor, query, (specialization, SLUG_SUPPORT, term_id), label="get_chair_indicators")
 
 
 def get_specialization_faculty(cursor, specialization):
@@ -64,7 +88,7 @@ def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
     ind_placeholders = ','.join(['%s'] * len(indicator_ids))
     query = f"""
         SELECT da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
-               da.target_duration_value, da.target_duration_unit
+               da.target_duration_value, da.target_duration_unit, da.is_auto_description
         FROM tbl_draft_allocation da
         JOIN tbl_master_indicators mi ON da.indicator_id = mi.indicator_id
         JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
@@ -75,7 +99,7 @@ def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
           AND da.indicator_id IN ({ind_placeholders})
           AND da.emp_id IN ({fac_placeholders})
         GROUP BY da.indicator_id, da.assigned_quantity, da.custom_description, da.target_deadline,
-                 da.target_duration_value, da.target_duration_unit
+                 da.target_duration_value, da.target_duration_unit, da.is_auto_description
     """
     rows = timed_query(cursor, query, [term_id] + indicator_ids + faculty_ids, label="get_assigned_quantity_batch")
     result = {}
@@ -85,7 +109,8 @@ def get_assigned_quantity_batch(cursor, term_id, indicator_ids, faculty_ids):
             'custom_description': row.get('custom_description'),
             'target_deadline': row.get('target_deadline'),
             'target_duration_value': row.get('target_duration_value'),
-            'target_duration_unit': row.get('target_duration_unit')
+            'target_duration_unit': row.get('target_duration_unit'),
+            'is_auto_description': row.get('is_auto_description')
         }
     return result
 
@@ -112,9 +137,14 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
             return False, "No active faculty found for this specialization."
 
         for item in allocations:
-            # Newer callers pass a structured duration (value + unit) alongside the label.
-            duration_value, duration_unit = None, None
-            if len(item) == 6:
+            # Newer callers pass a structured duration (value + unit) alongside the label,
+            # and newest callers also pass an explicit auto/customized flag (from
+            # wireAutoDescription in base.html) rather than leaving it to be inferred.
+            duration_value, duration_unit, is_auto_flag = None, None, None
+            if len(item) == 7:
+                (indicator_id, assigned_quantity, custom_description,
+                 target_deadline, duration_value, duration_unit, is_auto_flag) = item
+            elif len(item) == 6:
                 (indicator_id, assigned_quantity, custom_description,
                  target_deadline, duration_value, duration_unit) = item
             elif len(item) == 4:
@@ -123,15 +153,25 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
                 indicator_id, assigned_quantity = item[0], item[1]
                 custom_description, target_deadline = None, None
 
-            # Determine category of the indicator
+            # Determine category of the indicator, and its description for auto-generation
             cursor.execute("""
-                SELECT tc.slug
+                SELECT tc.slug, mi.indicator_description
                 FROM tbl_master_indicators mi
                 JOIN tbl_target_categories tc ON mi.category_id = tc.category_id
                 WHERE mi.indicator_id = %s
             """, (indicator_id,))
             cat_row = cursor.fetchone()
             cat_slug = cat_row[0] if cat_row else ''
+            indicator_description = cat_row[1] if cat_row else ''
+
+            # is_auto_flag True (explicitly, from the frontend) always regenerates, even if
+            # non-blank text was submitted — protects against client-side drift (Decision 1).
+            # A blank description always regenerates too regardless of the flag, as a safety
+            # net against ever storing an empty description.
+            is_auto_description = 1 if (is_auto_flag is True or not custom_description) else 0
+            if is_auto_description:
+                custom_description = format_ipcr_target_description(
+                    indicator_description, assigned_quantity, duration_value, duration_unit)
 
             if cat_slug == SLUG_INSTRUCTION:
                 # Instruction targets are cascaded to both Regular and Designated Faculty
@@ -144,6 +184,25 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
                     WHERE emp_id IN ({format_strings}) AND designation = 'Regular Faculty'
                 """, faculty_ids)
                 target_emp_ids = [r[0] for r in cursor.fetchall()]
+
+            try:
+                assigned_quantity = int(assigned_quantity)
+            except (TypeError, ValueError):
+                assigned_quantity = 0
+
+            if assigned_quantity <= 0:
+                # A 0/blank quantity means the chair chose NOT to distribute this indicator
+                # (common for a College-Wide indicator that doesn't apply to their faculty,
+                # e.g. an admin-only Support item) — not "distribute a zero-quantity target."
+                # Clear any prior distribution instead of leaving/creating a phantom 0-qty row
+                # on every applicable faculty member's IPCR.
+                if target_emp_ids:
+                    del_placeholders = ','.join(['%s'] * len(target_emp_ids))
+                    cursor.execute(
+                        f"DELETE FROM tbl_draft_allocation WHERE indicator_id = %s AND emp_id IN ({del_placeholders})",
+                        [indicator_id] + target_emp_ids
+                    )
+                continue
 
             for emp_id in target_emp_ids:
                 # Check if an allocation record already exists in the draft staging table
@@ -159,19 +218,19 @@ def save_chair_allocations_batch(conn, cursor, term_id, allocations, faculty_ids
                     update_query = """
                         UPDATE tbl_draft_allocation
                         SET assigned_quantity = %s, custom_description = %s, target_deadline = %s,
-                            target_duration_value = %s, target_duration_unit = %s
+                            target_duration_value = %s, target_duration_unit = %s, is_auto_description = %s
                         WHERE allocation_id = %s
                     """
                     cursor.execute(update_query, (assigned_quantity, custom_description, target_deadline,
-                                                  duration_value, duration_unit, existing[0][0]))
+                                                  duration_value, duration_unit, is_auto_description, existing[0][0]))
                 else:
                     insert_query = """
                         INSERT INTO tbl_draft_allocation (emp_id, indicator_id, assigned_quantity, custom_description, target_deadline,
-                                                          target_duration_value, target_duration_unit)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                                          target_duration_value, target_duration_unit, is_auto_description)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     cursor.execute(insert_query, (emp_id, indicator_id, assigned_quantity, custom_description,
-                                                  target_deadline, duration_value, duration_unit))
+                                                  target_deadline, duration_value, duration_unit, is_auto_description))
 
         conn.commit()
         return True, "Targets distributed successfully to all faculty draft worklists."
@@ -584,7 +643,7 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
         cursor.execute(
             """
             SELECT dt.indicator_id, COALESCE(ri.reviewed_quantity, dt.proposed_quantity), dt.target_description, dt.target_deadline,
-                   dt.target_duration_value, dt.target_duration_unit
+                   dt.target_duration_value, dt.target_duration_unit, dt.is_auto_description
             FROM tbl_draft_targets dt
             JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
             LEFT JOIN tbl_ipcr_chair_review cr ON cr.emp_id = dt.emp_id AND cr.term_id = mi.term_id
@@ -607,15 +666,15 @@ def lock_and_commit_ipcr(conn, cursor, emp_id, term_id):
             (emp_id, term_id)
         )
 
-        for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit in drafts:
+        for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_auto_description in drafts:
             if qty > 0:
                 cursor.execute(
                     """
                     INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, target_description, target_deadline,
-                                                       target_duration_value, target_duration_unit)
-                    VALUES (%s, %s, %s, 'Approved', %s, %s, %s, %s)
+                                                       target_duration_value, target_duration_unit, is_auto_description)
+                    VALUES (%s, %s, %s, 'Approved', %s, %s, %s, %s, %s)
                     """,
-                    (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit)
+                    (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_auto_description)
                 )
 
         cursor.execute(

@@ -170,10 +170,22 @@ def get_oversight_targets(cursor, emp_id, term_id):
     rows = timed_query(cursor, query, (emp_id, term_id, term_id, role),
                        label="get_oversight_targets")
 
+    from app.models.ipcr_description import format_ipcr_target_description
+
     for r in rows:
         # Pre-filled from the cascade; a saved draft value wins so an edit survives a reload.
         r['total_target_value'] = r.get('proposed_quantity') or r['total_target_value']
-        r['target_description'] = r.get('target_description') or r['indicator_description']
+        # Always regenerated from the indicator + the department's full quota — never
+        # user-customizable (there's no description input for an oversight row at all), so
+        # unlike a personal target there's no "customized text" to preserve. Falling back to
+        # the raw indicator_description (the old behavior) showed the indicator's own
+        # embedded default number instead of the department's actual cascaded quota, which is
+        # wrong whenever they differ (e.g. Dean cascades 5, but the indicator was authored
+        # with "{qty:1}" as a placeholder example).
+        r['target_description'] = format_ipcr_target_description(
+            r['indicator_description'], r['total_target_value'],
+            r.get('target_duration_value'), r.get('target_duration_unit'))
+        r['is_auto_description'] = True
         r['target_deadline'] = r.get('target_deadline') or ''
         r['status'] = r.get('review_status') or 'Draft'
         r['is_admin_function'] = True
@@ -266,6 +278,9 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
         oversight_indicator_ids = {r['indicator_id'] for r in oversight_rows}
         pure_oversight_ids = oversight_indicator_ids - core_indicator_ids
 
+        from app.models.ipcr_description import (
+            format_ipcr_target_description, get_indicator_description, has_placeholders)
+
         # 2. Process Standard Baseline Selected Targets
         for target in selected_targets:
             if target['indicator_id'] in pure_oversight_ids:
@@ -279,11 +294,20 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
             is_teaching_load = 'Teaching Load' in str(target.get('target_description') or '')
             is_core = is_teaching_load or target['indicator_id'] in core_indicator_ids
             is_admin = 0 if is_core else 1
+            # is_auto_description True (explicit, from the frontend) always regenerates,
+            # even if non-blank text was submitted — protects against client-side drift
+            # (Decision 1). A blank description always regenerates too, regardless.
+            is_auto_description = 1 if (target.get('is_auto_description') is True or not desc) else 0
+            if is_auto_description:
+                desc = format_ipcr_target_description(
+                    get_indicator_description(cursor, target['indicator_id']),
+                    target['proposed_quantity'], dur_value, dur_unit)
             cursor.execute("""
                 INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
-                                               target_duration_value, target_duration_unit, is_admin_function)
-                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, %s)
-            """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead, dur_value, dur_unit, is_admin))
+                                               target_duration_value, target_duration_unit, is_admin_function, is_auto_description)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, %s, %s)
+            """, (emp_id, target['indicator_id'], target['proposed_quantity'], desc, dead, dur_value, dur_unit,
+                  is_admin, is_auto_description))
 
         from app.models.institution import resolve_teaching_load, teaching_load_description
         from app.models.scoring import format_duration
@@ -299,11 +323,18 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
             ov_dur_unit = (ov_input.get('target_duration_unit') or r.get('target_duration_unit') or 'semesters')
             ov_deadline = (ov_input.get('target_deadline') or r.get('target_deadline')
                            or format_duration(ov_dur_value, ov_dur_unit))
+            # Always regenerated from the indicator + the department's full quota, using
+            # whatever duration is actually being saved this submission — never the chair's
+            # own text (there's no description input for this row) and never a stale duration
+            # from an earlier load. See get_oversight_targets() for why the quantity always
+            # comes from total_target_value, never from the row itself.
+            ov_desc = format_ipcr_target_description(
+                r['indicator_description'], r['total_target_value'], ov_dur_value, ov_dur_unit)
             cursor.execute("""
                 INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
-                                               target_duration_value, target_duration_unit, is_admin_function)
-                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1)
-            """, (emp_id, r['indicator_id'], r['total_target_value'], r['target_description'], ov_deadline, ov_dur_value, ov_dur_unit))
+                                               target_duration_value, target_duration_unit, is_admin_function, is_auto_description)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1, 1)
+            """, (emp_id, r['indicator_id'], r['total_target_value'], ov_desc, ov_deadline, ov_dur_value, ov_dur_unit))
 
         # Ensure the mandatory Teaching Load target is saved, using the Admin's configured
         # hours and duration for Designated faculty (previously hardcoded at 10 hours).
@@ -347,6 +378,37 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
             if not text_clean:
                 continue
 
+            # Reconcile the description the person typed with the quantity/duration they
+            # entered in the separate fields beside it. Three branches, none of which ever
+            # guesses which number in a free-typed sentence is "the quantity":
+            #
+            #  1. Tagged ({qty}/{duration} present, via the click-to-tag helper on the Add
+            #     Custom Target modal) — substitute. The binding is exact because the person
+            #     established it themselves by clicking the number, so this also works when
+            #     the quantity sits mid-sentence, which is where the position-0 legacy rule
+            #     can't reach.
+            #  2. Untagged but the text already contains digits — store it verbatim. We can't
+            #     tell whether a bare "3" in "Report 3 activities" is the tracked quantity, a
+            #     year level, or a standard number, and prepending on top of it produces the
+            #     confusing "1 Report 3 activities". Trusting exactly what was typed is the
+            #     only non-guessing option; the quantity and duration still reach scoring
+            #     through their own columns and still render in their own table columns.
+            #  3. Untagged with no digits at all (a bare activity phrase, which is what the
+            #     field's placeholder asks for) — unambiguous, so combine into the same
+            #     "[Quantity] [Description] within [Duration]" convention every other target
+            #     uses. Idempotent if re-run on its own output with the same values.
+            #
+            # The modal mirrors this exact rule in JS (composeCustomTargetDescription) so the
+            # preview and the added row read the same as what lands here.
+            raw_text = text_clean
+            tagged = has_placeholders(text_clean)
+            if tagged or not any(ch.isdigit() for ch in text_clean):
+                text_clean = format_ipcr_target_description(text_clean, qty, cust_dur_value, cust_dur_unit)
+            if not tagged:
+                # Nothing to re-substitute later, so the master indicator holds the same
+                # final text the draft row does — the pre-tagging behaviour, unchanged.
+                raw_text = text_clean
+
             # Step A: Identify or provision the specific category block dynamically
             cat_name = custom.get('category_name', 'Support Functions')
             cursor.execute("SELECT category_id FROM tbl_target_categories WHERE category_name = %s", (cat_name,))
@@ -357,11 +419,16 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
                 cursor.execute("INSERT INTO tbl_target_categories (category_name) VALUES (%s)", (cat_name,))
                 category_id = cursor.lastrowid
 
-            # Step B: Upstream runtime injection into master indicators (Explicitly flagged as is_custom = 1)
+            # Step B: Upstream runtime injection into master indicators (Explicitly flagged as is_custom = 1).
+            # A tagged item stores its *raw* placeholder text here, exactly like an
+            # Admin-authored indicator — that is what lets build_actual_accomplishment()
+            # substitute the achieved quantity by placeholder position instead of falling
+            # back to its regex anchored at character 0, which a mid-sentence quantity
+            # ("Report {qty} activities...") would never match.
             cursor.execute("""
-                SELECT indicator_id FROM tbl_master_indicators 
+                SELECT indicator_id FROM tbl_master_indicators
                 WHERE indicator_description = %s AND term_id = %s AND category_id = %s AND is_custom = 1
-            """, (text_clean, term_id, category_id))
+            """, (raw_text, term_id, category_id))
             existing_ind = cursor.fetchone()
             if existing_ind:
                 new_indicator_id = existing_ind[0]
@@ -369,17 +436,30 @@ def submit_designated_ipcr(conn, cursor, emp_id, term_id, selected_targets, cust
                 cursor.execute("""
                     INSERT INTO tbl_master_indicators (category_id, indicator_description, efficiency_type, term_id, is_custom)
                     VALUES (%s, %s, 'Output-Based', %s, 1)
-                """, (category_id, text_clean, term_id))
+                """, (category_id, raw_text, term_id))
                 new_indicator_id = cursor.lastrowid
 
             # Step C: Downstream projection into the unified draft staging table.
             # Custom ad-hoc items are never personal teaching work, so they always rate
             # under Strategic Priorities/Support Functions.
+            #
+            # is_auto_description is set explicitly rather than left to the schema default,
+            # and it means different things for the two kinds of custom item:
+            #
+            #  Tagged (1): the stored master text still holds {qty}/{duration}, so this row
+            #  genuinely does mirror it — regenerating reproduces target_description exactly,
+            #  and the scoring engine needs the flag to take its placeholder fast path.
+            #  Untagged (0): the text was combined (or kept verbatim) once, here, and there
+            #  is nothing left to substitute — no placeholders, and no separate "current
+            #  quantity" to regenerate against later, unlike a real cascaded indicator.
+            #  Leaving it at the default 1 would let a read path re-run already-combined text
+            #  through format_ipcr_target_description() a second time: harmless for identical
+            #  values, wrong the moment anything about the row changes outside this function.
             cursor.execute("""
                 INSERT INTO tbl_draft_targets (emp_id, indicator_id, proposed_quantity, review_status, target_description, target_deadline,
-                                               target_duration_value, target_duration_unit, is_admin_function)
-                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1)
-            """, (emp_id, new_indicator_id, qty, text_clean, dead, cust_dur_value, cust_dur_unit))
+                                               target_duration_value, target_duration_unit, is_admin_function, is_auto_description)
+                VALUES (%s, %s, %s, 'Pending Review', %s, %s, %s, %s, 1, %s)
+            """, (emp_id, new_indicator_id, qty, text_clean, dead, cust_dur_value, cust_dur_unit, 1 if tagged else 0))
 
         conn.commit()
         return True, "Designated IPCR successfully compiled and submitted to Draft Targets for verification review."
@@ -404,6 +484,7 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
         SELECT ct.target_id, ct.indicator_id, ct.assigned_quantity, ct.actual_quantity, ct.status,
                COALESCE(ct.target_description, dt.target_description, mi.indicator_description) as indicator_description,
                COALESCE(ct.target_description, dt.target_description) as target_description,
+               mi.indicator_description as raw_indicator_description, ct.is_auto_description,
                COALESCE(ct.target_deadline, dt.target_deadline) as target_deadline,
                COALESCE(ct.target_duration_value, dt.target_duration_value) as target_duration_value,
                COALESCE(ct.target_duration_unit, dt.target_duration_unit) as target_duration_unit,
@@ -431,6 +512,8 @@ def get_designated_committed_targets(cursor, emp_id, term_id):
             r.get('actual_duration_value'),
             r.get('target_duration_unit'),
             client_satisfaction_label(r.get('efficiency_rating_E')),
+            raw_indicator_description=r.get('raw_indicator_description'),
+            is_auto_description=r.get('is_auto_description'),
         )
         r['rating'] = compute_target_rating(r)
     return rows
@@ -540,7 +623,8 @@ def lock_and_commit_designated_ipcr(conn, cursor, emp_id, term_id):
                    dt.target_deadline,
                    dt.target_duration_value,
                    dt.target_duration_unit,
-                   dt.is_admin_function
+                   dt.is_admin_function,
+                   dt.is_auto_description
             FROM tbl_draft_targets dt
             JOIN tbl_master_indicators mi ON dt.indicator_id = mi.indicator_id
             LEFT JOIN tbl_ipcr_dean_review_items dri ON dt.draft_id = dri.draft_id AND dri.review_id = %s
@@ -559,14 +643,16 @@ def lock_and_commit_designated_ipcr(conn, cursor, emp_id, term_id):
         """, (emp_id, term_id))
 
         # Insert approved items into tbl_committed_targets
-        for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_admin in draft_items:
+        for indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_admin, is_auto_description in draft_items:
             if qty > 0:
                 cursor.execute("""
                     INSERT INTO tbl_committed_targets (emp_id, indicator_id, assigned_quantity, status, actual_quantity,
                                                        target_description, target_deadline,
-                                                       target_duration_value, target_duration_unit, is_admin_function)
-                    VALUES (%s, %s, %s, 'Approved', 0, %s, %s, %s, %s, %s)
-                """, (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_admin or 0))
+                                                       target_duration_value, target_duration_unit, is_admin_function,
+                                                       is_auto_description)
+                    VALUES (%s, %s, %s, 'Approved', 0, %s, %s, %s, %s, %s, %s)
+                """, (emp_id, indicator_id, qty, target_desc, target_dead, dur_value, dur_unit, is_admin or 0,
+                      is_auto_description))
 
         conn.commit()
         return True, "IPCR locked successfully and committed to evaluation targets."

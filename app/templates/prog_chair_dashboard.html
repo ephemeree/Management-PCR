@@ -72,7 +72,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-0 h-100 border-start border-info border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Active Faculty</h6>
+                    <h6 class="text-muted text-uppercase fw-bold" role="heading" aria-level="4">Active Faculty</h6>
                     <h2 class="display-6 fw-bold text-info">{{ faculty_count }}</h2>
                     <span class="small text-muted">Under {{ specialization }}</span>
                 </div>
@@ -81,7 +81,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-0 h-100 border-start border-primary border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Target Allocation</h6>
+                    <h6 class="text-muted text-uppercase fw-bold" role="heading" aria-level="4">Target Allocation</h6>
                     <h2 class="display-6 fw-bold text-primary">100%</h2>
                     <span class="small text-muted">All quotas distributed</span>
                 </div>
@@ -90,7 +90,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-0 h-100 border-start border-warning border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Pending Drafts</h6>
+                    <h6 class="text-muted text-uppercase fw-bold" role="heading" aria-level="4">Pending Drafts</h6>
                     <h2 class="display-6 fw-bold text-warning">{{ pending_drafts_count }}</h2>
                     <span class="small text-muted">Awaiting Your Review</span>
                 </div>
@@ -99,7 +99,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-0 h-100 border-start border-success border-4">
                 <div class="card-body text-center py-4">
-                    <h6 class="text-muted text-uppercase fw-bold">Approved IPCRs</h6>
+                    <h6 class="text-muted text-uppercase fw-bold" role="heading" aria-level="4">Approved IPCRs</h6>
                     <h2 class="display-6 fw-bold text-success">
                         {% set approved_count = pending_drafts | selectattr('review_status', 'equalto', 'Approved') |
                         list | length %}
@@ -140,7 +140,7 @@
     <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center" style="border-radius: 10px;">
         <i class="ti ti-shield-lock fs-4 me-3 text-info"></i>
         <div>
-            <h6 class="fw-bold mb-0">Baseline Target Allocations Finalized</h6>
+            <h6 class="fw-bold mb-0" role="heading" aria-level="4">Baseline Target Allocations Finalized</h6>
             <small>Target allocations for <strong>{{ specialization }}</strong> have been saved and finalized for this term. Inputs cannot be modified.</small>
         </div>
     </div>
@@ -152,8 +152,8 @@
         <!-- Instructions Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
-                style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-accent) !important;">
-                <h5 class="fw-bold text-primary mb-0"><i class="ti ti-star-filled me-2"></i>Strategic Priorities</h5>
+                style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important;">
+                <h5 class="fw-bold text-primary mb-0" role="heading" aria-level="3"><i class="ti ti-star-filled me-2"></i>Strategic Priorities</h5>
                 <div class="d-flex align-items-center gap-2">
                     {% if not targets_saved %}
                     <button type="button" class="btn btn-sm btn-outline-primary shadow-sm fw-semibold btn-auto-divide-card" data-card="instructions" title="Auto divide Strategic Priorities quotas by faculty count">
@@ -183,17 +183,24 @@
                             {% for ind in indicators %}
                             {% if ind.category_name == 'A. Instructions' %}
                             {% set ns_inst.found = true %}
-                            <tr>
-                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description }}</td>
-                                <td class="text-center fw-bold text-primary dept-quota-cell">{{ ind.dept_quota }}</td>
+                            <tr data-indicator-text="{{ ind.indicator_description | e }}">
+                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description | ipcr_preview }}</td>
+                                <td class="text-center fw-bold text-primary dept-quota-cell">
+                                    {{ ind.dept_quota }}
+                                    {% if ind.quota_source == 'COLLEGE_WIDE' %}
+                                    <br><span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:0.65rem;" title="Cascaded College-Wide by the Dean — not a quota specific to your program.">College-Wide</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <input type="hidden" name="indicator_ids" value="{{ ind.indicator_id }}">
                                     <input type="number" name="assigned_quantities"
                                         class="form-control form-control-sm shadow-sm text-center assigned-qty-input"
                                         value="{{ ind.assigned_per_faculty }}" min="0"
                                         data-dept-quota="{{ ind.dept_quota }}"
+                                        data-quota-source="{{ ind.quota_source }}"
                                         data-category="instructions"
                                         data-faculty-count="{{ all_faculty_count|default(faculty_count) }}"
+                                        aria-label="Assigned per faculty for {{ ind.indicator_description | ipcr_preview | e }}"
                                         {% if targets_saved %}disabled{% endif %}>
                                 </td>
                                 <td>
@@ -202,6 +209,7 @@
                                             class="form-control form-control-sm shadow-sm text-center target-deadline-input"
                                             placeholder="e.g. 6" min="1" style="max-width: 70px;"
                                             value="{{ ind.target_duration_value if ind.target_duration_value else '' }}"
+                                            aria-label="Deadline duration for {{ ind.indicator_description | ipcr_preview | e }}"
                                             {% if targets_saved %}disabled{% endif %}>
                                         <select name="target_duration_units"
                                             class="form-select form-select-sm shadow-sm"
@@ -216,7 +224,16 @@
                                     <textarea name="custom_descriptions"
                                         class="form-control form-control-sm shadow-sm custom-desc-input"
                                         rows="2" placeholder="IPCR Target Description..."
+                                        aria-label="IPCR target description for {{ ind.indicator_description | ipcr_preview | e }}"
                                         {% if targets_saved %}disabled{% endif %}>{{ ind.custom_description if ind.custom_description else '' }}</textarea>
+                                    {% if not targets_saved %}
+                                    {% set is_auto = (ind.is_auto_description is none) or (ind.is_auto_description == 1) %}
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="badge bg-light text-secondary auto-desc-badge" {% if not is_auto %}hidden{% endif %}><i class="ti ti-wand"></i> Auto</span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 auto-desc-reset" {% if is_auto %}hidden{% endif %}><i class="ti ti-rotate"></i> Reset to Auto</button>
+                                    </div>
+                                    <input type="hidden" name="is_auto_descriptions" value="{{ '1' if is_auto else '0' }}" class="auto-desc-flag">
+                                    {% endif %}
                                 </td>
                                 <td class="text-center text-success fw-bold total-distributed-cell" data-dept-quota="{{ ind.dept_quota }}">{{ ind.total_distributed }} / {{ ind.dept_quota }}</td>
                             </tr>
@@ -237,8 +254,8 @@
         <!-- Support Functions Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center"
-                style="background: var(--c-surface-alt) !important; border-left: 3px solid var(--c-warning) !important;">
-                <h5 class="fw-bold text-warning mb-0"><i class="ti ti-tools me-2"></i>Support Functions</h5>
+                style="background: var(--c-surface-alt) !important; border-left: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important;">
+                <h5 class="fw-bold text-warning mb-0" role="heading" aria-level="3"><i class="ti ti-tools me-2"></i>Support Functions</h5>
                 <div class="d-flex align-items-center gap-2">
                     {% if not targets_saved %}
                     <button type="button" class="btn btn-sm btn-outline-warning text-dark shadow-sm fw-semibold btn-auto-divide-card" data-card="support" title="Auto divide Support Functions quotas by regular faculty count">
@@ -268,17 +285,24 @@
                             {% for ind in indicators %}
                             {% if ind.category_name == 'Support Functions' %}
                             {% set ns_supp.found = true %}
-                            <tr>
-                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description }}</td>
-                                <td class="text-center fw-bold text-primary dept-quota-cell">{{ ind.dept_quota }}</td>
+                            <tr data-indicator-text="{{ ind.indicator_description | e }}">
+                                <td class="fw-bold ps-4 small text-secondary">{{ ind.indicator_description | ipcr_preview }}</td>
+                                <td class="text-center fw-bold text-primary dept-quota-cell">
+                                    {{ ind.dept_quota }}
+                                    {% if ind.quota_source == 'COLLEGE_WIDE' %}
+                                    <br><span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:0.65rem;" title="Cascaded College-Wide by the Dean — not a quota specific to your program. Decide your own per-faculty target rather than dividing this number.">College-Wide</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <input type="hidden" name="indicator_ids" value="{{ ind.indicator_id }}">
                                     <input type="number" name="assigned_quantities"
                                         class="form-control form-control-sm shadow-sm text-center assigned-qty-input"
                                         value="{{ ind.assigned_per_faculty }}" min="0"
                                         data-dept-quota="{{ ind.dept_quota }}"
+                                        data-quota-source="{{ ind.quota_source }}"
                                         data-category="support"
                                         data-faculty-count="{{ regular_faculty_count|default(faculty_count) }}"
+                                        aria-label="Assigned per faculty for {{ ind.indicator_description | ipcr_preview | e }}"
                                         {% if targets_saved %}disabled{% endif %}>
                                 </td>
                                 <td>
@@ -287,6 +311,7 @@
                                             class="form-control form-control-sm shadow-sm text-center target-deadline-input"
                                             placeholder="e.g. 6" min="1" style="max-width: 70px;"
                                             value="{{ ind.target_duration_value if ind.target_duration_value else '' }}"
+                                            aria-label="Deadline duration for {{ ind.indicator_description | ipcr_preview | e }}"
                                             {% if targets_saved %}disabled{% endif %}>
                                         <select name="target_duration_units"
                                             class="form-select form-select-sm shadow-sm"
@@ -301,7 +326,16 @@
                                     <textarea name="custom_descriptions"
                                         class="form-control form-control-sm shadow-sm custom-desc-input"
                                         rows="2" placeholder="IPCR Target Description..."
+                                        aria-label="IPCR target description for {{ ind.indicator_description | ipcr_preview | e }}"
                                         {% if targets_saved %}disabled{% endif %}>{{ ind.custom_description if ind.custom_description else '' }}</textarea>
+                                    {% if not targets_saved %}
+                                    {% set is_auto = (ind.is_auto_description is none) or (ind.is_auto_description == 1) %}
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="badge bg-light text-secondary auto-desc-badge" {% if not is_auto %}hidden{% endif %}><i class="ti ti-wand"></i> Auto</span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 auto-desc-reset" {% if is_auto %}hidden{% endif %}><i class="ti ti-rotate"></i> Reset to Auto</button>
+                                    </div>
+                                    <input type="hidden" name="is_auto_descriptions" value="{{ '1' if is_auto else '0' }}" class="auto-desc-flag">
+                                    {% endif %}
                                 </td>
                                 <td class="text-center text-success fw-bold total-distributed-cell" data-dept-quota="{{ ind.dept_quota }}">{{ ind.total_distributed }} / {{ ind.dept_quota }}</td>
                             </tr>
@@ -355,7 +389,15 @@
         </span>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-warning) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-warning) 55%, var(--c-border)) !important;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark" role="heading" aria-level="3"><i class="ti ti-user-check me-2 text-warning"></i>Pending Draft Submissions</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="commitmentsSearchInput" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterCommitmentsTable()">
+            </div>
+        </div>
         <div class="card-body p-0">
             {% if pending_drafts %}
             <div class="table-responsive">
@@ -386,26 +428,22 @@
                                 <span class="badge bg-success px-3 py-2"><i
                                         class="ti ti-circle-check me-1"></i>Approved by Program Chair &amp; RET Chair</span>
                                 {% elif draft.review_status in ('Rejected', 'Returned') %}
-                                <span class="badge px-3 py-2"
-                                    style="background-color: rgba(176,69,61,0.08) !important; border: 1px solid rgba(176,69,61,0.2); color: var(--c-danger) !important;">
+                                <span class="badge bg-danger px-3 py-2">
                                     <i class="ti ti-arrow-back-up me-1"></i>Returned
                                 </span>
                                 {% elif draft.ipcr_status == 'waiting_for_ret_chair_review' %}
-                                <span class="badge px-3 py-2"
-                                    style="background-color: rgba(184,132,46,0.1) !important; border: 1px solid rgba(184,132,46,0.3); color: var(--c-warning) !important;"><i
+                                <span class="badge bg-warning px-3 py-2"><i
                                         class="ti ti-hourglass me-1"></i>Waiting for RET Review &amp;
                                     Approval</span>
                                 {% elif draft.ipcr_status == 'pending_ret_review' %}
-                                <span class="badge px-3 py-2"
-                                    style="background-color: rgba(184,132,46,0.1) !important; border: 1px solid rgba(184,132,46,0.3); color: var(--c-warning) !important;"><i
+                                <span class="badge bg-warning px-3 py-2"><i
                                         class="ti ti-hourglass me-1"></i>Waiting for RET Review &amp;
                                     Approval</span>
                                 {% elif draft.ipcr_status == 'waiting_for_program_chair_review' %}
                                 <span class="badge bg-info text-dark px-3 py-2"><i
                                         class="ti ti-history me-1"></i>Waiting for Approval</span>
                                 {% elif draft.review_status == 'Pending Review' %}
-                                <span class="badge px-3 py-2"
-                                    style="background-color: rgba(184,132,46,0.1) !important; border: 1px solid rgba(184,132,46,0.3); color: var(--c-warning) !important;"><i
+                                <span class="badge bg-warning px-3 py-2"><i
                                         class="ti ti-hourglass me-1"></i>Waiting for RET Review &amp;
                                     Approval</span>
                                 {% elif draft.review_status == 'Waiting for Approval' %}
@@ -448,7 +486,7 @@
             {% else %}
             <div class="text-center py-5 text-muted">
                 <i class="ti ti-inbox fs-1 d-block mb-3 text-secondary opacity-50"></i>
-                <h5 class="fw-semibold">No Draft IPCRs Submitted</h5>
+                <h5 class="fw-semibold" role="heading" aria-level="3">No Draft IPCRs Submitted</h5>
                 <p class="small">Faculty members under <strong>{{ specialization }}</strong> have not submitted their
                     Draft IPCRs yet.</p>
             </div>
@@ -464,7 +502,15 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--c-success) !important;">
+    <div class="card shadow-sm border-0 mb-4" style="border-top: 2px solid color-mix(in srgb, var(--c-success) 55%, var(--c-border)) !important;">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-success" role="heading" aria-level="3"><i class="ti ti-lock me-2"></i>Approved &amp; Locked IPCRs</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="lockedSearchInput" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterLockedTable()">
+            </div>
+        </div>
         <div class="card-body p-0">
             {% if locked_drafts %}
             <div class="table-responsive">
@@ -516,7 +562,7 @@
             {% else %}
             <div class="text-center py-5 text-muted">
                 <i class="ti ti-lock fs-1 d-block mb-3 text-secondary opacity-50"></i>
-                <h5 class="fw-semibold">No Locked IPCRs Yet</h5>
+                <h5 class="fw-semibold" role="heading" aria-level="3">No Locked IPCRs Yet</h5>
                 <p class="small">No faculty members under <strong>{{ specialization }}</strong> have locked their
                     approved IPCRs yet.</p>
             </div>
@@ -603,8 +649,9 @@
                             Required only when returning to faculty.</small>
                     </label>
                     <textarea class="form-control form-control-sm" id="overallRemarks" rows="2"
+                        aria-describedby="overallRemarksFeedback"
                         placeholder="e.g. 'Research target adjusted from 2 to 1 per department guidelines.' or 'Please revise your Extension selections.'"></textarea>
-                    <div class="invalid-feedback">
+                    <div class="invalid-feedback" id="overallRemarksFeedback">
                         Remarks / Reason: Remarks are optional when approving. Required only when returning to faculty
                     </div>
                 </div>
@@ -746,7 +793,63 @@
 <!-- SCRIPTS                                     -->
 <!-- ═══════════════════════════════════════════ -->
 <script>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function filterCommitmentsTable() {
+        const input = document.getElementById('commitmentsSearchInput').value.toLowerCase();
+        document.querySelectorAll('#commitmentsTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // Skip empty message row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
+    function filterLockedTable() {
+        const input = document.getElementById('lockedSearchInput').value.toLowerCase();
+        document.querySelectorAll('#lockedTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // Skip empty message row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
+    function filterEvidencePendingTable() {
+        const input = document.getElementById('evidencePendingSearchInput').value.toLowerCase();
+        document.querySelectorAll('#evidencePendingTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // Skip empty message row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
+    function filterEvidenceApprovedTable() {
+        const input = document.getElementById('evidenceApprovedSearchInput').value.toLowerCase();
+        document.querySelectorAll('#evidenceApprovedTable tbody tr').forEach(row => {
+            if (row.cells.length === 1) return; // Skip empty message row
+            row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+
+        // ── Auto-generated IPCR target description (Instruction + Support tables) ──
+        if (window.wireAutoDescription) {
+            document.querySelectorAll('#targetAllocationForm tbody tr[data-indicator-text]').forEach(function (row) {
+                const descField = row.querySelector('.custom-desc-input');
+                const flagInput = row.querySelector('.auto-desc-flag');
+                if (!descField || !flagInput) return;
+                window.wireAutoDescription({
+                    indicatorText: row.dataset.indicatorText,
+                    qtyInput: row.querySelector('.assigned-qty-input'),
+                    durValueInput: row.querySelector('.target-deadline-input'),
+                    durUnitInput: row.querySelector('select[name="target_duration_units"]'),
+                    descField: descField,
+                    autoFlagInput: flagInput,
+                    badgeEl: row.querySelector('.auto-desc-badge'),
+                    resetBtn: row.querySelector('.auto-desc-reset')
+                });
+            });
+        }
 
         // ── Phase 1: Auto Divide / Auto Distribute & Save Logic ────
         const facultyCount = {{ faculty_count|default(0) }};
@@ -767,6 +870,13 @@
         }
 
         function autoDivideInput(inputEl) {
+            // A College-Wide quota is a whole-college figure, not this department's own pool —
+            // dividing it by just this department's faculty count would understate the number
+            // every other program's faculty are also expected to hit. Leave it for the chair
+            // to type their own flat per-faculty target instead.
+            if (inputEl.dataset.quotaSource === 'COLLEGE_WIDE') {
+                return;
+            }
             const deptQuota = parseFloat(inputEl.dataset.deptQuota) || 0;
             const fCount = parseInt(inputEl.dataset.facultyCount, 10) || facultyCount;
             const dividedVal = fCount > 0 ? Math.ceil(deptQuota / fCount) : 0;
@@ -827,6 +937,7 @@
                 // Clear existing error states
                 form.querySelectorAll('.border-danger, .is-invalid').forEach(el => {
                     el.classList.remove('border-danger', 'is-invalid');
+                    el.setAttribute('aria-invalid', 'false');
                 });
                 
                 const rows = form.querySelectorAll('tbody tr');
@@ -848,6 +959,7 @@
                                 isValid = false;
                                 if (deadlineInput) {
                                     deadlineInput.classList.add('border-danger', 'is-invalid');
+                                    deadlineInput.setAttribute('aria-invalid', 'true');
                                     if (!firstInvalidInput) {
                                         firstInvalidInput = deadlineInput;
                                         errorMsg = 'All allocated targets must have a valid deadline (positive duration number) specified.';
@@ -859,20 +971,14 @@
                             if (unitSelect && (!unitSelect.value || unitSelect.value.trim() === '')) {
                                 isValid = false;
                                 unitSelect.classList.add('border-danger', 'is-invalid');
+                                unitSelect.setAttribute('aria-invalid', 'true');
                                 if (!firstInvalidInput) firstInvalidInput = unitSelect;
                             }
 
-                            // 3. Target Description Validation
-                            if (!descInput || !descInput.value.trim()) {
-                                isValid = false;
-                                if (descInput) {
-                                    descInput.classList.add('border-danger', 'is-invalid');
-                                    if (!firstInvalidInput) {
-                                        firstInvalidInput = descInput;
-                                        errorMsg = errorMsg || 'All allocated targets must have an IPCR target description.';
-                                    }
-                                }
-                            }
+                            // Description is no longer required client-side: it auto-mirrors
+                            // the indicator/quantity/duration (see wireAutoDescription in
+                            // base.html), and the backend auto-generates it too if it somehow
+                            // arrives blank (e.g. JS disabled) — see save_chair_allocations_batch.
                         }
                     }
                 });
@@ -915,6 +1021,7 @@
             document.addEventListener('input', function(e) {
                 if (e.target.classList.contains('border-danger') || e.target.classList.contains('is-invalid')) {
                     e.target.classList.remove('border-danger', 'is-invalid');
+                    e.target.setAttribute('aria-invalid', 'false');
                 }
             });
         }
@@ -956,19 +1063,20 @@
             document.getElementById('modalFacultyRank').textContent = '';
             document.getElementById('overallRemarks').value = '';
             document.getElementById('overallRemarks').classList.remove('is-invalid');
+            document.getElementById('overallRemarks').setAttribute('aria-invalid', 'false');
             document.getElementById('reviewItemsBody').innerHTML = '';
 
             fetch(`/prog_chair/review_ipcr/${empId}`)
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.error) {
-                        alert('Error loading IPCR: ' + data.error);
+                        showCustomAlert('Error', 'Error loading IPCR: ' + data.error, 'danger');
                         return;
                     }
                     populateModal(data);
                 })
                 .catch(function (err) {
-                    alert('Network error: ' + err);
+                    showCustomAlert('Error', 'Network error: ' + err, 'danger');
                 });
         }
 
@@ -984,13 +1092,13 @@
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.error) {
-                        alert('Error loading IPCR: ' + data.error);
+                        showCustomAlert('Error', 'Error loading IPCR: ' + data.error, 'danger');
                         return;
                     }
                     populateLockedModal(data);
                 })
                 .catch(function (err) {
-                    alert('Network error: ' + err);
+                    showCustomAlert('Error', 'Network error: ' + err, 'danger');
                 });
         }
 
@@ -1030,6 +1138,7 @@
                 data.items.forEach(function (item) {
                     const headerCat = getHeaderCategoryName(item.category_name);
                     const badgeCat = getBadgeCategoryName(item.category_name);
+                    const previewDesc = window.renderIndicatorPreview(item.indicator_description);
 
                     // Insert category banner row if category changes
                     if (headerCat !== lastCategory) {
@@ -1048,12 +1157,12 @@
                     tr.innerHTML = `
                     <td><span class="badge bg-light text-dark border small">${badgeCat}</span></td>
                     <td class="small fw-semibold">
-                        ${item.indicator_description}
-                        ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size: 0.7rem;"><i class="ti ti-clock me-1"></i>Deadline: ${item.target_deadline}</span>` : ''}
+                        ${escapeHtml(window.renderIndicatorPreview(item.indicator_description))}
+                        ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size: 0.7rem;"><i class="ti ti-clock me-1"></i>Deadline: ${escapeHtml(item.target_deadline)}</span>` : ''}
                     </td>
                     <td class="text-center text-muted">${item.original_quantity}</td>
                     <td class="text-center fw-bold text-success">${item.reviewed_quantity}</td>
-                    <td class="text-muted small">${item.item_remarks || '<span class="text-muted opacity-50">None</span>'}</td>
+                    <td class="text-muted small">${item.item_remarks ? escapeHtml(item.item_remarks) : '<span class="text-muted opacity-50">None</span>'}</td>
                 `;
                     tbody.appendChild(tr);
                 });
@@ -1142,6 +1251,7 @@
 
                     const headerCat = getHeaderCategoryName(item.category_name);
                     const badgeCat = getBadgeCategoryName(item.category_name);
+                    const previewDesc = window.renderIndicatorPreview(item.indicator_description);
 
                     // Insert category banner row if category changes
                     if (headerCat !== lastCategory) {
@@ -1172,8 +1282,8 @@
                     <td><span class="badge bg-light text-dark border small">${badgeCat}</span></td>
                     <td>
                         <div class="small fw-semibold">
-                            ${item.indicator_description}
-                            ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;"><i class="ti ti-clock me-1"></i>Deadline: ${item.target_deadline}</span>` : ''}
+                            ${escapeHtml(previewDesc)}
+                            ${item.target_deadline ? `<span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;"><i class="ti ti-clock me-1"></i>Deadline: ${escapeHtml(item.target_deadline)}</span>` : ''}
                         </div>
                         ${retTag}
                     </td>
@@ -1186,6 +1296,7 @@
                                data-item-id="${item.item_id}"
                                data-original="${item.original_quantity}"
                                data-initial-val="${item.reviewed_quantity}"
+                               aria-label="Reviewed quantity for ${escapeHtml(previewDesc)}"
                                ${isInputDisabled ? 'disabled' : ''}>
                         ${qtyChanged ? `<small class="qty-edited-tag text-warning d-block mt-1"><i class="ti ti-pencil"></i> Edited</small>` : '<small class="qty-edited-tag" style="display:none"></small>'}
                     </td>
@@ -1196,6 +1307,7 @@
                                   placeholder="Optional note on this change..."
                                   data-item-id="${item.item_id}"
                                   data-initial-remarks="${(item.item_remarks || '').trim()}"
+                                  aria-label="Remarks on this change for ${escapeHtml(previewDesc)}"
                                   ${isInputDisabled ? 'disabled' : ''}>${item.item_remarks || ''}</textarea>`}
                     </td>
                 `;
@@ -1449,10 +1561,12 @@
             const remarksInput = document.getElementById('overallRemarks');
             const remarks = remarksInput.value.trim();
             remarksInput.classList.remove('is-invalid');
+            remarksInput.setAttribute('aria-invalid', 'false');
 
             // Remarks are only required when returning/rejecting, not when approving
             if (action !== 'approve' && !remarks) {
                 remarksInput.classList.add('is-invalid');
+                remarksInput.setAttribute('aria-invalid', 'true');
                 remarksInput.focus();
                 return;
             }
@@ -1521,13 +1635,18 @@
         </span>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm mb-4 card-rounded-clip">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-clipboard-check me-2 text-primary"></i>Faculty Evidence Submissions</h5>
+            <h5 class="mb-0 fw-bold text-dark" role="heading" aria-level="3"><i class="ti ti-clipboard-check me-2 text-primary"></i>Faculty Evidence Submissions</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="evidencePendingSearchInput" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterEvidencePendingTable()">
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0" id="evidencePendingTable">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Faculty Member</th>
@@ -1580,13 +1699,18 @@
     </div>
 
     <!-- Approved Regular Faculty Evidences Table -->
-    <div class="card border-0 shadow-sm" style="border-top: 3px solid var(--c-accent) !important; border-radius: 12px; overflow: hidden;">
+    <div class="card border-0 shadow-sm" style="border-top: 2px solid color-mix(in srgb, var(--c-accent) 55%, var(--c-border)) !important; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold text-primary"><i class="ti ti-circle-check me-2 text-primary"></i>Approved Regular Faculty Evidences</h5>
+            <h5 class="mb-0 fw-bold text-primary" role="heading" aria-level="3"><i class="ti ti-circle-check me-2 text-primary"></i>Approved Regular Faculty Evidences</h5>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-search text-muted"></i>
+                <input type="text" id="evidenceApprovedSearchInput" class="form-control form-control-sm"
+                       placeholder="Search faculty..." style="width: 240px;" onkeyup="filterEvidenceApprovedTable()">
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0" id="evidenceApprovedTable">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Faculty Member</th>
@@ -1852,9 +1976,9 @@ function openFacultyEvidenceVerificationModal(empId, facultyName) {
 
                     tr.innerHTML = `
                         <td class="ps-3 py-3">
-                            <span class="badge bg-light text-dark border mb-1">${t.category_name || 'Standard'}</span>
-                            <p class="mb-1 small fw-semibold text-dark">${t.indicator_description}</p>
-                            ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${t.actual_accomplishment}</p>` : ''}
+                            <span class="badge bg-light text-dark border mb-1">${escapeHtml(t.category_name || 'Standard')}</span>
+                            <p class="mb-1 small fw-semibold text-dark">${escapeHtml(window.renderIndicatorPreview(t.indicator_description))}</p>
+                            ${t.actual_accomplishment ? `<p class="mb-0 small fst-italic text-secondary">${escapeHtml(t.actual_accomplishment)}</p>` : ''}
                         </td>
                         <td class="text-center fw-bold text-primary fs-5">${t.assigned_quantity}</td>
                         <td class="text-center fw-bold fs-5">${qtyMetBadge}</td>
@@ -1885,7 +2009,7 @@ function openEvidenceViewer(evidenceList) {
         let html = '';
         evidenceList.forEach((ev) => {
             const fileUrl = `/evidence_uploads/${ev.evidence_id}`;
-            const fileName = ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, '');
+            const fileName = escapeHtml(ev.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, ''));
             const ext = ev.file_path.split('.').pop().toLowerCase();
             const isImage = ext.match(/^(jpg|jpeg|png|gif|webp)$/i);
             const isPdf = ext === 'pdf';
@@ -1918,7 +2042,7 @@ function openEvidenceViewer(evidenceList) {
 
             const isDecided = ev.verification_status === 'Approved' || ev.verification_status === 'Returned';
             const commentHtml = ev.supervisor_comment
-                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${ev.supervisor_comment}</div>`
+                ? `<div class="alert alert-warning py-2 px-3 small mb-2"><i class="ti ti-message me-1"></i><strong>Reason:</strong> ${escapeHtml(ev.supervisor_comment)}</div>`
                 : '';
 
             html += `
@@ -1959,7 +2083,7 @@ function returnEvidence(evidenceId) {
         const list = EVIDENCE_BY_TARGET[tid] || [];
         const item = list.find(e => String(e.evidence_id) === String(evidenceId));
         if (item && item.verification_status === 'Approved') {
-            alert('Approved evidence cannot be returned.');
+            showCustomAlert('Cannot Return', 'Approved evidence cannot be returned.', 'warning');
             return;
         }
     }
@@ -2012,7 +2136,7 @@ function verifyEvidence(evidenceId, status, comment) {
     })
     .then(r => r.json())
     .then(data => {
-        if (!data.success) { alert(data.message || 'Failed to update evidence.'); return; }
+        if (!data.success) { showCustomAlert('Error', data.message || 'Failed to update evidence.', 'danger'); return; }
         evidenceVerificationChanged = true;
         const badge = document.getElementById('evidence-status-' + evidenceId);
         const actions = document.getElementById('evidence-actions-' + evidenceId);
@@ -2043,7 +2167,7 @@ function verifyEvidence(evidenceId, status, comment) {
             updateTargetStatusBadge(targetIdFound);
         }
     })
-    .catch(err => alert('Error: ' + err));
+    .catch(err => showCustomAlert('Error', 'Error: ' + err, 'danger'));
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -2060,7 +2184,7 @@ document.addEventListener('DOMContentLoaded', function() {
 window.submitFacultyEvidenceToDean = function(empId, facultyName) {
         showCustomConfirm({
             title: "Submit Evidence to Dean?",
-            mainText: `Are you sure you want to submit <strong>${facultyName}</strong>'s approved evidence package to the Dean for final verification?`,
+            mainText: `Are you sure you want to submit <strong>${escapeHtml(facultyName)}</strong>'s approved evidence package to the Dean for final verification?`,
             subText: "This will forward all verified evidence items to the Dean.",
             confirmText: "Submit to Dean",
             confirmClass: "btn-success",
@@ -2076,10 +2200,10 @@ window.submitFacultyEvidenceToDean = function(empId, facultyName) {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert(data.message);
+                        showCustomAlert('Error', data.message, 'danger');
                     }
                 })
-                .catch(err => alert('Error submitting to Dean: ' + err));
+                .catch(err => showCustomAlert('Error', 'Error submitting to Dean: ' + err, 'danger'));
             }
         });
     };
