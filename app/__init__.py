@@ -51,56 +51,6 @@ mail = Mail(app)
 from app.models.connection import init_db_pool
 init_db_pool()
 
-def _sync_corporate_emails():
-    """Ensures corporate emails match the designated notification recipients and rolls back requested test accounts."""
-    conn = None
-    cursor = None
-    try:
-        from app.models.connection import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT ac.emp_id, ac.corporate_email, sa.system_role
-            FROM tbl_auth_credentials ac
-            LEFT JOIN tbl_system_access sa ON ac.emp_id = sa.emp_id
-        """)
-        rows = cursor.fetchall()
-        logger.info(f"CURRENT DB USERS: {rows}")
-        
-        email_mappings = [
-            ('deanacccount@gmail.com', 'sample@mail.com'),
-            ('wstprogramchair@gmail.com', 'wst@mail.com'),
-            ('corazonlopez062041@gmail.com', 'retchair@mail.com'),
-            ('mitsuhataki153@gmail.com', 'desfac@mail.com'),
-            ('casptonetest@gmail.com', 'fac@mail.com')
-        ]
-        # Roll back test3@mail.com to selecting research targets state
-        cursor.execute("SELECT emp_id FROM tbl_auth_credentials WHERE corporate_email = 'test3@mail.com'")
-        t3_row = cursor.fetchone()
-        if t3_row:
-            t3_emp_id = t3_row[0]
-            cursor.execute("DELETE ri FROM tbl_ipcr_chair_review_items ri JOIN tbl_ipcr_chair_review cr ON ri.review_id = cr.review_id WHERE cr.emp_id = %s", (t3_emp_id,))
-            cursor.execute("DELETE FROM tbl_ipcr_chair_review WHERE emp_id = %s", (t3_emp_id,))
-            cursor.execute("DELETE ri FROM tbl_ipcr_ret_review_items ri JOIN tbl_ipcr_ret_review rr ON ri.review_id = rr.review_id WHERE rr.emp_id = %s", (t3_emp_id,))
-            cursor.execute("DELETE FROM tbl_ipcr_ret_review WHERE emp_id = %s", (t3_emp_id,))
-            cursor.execute("DELETE er FROM tbl_evidence_repo er JOIN tbl_committed_targets ct ON er.target_id = ct.target_id WHERE ct.emp_id = %s", (t3_emp_id,))
-            cursor.execute("DELETE FROM tbl_committed_targets WHERE emp_id = %s", (t3_emp_id,))
-            cursor.execute("DELETE FROM tbl_draft_targets WHERE emp_id = %s", (t3_emp_id,))
-            logger.info(f"Successfully rolled back test3@mail.com (emp_id={t3_emp_id}) to selecting research targets state.")
-
-        conn.commit()
-    except Exception as e:
-        logger.debug(f"Email sync check: {e}")
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-
-_sync_corporate_emails()
-
-
 # Request timing middleware
 @app.before_request
 def start_timer():

@@ -1251,19 +1251,11 @@
 
                         let actionHtml = '';
                         if (ev.verification_status !== 'Approved' && !HAS_FINAL_IPCR) {
-                            if (ev.is_co_authored) {
-                                actionHtml = `
-                                    <button type="button" onclick="unclaimEvidence(${ev.co_author_id}, ${currentTargetId})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Unlink Co-authored paper">
-                                        <i class="ti ti-trash"></i>
-                                    </button>
-                                `;
-                            } else {
-                                actionHtml = `
-                                    <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
-                                        <i class="ti ti-trash"></i>
-                                    </button>
-                                `;
-                            }
+                            actionHtml = `
+                                <button type="button" onclick="deleteEvidence(${ev.evidence_id})" class="btn btn-link text-danger p-0 border-0 align-middle" title="Delete evidence file">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            `;
                         }
 
                         const itemDiv = document.createElement('div');
@@ -1276,7 +1268,6 @@
                                     <a href="/evidence_uploads/${ev.evidence_id}" target="_blank" class="small fw-semibold text-decoration-none text-dark" title="View/Download">${cleanName}</a>
                                     <div class="text-muted" style="font-size: 0.75rem;">
                                         Qty: ${ev.actual_qty_Q}
-                                        ${ev.is_co_authored ? `&bull; <span class="text-purple">Co-authored (by ${ev.uploaded_by})</span>` : ''}
                                     </div>
                                     ${ev.supervisor_comment ? `<div class="text-danger small mt-1" style="font-size: 0.72rem;"><strong>Remark:</strong> ${ev.supervisor_comment}</div>` : ''}
                                 </div>
@@ -1345,38 +1336,6 @@
                     }
                 })
                 .catch(err => alert('Delete error: ' + err));
-            }
-        });
-    };
-
-    window.unclaimEvidence = function(coAuthorId, targetId) {
-        showCustomConfirm({
-            title: "Unlink Co-authored Evidence?",
-            mainText: "Are you sure you want to unlink this co-authored evidence?",
-            subText: "This will remove the paper from your evidence checklist.",
-            confirmText: "Yes, Unlink",
-            confirmClass: "btn-danger",
-            iconClass: "ti-trash",
-            onConfirm: () => {
-                const formData = new FormData();
-                formData.append('co_author_id', coAuthorId);
-                formData.append('target_id', targetId);
-
-                fetch('/faculty/unclaim_evidence', {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: formData
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        window.evidenceModalHasChanges = true;
-                        reloadEvidenceModalSubmissions();
-                    } else {
-                        alert(data.message || 'Error unlinking evidence.');
-                    }
-                })
-                .catch(err => alert('Unclaim error: ' + err));
             }
         });
     };

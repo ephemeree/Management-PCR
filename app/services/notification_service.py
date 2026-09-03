@@ -6,28 +6,6 @@ from app.services.mail_service import send_async_email
 logger = logging.getLogger(__name__)
 
 
-def _ensure_notification_table(cursor):
-    """Safely checks or creates notification tracking table."""
-    try:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS tbl_ipcr_approval_notifications (
-                notification_id  INT NOT NULL AUTO_INCREMENT,
-                emp_id           INT NOT NULL,
-                term_id          INT NOT NULL,
-                tier             VARCHAR(30) NOT NULL,
-                event_type       VARCHAR(60) NOT NULL,
-                recipient_emails TEXT NOT NULL,
-                sent_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                status           ENUM('SENT', 'FAILED', 'DEV_LOGGED') NOT NULL DEFAULT 'SENT',
-                error_message    TEXT NULL,
-                PRIMARY KEY (notification_id),
-                KEY idx_emp_term_tier (emp_id, term_id, tier)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-        """)
-    except Exception:
-        pass
-
-
 def _get_base_url(custom_base_url: str = None) -> str:
     if custom_base_url and custom_base_url.strip():
         return custom_base_url.rstrip('/')
@@ -908,8 +886,6 @@ def check_and_trigger_evidence_approved_notification(conn, cursor, evidence_id: 
           across all categories are approved and compiled for final endorsement.
     """
     try:
-        _ensure_notification_table(cursor)
-
         # Get target and faculty info from evidence_id
         cursor.execute("""
             SELECT ct.emp_id, mi.term_id
@@ -1118,8 +1094,6 @@ def check_and_trigger_tier2_notification(conn, cursor, emp_id: int, term_id: int
     If so, sends Tier 2 (Final) notification asynchronously ONLY to the Faculty Member (owner of the IPCR).
     """
     try:
-        _ensure_notification_table(cursor)
-
         fac = _get_faculty_profile(cursor, emp_id)
         if not fac:
             return False, f"Faculty member #{emp_id} not found."

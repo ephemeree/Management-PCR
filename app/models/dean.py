@@ -715,7 +715,7 @@ def get_dean_faculty_evidence_details(cursor, emp_id, term_id):
     from app.models.faculty import get_faculty_committed_targets, get_evidence_by_target
     targets = get_faculty_committed_targets(cursor, emp_id, term_id)
     for t in targets:
-        ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+        ev_list = get_evidence_by_target(cursor, t['target_id'])
         t['evidence_list'] = ev_list
     return targets
 

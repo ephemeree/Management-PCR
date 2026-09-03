@@ -18,7 +18,7 @@ graph TD
     E2 --> E3["5b. Program Chair Reviews Full IPCR"]
     E1 -- No --> E3
     E3 --> F["6. Faculty Locks Approved IPCR"]
-    F --> G["7. Evidence Upload (.pdf) & Co-Author Claiming"]
+    F --> G["7. Evidence Upload (.pdf) & Verification"]
     G --> H["8. Chair / Dean Verification & Final Score Approval"]
 ```
 
@@ -155,7 +155,7 @@ graph TD
 
 ---
 
-### Phase 7: Evidence Gathering, Upload & Co-Author Verification
+### Phase 7: Evidence Gathering, Upload & Verification
 
 #### 7.1 PDF File Upload & Validation
 * **Routes**: `/faculty/upload_evidence` ([faculty.py](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/routes/faculty.py#L238-L304), [faculty.py (model)](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/models/faculty.py#L450-L520))
@@ -165,12 +165,6 @@ graph TD
   * **File Extension Whitelist**: Strictly enforces `.pdf` extensions (`ext in {'pdf'}`). Flash error returned on invalid extension.
   * **File Obfuscation**: Generates a random UUID prefix (`uuid.uuid4().hex_secure_filename`) to prevent file overwriting or path traversal attacks.
   * **Storage Safety**: Dynamically creates the uploads folder if missing (`os.makedirs(upload_dir, exist_ok=True)`).
-
-#### 7.2 Co-Author Evidence Sharing & Claiming
-* **Routes**: `/faculty/eligible_co_authors`, `/faculty/claim_evidence`, `/faculty/unclaim_evidence` ([faculty.py](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/routes/faculty.py#L351-L434))
-* **Actions**:
-  * Uploading faculty selects eligible co-authors (`add_co_authors_to_evidence`).
-  * Co-authors query unclaimed items (`get_unclaimed_co_authored_evidence`) and link shared evidence (`claim_co_authored_evidence`) without re-uploading duplicate files.
 
 #### 7.3 Evidence Verification & Evaluation Readiness
 * **Routes**: `/faculty/submit_evidence`, `/prog_chair/faculty_evidence_details/<emp_id>`, `/ret_chair/faculty_evidence_details/<emp_id>` ([faculty.py](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/routes/faculty.py#L97-L124), [prog_chair.py](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/routes/prog_chair.py#L112-L157), [ret_chair.py](file:///c:/Users/ACER/Documents/Management-PCR/Management-PCR/app/routes/ret_chair.py#L89-L132))

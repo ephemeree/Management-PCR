@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, session, url_for, flash
 from app.auth import hash_pass, verify_pass, validate_password_policy
-from app.models import get_db_connection, get_user_by_email, register_user
+from app.models import get_db_connection, get_user_by_email, register_user, record_last_login
 from app.decorators import role_required
 import mysql.connector, time
 
@@ -64,6 +64,8 @@ def authenticate():
         time.sleep(0.5)
         flash("Invalid Credentials.", "danger")
         return redirect(url_for('auth.login'))
+
+    record_last_login(emp_id)
 
     session['user_id'] = emp_id
     session['role'] = role

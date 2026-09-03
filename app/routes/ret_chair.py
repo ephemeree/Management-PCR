@@ -300,7 +300,7 @@ def ret_chair_faculty_evidence_details(emp_id):
         for t in all_targets:
             cat_name = t.get('category_name', '')
             if ('Research' in cat_name) or ('Extension' in cat_name):
-                ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+                ev_list = get_evidence_by_target(cursor, t['target_id'])
                 t['evidence_list'] = ev_list
                 t['is_ret'] = True
                 ret_targets.append(t)

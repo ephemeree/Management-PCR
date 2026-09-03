@@ -5,6 +5,36 @@ def get_user_by_email(cursor, email):
     return []
 
 
+def record_last_login(emp_id):
+    """
+    Stamp tbl_auth_credentials.last_login for a successful sign-in.
+
+    Opens its own connection: the login route closes its cursor in a `finally`
+    block before the password is even verified, so there is no live cursor left
+    to reuse by the time we know the sign-in succeeded. The pool is autocommit,
+    so no explicit commit is needed.
+
+    Never raises — a failed timestamp must not cost the user their login.
+    """
+    from app.models.connection import get_db_connection
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE tbl_auth_credentials SET last_login = NOW() WHERE emp_id = %s",
+            (emp_id,)
+        )
+    except Exception:
+        pass
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
 def register_user(conn, cursor, employee_id_number, email, password_hash):
     try:
         cursor.callproc('register_user', (employee_id_number, email, password_hash))

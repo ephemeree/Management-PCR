@@ -31,7 +31,7 @@ Admin → Dean → Program Chair / RET Chair → Faculty → Review → Lock →
 - **Cascaded target allocation**- quotas flow down through the institutional hierarchy
 - **Multi-stage review pipeline**- RET Chair (If faculty has Research related targets) → Program Chair → Dean approval with item-level feedback
 - **IPCR locking**- approved drafts commit to final committed targets
-- **Evidence uploads**- per-target PDF evidence with co-author claiming
+- **Evidence uploads**- per-target PDF evidence with supervisor verification
 - **SPMS scoring**- Q/E/T (Quantity/Efficiency/Timeliness) rolled into weighted categories with Final Weighted Rating + Adjectival Rating
 - **Printable IPCR**- landscape form matching the official SPMS layout
 - **Email notifications**- approval/evidence emails (optional, degrades to console logging when SMTP is unconfigured)

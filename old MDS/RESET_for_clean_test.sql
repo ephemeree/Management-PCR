@@ -10,7 +10,6 @@ USE ipcr_db;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ── Evidence and scores ──────────────────────────────────────────────────────
-TRUNCATE TABLE tbl_co_authors;
 TRUNCATE TABLE tbl_evidence_repo;
 TRUNCATE TABLE tbl_final_score_breakdown;
 TRUNCATE TABLE tbl_final_scores;
@@ -27,16 +26,12 @@ TRUNCATE TABLE tbl_ipcr_dean_review;
 TRUNCATE TABLE tbl_committed_targets;
 TRUNCATE TABLE tbl_draft_targets;
 TRUNCATE TABLE tbl_draft_allocation;
-TRUNCATE TABLE tbl_addselect_targets;
-TRUNCATE TABLE tbl_designation_targets;
 
 -- ── RET configuration (rules are term-specific by design) ────────────────────
 TRUNCATE TABLE tbl_ret_rule_indicators;
 TRUNCATE TABLE tbl_ret_rules;
 TRUNCATE TABLE tbl_ret_assignments;
 TRUNCATE TABLE tbl_ret_extension_distribution;
-TRUNCATE TABLE tbl_research_options;
-TRUNCATE TABLE tbl_research_requirements;
 
 -- ── Term-scoped setup, rebuilt in Phase A ────────────────────────────────────
 TRUNCATE TABLE tbl_cascaded_quotas;

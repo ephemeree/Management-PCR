@@ -666,9 +666,9 @@ Each of these should be **refused**. They are the checks that matter most.
 10. **Four unscoped deletes** in the submit paths remove draft targets from *earlier* terms.
     No current-term behaviour is affected and committed targets are untouched, but
     historical drafts are lost on resubmit.
-11. **Co-author routes are dead** — `claim_evidence`, `unclaim_evidence`,
-    `eligible_co_authors`, `unclaimed_co_authored_evidence` are reachable but no template
-    references them, since co-author tagging was removed.
+11. **Co-author claiming was removed entirely** (group's call, out of scope). The table,
+    the four routes, the six model functions and the `is_co_authored` UI in all four
+    dashboards are gone; `MIGRATION_group17.sql` drops `tbl_co_authors`.
 12. **108 evidence PDFs are tracked in git.** They are runtime uploads and will keep
     accumulating; `app/uploads/evidence/` should be gitignored and untracked.
 13. **A designated faculty/chair cannot self-correct a Dean-rejected submission's data** —

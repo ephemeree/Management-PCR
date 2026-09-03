@@ -234,7 +234,7 @@ def prog_chair_faculty_evidence_details(emp_id):
 
             # Program Chair can ONLY view evidence files for Instructions & Support, NOT Research & Extension
             if not is_ret:
-                ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+                ev_list = get_evidence_by_target(cursor, t['target_id'])
                 t['evidence_list'] = ev_list
             else:
                 t['evidence_list'] = []

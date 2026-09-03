@@ -116,7 +116,7 @@ def designated_dashboard():
                     t['is_core'] = True
                     t['is_locked'] = True
                 t['is_oversight_cascade'] = bool(t.get('is_admin_function')) and t['indicator_id'] in oversight_ids
-                t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+                t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'])
             evidence_readiness = check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets)
             has_final_ipcr = any(t.get('status') == 'Dean Approved' for t in dpcr_targets) if dpcr_targets else False
             # Live IPCR summary — uses the Designated Faculty weight table.
@@ -648,7 +648,7 @@ def designated_target_evidence(target_id, indicator_id):
     cursor = conn.cursor()
     try:
         from app.models.faculty import get_evidence_by_target
-        evidence_list = get_evidence_by_target(cursor, target_id, emp_id, indicator_id)
+        evidence_list = get_evidence_by_target(cursor, target_id)
         return jsonify({'success': True, 'evidence_list': evidence_list})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

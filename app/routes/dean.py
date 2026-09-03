@@ -654,7 +654,7 @@ def dean_designated_evidence_details(emp_id):
 
         for t in targets:
             t['is_core'] = not bool(t.get('is_admin_function'))
-            t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+            t['evidence_list'] = get_evidence_by_target(cursor, t['target_id'])
 
         return jsonify({
             'success': True,

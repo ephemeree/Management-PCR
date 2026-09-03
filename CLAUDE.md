@@ -92,8 +92,8 @@ usually do.
    encodes the full state machine.
 6. **Lock**: an approved IPCR is locked, copying `tbl_draft_targets` into
    `tbl_committed_targets`.
-7. **Evidence**: PDF uploads per committed target (`tbl_evidence_repo`/`tbl_target_evidence`),
-   with co-author claiming so shared work isn't uploaded twice.
+7. **Evidence**: PDF uploads per committed target (`tbl_evidence_repo`), verified by the
+   Program Chair / RET Chair.
 8. **Scoring**: `app/models/scoring.py` computes Q/E/T (Quantity/Efficiency/Timeliness) per target,
    rolls up into weighted IPCR categories, and produces a Final Weighted Rating + Adjectival
    Rating band.

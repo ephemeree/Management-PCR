@@ -87,7 +87,7 @@ def faculty_dashboard():
                 has_final_ipcr = any(t.get('status') == 'Dean Approved' for t in assigned_targets)
                 # Fetch evidence for each target
                 for target in assigned_targets:
-                    target['evidence_list'] = get_evidence_by_target(cursor, target['target_id'], emp_id, target['indicator_id'])
+                    target['evidence_list'] = get_evidence_by_target(cursor, target['target_id'])
                 evidence_readiness = check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets)
                 # Live IPCR summary (computed, not persisted — the record is written on finalize)
                 from app.models.scoring import compute_ipcr_score
@@ -312,7 +312,6 @@ def faculty_upload_evidence():
     emp_id = session.get('user_id')
     target_id = request.form.get('target_id')
     quantity = request.form.get('quantity', '1')
-    co_authors_raw = request.form.getlist('co_authors[]')
     is_ajax = (request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
                'application/json' in request.headers.get('Accept', ''))
     
@@ -358,18 +357,8 @@ def faculty_upload_evidence():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        from app.models.faculty import upload_evidence_item, add_co_authors_to_evidence
-        evidence_id = upload_evidence_item(cursor, int(target_id), relative_path, qty_val)
-        
-        # Parse co-authors list
-        co_author_ids = []
-        for x in co_authors_raw:
-            if x.isdigit():
-                co_author_ids.append(int(x))
-                
-        if co_author_ids:
-            add_co_authors_to_evidence(cursor, evidence_id, co_author_ids)
-            
+        from app.models.faculty import upload_evidence_item
+        upload_evidence_item(cursor, int(target_id), relative_path, qty_val)
         conn.commit()
         if is_ajax:
             return jsonify({'success': True, 'message': 'Evidence uploaded successfully!'})
@@ -431,7 +420,7 @@ def faculty_target_evidence(target_id, indicator_id):
     cursor = conn.cursor()
     try:
         from app.models.faculty import get_evidence_by_target
-        evidence_list = get_evidence_by_target(cursor, target_id, emp_id, indicator_id)
+        evidence_list = get_evidence_by_target(cursor, target_id)
         return jsonify({'success': True, 'evidence_list': evidence_list})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -439,98 +428,6 @@ def faculty_target_evidence(target_id, indicator_id):
         cursor.close()
         conn.close()
 
-
-@faculty_bp.route('/eligible_co_authors/<int:indicator_id>')
-@role_required('FACULTY')
-def faculty_eligible_co_authors(indicator_id):
-    emp_id = session.get('user_id')
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        from app.models.faculty import get_eligible_co_authors_for_indicator
-        faculty_list = get_eligible_co_authors_for_indicator(cursor, indicator_id, emp_id)
-        return jsonify({'success': True, 'co_authors': faculty_list})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-
-@faculty_bp.route('/unclaimed_co_authored_evidence/<int:indicator_id>')
-@role_required('FACULTY')
-def faculty_unclaimed_co_authored_evidence(indicator_id):
-    emp_id = session.get('user_id')
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        from app.models.faculty import get_unclaimed_co_authored_evidence
-        evidence_list = get_unclaimed_co_authored_evidence(cursor, emp_id, indicator_id)
-        return jsonify({'success': True, 'evidence_list': evidence_list})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-
-@faculty_bp.route('/claim_evidence', methods=['POST'])
-@role_required('FACULTY')
-def faculty_claim_evidence():
-    co_author_id = request.form.get('co_author_id')
-    target_id = request.form.get('target_id')
-    if not co_author_id or not target_id:
-        flash("Invalid claim payload.", "danger")
-        return redirect(url_for('faculty.faculty_dashboard'))
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        from app.models.faculty import claim_co_authored_evidence
-        claim_co_authored_evidence(cursor, int(co_author_id), int(target_id))
-        conn.commit()
-        flash("Co-authored evidence linked successfully!", "success")
-    except Exception as e:
-        conn.rollback()
-        flash(f"Error linking co-authored evidence: {str(e)}", "danger")
-    finally:
-        cursor.close()
-        conn.close()
-
-    return redirect(url_for('faculty.faculty_dashboard'))
-
-
-@faculty_bp.route('/unclaim_evidence', methods=['POST'])
-@role_required('FACULTY')
-def faculty_unclaim_evidence():
-    co_author_id = request.form.get('co_author_id')
-    target_id = request.form.get('target_id')
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
-    if not co_author_id or not target_id:
-        if is_ajax:
-            return jsonify({'success': False, 'message': 'Invalid claim payload.'}), 400
-        flash("Invalid claim payload.", "danger")
-        return redirect(url_for('faculty.faculty_dashboard'))
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        from app.models.faculty import unclaim_co_authored_evidence
-        unclaim_co_authored_evidence(cursor, int(co_author_id), int(target_id))
-        conn.commit()
-        if is_ajax:
-            return jsonify({'success': True, 'message': 'Co-authored evidence unlinked successfully.'})
-        flash("Co-authored evidence unlinked successfully.", "success")
-    except Exception as e:
-        conn.rollback()
-        if is_ajax:
-            return jsonify({'success': False, 'message': str(e)}), 500
-        flash(f"Error unlinking co-authored evidence: {str(e)}", "danger")
-    finally:
-        cursor.close()
-        conn.close()
-
-    return redirect(url_for('faculty.faculty_dashboard'))
 
 @faculty_bp.route('/print_ipcr')
 @role_required('FACULTY')

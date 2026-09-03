@@ -1,0 +1,37 @@
+-- MIGRATION_group17.sql
+-- Drop tbl_co_authors: the co-author claiming feature is out of scope.
+--
+-- Decided by the group -- co-author claiming is no longer part of the capstone.
+--
+-- The feature was never reachable in any case. The backend was complete (5 model
+-- functions, 4 routes) but the front end to tag co-authors was never built:
+-- /faculty/upload_evidence read request.form.getlist('co_authors[]'), and no form
+-- in any template ever sent that field. With no way to insert a row, every
+-- downstream path was dead too -- the claim/unclaim endpoints had no callers, and
+-- the is_co_authored badges in the faculty, dean, program chair and RET chair
+-- dashboards could never evaluate true. The table held 0 rows.
+--
+-- Removed alongside this migration (see the same commit):
+--   app/models/faculty.py   - get_eligible_co_authors_for_indicator,
+--                             add_co_authors_to_evidence,
+--                             get_unclaimed_co_authored_evidence,
+--                             claim_co_authored_evidence,
+--                             unclaim_co_authored_evidence,
+--                             get_tagged_co_authors;
+--                             the co-author SUM in
+--                             recalculate_target_accomplished_quantity;
+--                             the co-author UNION in get_evidence_by_target
+--                             (signature narrowed to (cursor, target_id))
+--   app/routes/faculty.py   - /eligible_co_authors, /unclaimed_co_authored_evidence,
+--                             /claim_evidence, /unclaim_evidence, and the
+--                             co_authors[] parsing in /upload_evidence
+--   templates               - is_co_authored branches in faculty, dean, prog_chair
+--                             and ret_chair dashboards; window.unclaimEvidence
+--
+-- tbl_co_authors is referenced by no other table (it was the only Layer 4 table in
+-- the dependency graph -- a leaf), so nothing blocks the drop. Its own two foreign
+-- keys, fk_coauth_evid and fk_coauth_emp, go with it.
+--
+-- Run AFTER MIGRATION_group16.sql.
+
+DROP TABLE IF EXISTS `tbl_co_authors`;

@@ -653,13 +653,11 @@ def save_accomplishment_details(conn, cursor, emp_id, target_id, actual_duration
 
 
 def recalculate_target_accomplished_quantity(cursor, target_id):
-    # 1. Get emp_id and indicator_id of this target
-    cursor.execute("SELECT emp_id, indicator_id FROM tbl_committed_targets WHERE target_id = %s", (target_id,))
-    row = cursor.fetchone()
-    if not row:
+    # 1. Confirm the target exists
+    cursor.execute("SELECT target_id FROM tbl_committed_targets WHERE target_id = %s", (target_id,))
+    if not cursor.fetchone():
         return
-    emp_id, indicator_id = row[0], row[1]
-    
+
     # 2. Sum direct uploads (exclude Rejected evidence)
     cursor.execute("""
         SELECT COALESCE(SUM(actual_qty_Q), 0) FROM tbl_evidence_repo
@@ -667,19 +665,8 @@ def recalculate_target_accomplished_quantity(cursor, target_id):
     """, (target_id,))
     direct_sum = cursor.fetchone()[0]
     
-    # 3. Sum claimed co-authored uploads (exclude Rejected evidence)
-    cursor.execute("""
-        SELECT COALESCE(SUM(er.actual_qty_Q), 0) FROM tbl_co_authors ca
-        JOIN tbl_evidence_repo er ON ca.evidence_id = er.evidence_id
-        WHERE ca.emp_id = %s 
-          AND ca.claimed = 1 
-          AND er.verification_status NOT IN ('Rejected', 'Returned')
-          AND (SELECT indicator_id FROM tbl_committed_targets WHERE target_id = er.target_id) = %s
-    """, (emp_id, indicator_id))
-    co_author_sum = cursor.fetchone()[0]
-    
-    # 4. Update the target's actual_quantity
-    total = direct_sum + co_author_sum
+    # 3. Update the target's actual_quantity
+    total = direct_sum
     cursor.execute("""
         UPDATE tbl_committed_targets
         SET actual_quantity = %s
@@ -736,8 +723,6 @@ def delete_evidence_item(cursor, evidence_id, emp_id):
     if owner_emp_id != emp_id:
         return False
 
-    # Delete co-author relationships
-    cursor.execute("DELETE FROM tbl_co_authors WHERE evidence_id = %s", (evidence_id,))
     # Delete evidence item
     cursor.execute("DELETE FROM tbl_evidence_repo WHERE evidence_id = %s", (evidence_id,))
 
@@ -746,90 +731,15 @@ def delete_evidence_item(cursor, evidence_id, emp_id):
     return True
 
 
-def get_eligible_co_authors_for_indicator(cursor, indicator_id, current_emp_id):
+def get_evidence_by_target(cursor, target_id):
     from app.models.connection import timed_query
     query = """
-        SELECT ep.emp_id, CONCAT(ep.first_name, ' ', ep.last_name) as name
-        FROM tbl_employee_profiles ep
-        JOIN tbl_committed_targets ct ON ep.emp_id = ct.emp_id
-        WHERE ct.indicator_id = %s AND ep.emp_id != %s
-    """
-    return timed_query(cursor, query, (indicator_id, current_emp_id), label="get_eligible_co_authors")
-
-
-def add_co_authors_to_evidence(cursor, evidence_id, co_author_emp_ids):
-    for emp_id in co_author_emp_ids:
-        cursor.execute("""
-            INSERT INTO tbl_co_authors (evidence_id, emp_id, claimed)
-            VALUES (%s, %s, 0)
-        """, (evidence_id, emp_id))
-
-
-def get_unclaimed_co_authored_evidence(cursor, emp_id, indicator_id):
-    from app.models.connection import timed_query
-    query = """
-        SELECT ca.co_author_id, er.evidence_id, er.file_path, er.actual_qty_Q,
-               CONCAT(ep_owner.first_name, ' ', ep_owner.last_name) as uploaded_by
-        FROM tbl_co_authors ca
-        JOIN tbl_evidence_repo er ON ca.evidence_id = er.evidence_id
-        JOIN tbl_committed_targets ct_owner ON er.target_id = ct_owner.target_id
-        JOIN tbl_employee_profiles ep_owner ON ct_owner.emp_id = ep_owner.emp_id
-        WHERE ca.emp_id = %s 
-          AND ca.claimed = 0
-          AND ct_owner.indicator_id = %s
-    """
-    return timed_query(cursor, query, (emp_id, indicator_id), label="get_unclaimed_co_authored_evidence")
-
-
-def claim_co_authored_evidence(cursor, co_author_id, target_id):
-    cursor.execute("UPDATE tbl_co_authors SET claimed = 1 WHERE co_author_id = %s", (co_author_id,))
-    recalculate_target_accomplished_quantity(cursor, target_id)
-
-
-def unclaim_co_authored_evidence(cursor, co_author_id, target_id):
-    cursor.execute("UPDATE tbl_co_authors SET claimed = 0 WHERE co_author_id = %s", (co_author_id,))
-    total = recalculate_target_accomplished_quantity(cursor, target_id)
-    _clear_accomplishment_details_if_unaccomplished(cursor, target_id, total)
-
-
-def get_evidence_by_target(cursor, target_id, emp_id, indicator_id):
-    from app.models.connection import timed_query
-    # 1. Fetch direct uploads
-    query1 = """
-        SELECT er.evidence_id, NULL as co_author_id, er.file_path, er.actual_qty_Q, 
-               er.verification_status, er.supervisor_comment, 0 as is_co_authored, NULL as uploaded_by
+        SELECT er.evidence_id, er.file_path, er.actual_qty_Q,
+               er.verification_status, er.supervisor_comment
         FROM tbl_evidence_repo er
         WHERE er.target_id = %s
     """
-    direct = timed_query(cursor, query1, (target_id,), label="get_direct_evidence")
-    
-    # 2. Fetch claimed co-authored uploads
-    query2 = """
-        SELECT er.evidence_id, ca.co_author_id, er.file_path, er.actual_qty_Q, 
-               er.verification_status, er.supervisor_comment, 1 as is_co_authored, 
-               CONCAT(ep.first_name, ' ', ep.last_name) as uploaded_by
-        FROM tbl_co_authors ca
-        JOIN tbl_evidence_repo er ON ca.evidence_id = er.evidence_id
-        JOIN tbl_committed_targets ct ON er.target_id = ct.target_id
-        JOIN tbl_employee_profiles ep ON ct.emp_id = ep.emp_id
-        WHERE ca.emp_id = %s AND ca.claimed = 1 AND ct.indicator_id = %s
-    """
-    co_authored = timed_query(cursor, query2, (emp_id, indicator_id), label="get_co_authored_evidence")
-    
-    return direct + co_authored
-
-
-def get_tagged_co_authors(cursor, evidence_id):
-    from app.models.connection import timed_query
-    query = """
-        SELECT ca.co_author_id, ca.emp_id, ca.claimed,
-               CONCAT(ep.first_name, ' ', ep.last_name) as name
-        FROM tbl_co_authors ca
-        JOIN tbl_employee_profiles ep ON ca.emp_id = ep.emp_id
-        WHERE ca.evidence_id = %s
-    """
-    return timed_query(cursor, query, (evidence_id,), label="get_tagged_co_authors")
-
+    return timed_query(cursor, query, (target_id,), label="get_evidence_by_target")
 
 
 def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
@@ -852,7 +762,7 @@ def check_faculty_evidence_readiness(cursor, emp_id, term_id, assigned_targets):
     for t in assigned_targets:
         ev_list = t.get('evidence_list')
         if ev_list is None:
-            ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+            ev_list = get_evidence_by_target(cursor, t['target_id'])
             t['evidence_list'] = ev_list
 
         valid_evs = [e for e in ev_list if e.get('verification_status') not in ('Returned', 'Rejected')]

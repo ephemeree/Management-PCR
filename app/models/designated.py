@@ -457,7 +457,7 @@ def check_designated_evidence_readiness(cursor, emp_id, term_id, dpcr_targets):
     for t in dpcr_targets:
         ev_list = t.get('evidence_list')
         if ev_list is None:
-            ev_list = get_evidence_by_target(cursor, t['target_id'], emp_id, t['indicator_id'])
+            ev_list = get_evidence_by_target(cursor, t['target_id'])
             t['evidence_list'] = ev_list
 
         valid_evs = [e for e in ev_list if e.get('verification_status') not in ('Returned', 'Rejected')]
