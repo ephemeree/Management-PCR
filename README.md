@@ -4,6 +4,38 @@ A Flask + SQL based capstone project implementing the Philippines' **Strategic P
 
 D-IPCR digitizes the faculty performance cycle; from target cascading through multi-role review, evidence submission, scoring, and printable IPCR.
 
+## Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/oks328">
+        <img src="https://github.com/oks328.png" width="100px;" alt="oks328"/><br />
+        <sub><b>oks328</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/yaspartame">
+        <img src="https://github.com/yaspartame.png" width="100px;" alt="yaspartame"/><br />
+        <sub><b>yaspartame</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/kyarin">
+        <img src="https://github.com/kyarin.png" width="100px;" alt="kyarin"/><br />
+        <sub><b>kyarin</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Eieindesu">
+        <img src="https://github.com/Eieindesu.png" width="100px;" alt="Eieindesu"/><br />
+        <sub><b>Eieindesu</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+
+
 ---
 
 ## Table of Contents
